@@ -285,15 +285,16 @@ async def register_as_admin(sid: str, data: dict):
         await sio.emit("already_registered_as_admin", room=sid)
         return
     await GameSession(admin=sid, game_id=game_id, answers=[]).save(game_pin)
+    session = {"game_pin": game_pin, "admin": True, "remote": False}
+    await save_session(sid, sio, session)
+    await sio.enter_room(sid, game_pin)
+    await sio.enter_room(sid, f"admin:{data.game_pin}")
     await sio.emit(
         "registered_as_admin",
         {"game_id": game_id, "game": await redis.get(f"game:{game_pin}")},
         room=sid,
     )
-    session = {"game_pin": game_pin, "admin": True, "remote": False}
-    await save_session(sid, sio, session)
-    await sio.enter_room(sid, game_pin)
-    await sio.enter_room(sid, f"admin:{data.game_pin}")
+    await debug_status(sid)
 
 
 @sio.event
@@ -537,7 +538,7 @@ async def connect(sid: str, _environ, _auth):
     print("Connection opened with handler")
     sio_session = {"session_id": session_id}
     await sio.save_session(sid, sio_session)
-    await sio.emit("session_id", ConnectSessionIdEvent(session_id=session_id).dict())
+    await sio.emit("session_id", ConnectSessionIdEvent(session_id=session_id).dict(), room=sid)
 
 
 @sio.event

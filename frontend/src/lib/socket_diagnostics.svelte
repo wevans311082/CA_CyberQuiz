@@ -63,6 +63,9 @@ SPDX-License-Identifier: MPL-2.0
 				return;
 			}
 			pushEntry(eventName, args[0]);
+			if (['registered_as_admin', 'joined_game', 'rejoined_game', 'lobby_state', 'start_game', 'set_question_number', 'player_joined'].includes(eventName)) {
+				refreshServerState();
+			}
 		};
 
 		const onConnect = () => {
