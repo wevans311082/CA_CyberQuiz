@@ -20,12 +20,14 @@ SPDX-License-Identifier: MPL-2.0
 		game_pin: string;
 		game_mode: any;
 		username: any;
+		game_data?: Record<string, unknown> | undefined;
 	}
 
 	let {
 		game_pin = $bindable(),
 		game_mode = $bindable(),
-		username = $bindable()
+		username = $bindable(),
+		game_data = $bindable()
 	}: Props = $props();
 	let custom_field = $state();
 	let custom_field_value = $state();
@@ -213,11 +215,13 @@ SPDX-License-Identifier: MPL-2.0
 			});
 		}
 	};
-	socket.on('joined_game', () => {
+	socket.on('joined_game', (data) => {
 		joinStatus = 'joined_game';
+		game_data = data;
 	});
-	socket.on('rejoined_game', () => {
+	socket.on('rejoined_game', (data) => {
 		joinStatus = 'rejoined_game';
+		game_data = data;
 	});
 	socket.on('username_already_exists', () => {
 		joinStatus = 'username_already_exists';

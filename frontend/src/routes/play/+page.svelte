@@ -68,6 +68,7 @@ SPDX-License-Identifier: MPL-2.0
 	navbarVisible.visible = false;
 	let answer_results: Array<Answer> = $state();
 	let gameData: PlayerGameData | undefined = $state();
+	let joinGameData: PlayerGameData | [PlayerGameData] | undefined = $state();
 	let solution: QuestionType = $state();
 	let username = $state('');
 	let scores = $state({});
@@ -90,6 +91,20 @@ SPDX-License-Identifier: MPL-2.0
 
 	const normalizeGameData = (payload: PlayerGameData | [PlayerGameData]) =>
 		(Array.isArray(payload) ? payload[0] : payload) as PlayerGameData;
+
+	$effect(() => {
+		if (gameData !== undefined || joinGameData === undefined) {
+			return;
+		}
+		const joined = normalizeGameData(joinGameData);
+		if (!joined) {
+			return;
+		}
+		gameData = joined;
+		lobbyState.players = joined.players ?? [];
+		lobbyState.player_count = joined.player_count ?? lobbyState.players.length;
+		gameMeta.started = joined.started === true;
+	});
 
 	const confirmUnload = (event: Event) => {
 		if (preventReload) {
@@ -219,7 +234,7 @@ SPDX-License-Identifier: MPL-2.0
 			<div style="position: absolute; bottom: 10px; right: 10px; background: yellow; padding: 8px; font-size: 11px; z-index: 9999;">
 				SHOWING JOIN (started={gameMeta.started}, gameData={gameData})
 			</div>
-			<JoinGame bind:game_pin bind:game_mode bind:username />
+			<JoinGame bind:game_pin bind:game_mode bind:username bind:game_data={joinGameData} />
 		{:else if JSON.stringify(final_results) !== JSON.stringify([null])}
 			<ShowEndScreen bind:data={scores} show_final_results={true} {username} />
 		{:else if gameData !== undefined && question_index === ''}
