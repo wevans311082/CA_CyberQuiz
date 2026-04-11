@@ -123,10 +123,13 @@ SPDX-License-Identifier: MPL-2.0
 
 	// Socket-events
 	socket.on('joined_game', (data) => {
+		console.log('[JOINED_GAME] Handler fired with data:', data);
 		gameData = normalizeGameData(data);
+		console.log('[JOINED_GAME] gameData set to:', gameData);
 		lobbyState.players = gameData.players ?? [];
 		lobbyState.player_count = gameData.player_count ?? lobbyState.players.length;
 		gameMeta.started = gameData.started === true;
+		console.log('[JOINED_GAME] gameMeta.started set to:', gameMeta.started);
 		if (typeof window !== 'undefined' && 'plausible' in window && typeof window.plausible === 'function') {
 			window.plausible('Joined Game', { props: { game_id: gameData.game_id } });
 		}
@@ -213,6 +216,9 @@ SPDX-License-Identifier: MPL-2.0
 >
 	<div>
 		{#if !gameMeta.started && gameData === undefined}
+			<div style="position: absolute; bottom: 10px; right: 10px; background: yellow; padding: 8px; font-size: 11px; z-index: 9999;">
+				SHOWING JOIN (started={gameMeta.started}, gameData={gameData})
+			</div>
 			<JoinGame bind:game_pin bind:game_mode bind:username />
 		{:else if JSON.stringify(final_results) !== JSON.stringify([null])}
 			<ShowEndScreen bind:data={scores} show_final_results={true} {username} />
