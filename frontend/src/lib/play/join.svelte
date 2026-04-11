@@ -34,6 +34,8 @@ SPDX-License-Identifier: MPL-2.0
 	let joinStatus = $state('idle');
 	let lastJoinPayload = $state<Record<string, unknown> | null>(null);
 	let captchaCheckStatus = $state('idle');
+	let usernameLength = $state(0);
+	let submitCount = $state(0);
 
 	let hcaptchaSitekey = import.meta.env.VITE_HCAPTCHA;
 
@@ -124,7 +126,10 @@ SPDX-License-Identifier: MPL-2.0
 
 	const setUsername = async (e: Event) => {
 		e.preventDefault();
+		submitCount += 1;
+		usernameLength = username?.length ?? 0;
 		if (username.length <= 3) {
+			joinStatus = 'blocked:username_too_short';
 			return;
 		}
 		joinAttempted = true;
@@ -291,6 +296,10 @@ SPDX-License-Identifier: MPL-2.0
 			<input
 				class="mt-6 self-center rounded-2xl border border-slate-300 bg-white p-4 text-center text-lg text-slate-950 shadow-sm outline-hidden transition-all focus:border-teal-600 focus:shadow-xl dark:border-slate-700 dark:bg-slate-950 dark:text-white"
 				bind:value={username}
+				oninput={() => {
+					usernameLength = username?.length ?? 0;
+					joinStatus = 'editing_username';
+				}}
 				maxlength="17"
 			/>
 			{#if custom_field}
@@ -302,7 +311,7 @@ SPDX-License-Identifier: MPL-2.0
 			{/if}
 
 			<div class="mt-5">
-				<BrownButton disabled={username.length <= 3} onclick={setUsername}>Join Quiz</BrownButton>
+				<BrownButton disabled={username.length <= 3} type="submit">Join Quiz</BrownButton>
 			</div>
 		</form>
 	</div>
@@ -321,6 +330,8 @@ SPDX-License-Identifier: MPL-2.0
 	details={{
 		gamePin: game_pin,
 		username,
+		usernameLength,
+		submitCount,
 		joinAttempted,
 		joinStatus,
 		captchaEnabled: captcha_enabled,
