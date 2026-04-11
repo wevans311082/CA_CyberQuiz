@@ -4,8 +4,4 @@
 
 import { io } from 'socket.io-client';
 
-export const socket = io('/', {
-	path: '/socket.io',
-	withCredentials: true,
-	transports: ['polling', 'websocket']
-});
+export const socket = io();

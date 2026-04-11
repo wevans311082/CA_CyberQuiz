@@ -5,19 +5,9 @@
 #* {
 :8080 {
 	#	tls /home/mawoka/certs/cert.pem /home/mawoka/certs/key.pem
-	handle /socket.io* {
-		reverse_proxy localhost:8000
-	}
-	handle /api* {
-		reverse_proxy localhost:8000
-	}
-	handle /rapidoc* {
-		reverse_proxy localhost:8000
-	}
-	handle /openapi.json {
-		reverse_proxy localhost:8000
-	}
-	handle {
-		reverse_proxy localhost:3000
-	}
+	reverse_proxy /* localhost:3000
+	reverse_proxy /api* localhost:8000
+	reverse_proxy /rapidoc* localhost:8000
+	reverse_proxy /openapi.json localhost:8000
+	reverse_proxy /socket.io* localhost:8000
 }
