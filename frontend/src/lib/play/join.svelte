@@ -6,6 +6,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <script lang="ts">
 	import { socket } from '$lib/socket';
+	import SocketDiagnostics from '$lib/socket_diagnostics.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import * as Sentry from '@sentry/browser';
@@ -29,6 +30,10 @@ SPDX-License-Identifier: MPL-2.0
 	let custom_field = $state();
 	let custom_field_value = $state();
 	let captcha_enabled = $state();
+	let joinAttempted = $state(false);
+	let joinStatus = $state('idle');
+	let lastJoinPayload = $state<Record<string, unknown> | null>(null);
+	let captchaCheckStatus = $state('idle');
 
 	let hcaptchaSitekey = import.meta.env.VITE_HCAPTCHA;
 
@@ -73,6 +78,7 @@ SPDX-License-Identifier: MPL-2.0
 		const res = await fetch(
 			`${process_var.env.API_URL ?? ''}/api/v1/quiz/play/check_captcha/${game_pin}`
 		);
+		captchaCheckStatus = `status:${res.status}`;
 		const json = await res.json();
 		game_mode = json.game_mode;
 		if (res.status === 200) {
@@ -109,6 +115,7 @@ SPDX-License-Identifier: MPL-2.0
 	});
 
 	socket.on('connect_error', (error) => {
+		joinStatus = `connect_error:${error.message}`;
 		console.error('Socket connection failed', error.message);
 		if (browser) {
 			alert('Live connection to the quiz server failed. Please reload and try again.');
@@ -120,8 +127,11 @@ SPDX-License-Identifier: MPL-2.0
 		if (username.length <= 3) {
 			return;
 		}
+		joinAttempted = true;
+		joinStatus = 'submitting';
 		let captcha_resp: string;
 		if (Cookies.get('kicked')) {
+			joinStatus = 'blocked:kicked';
 			console.log("%cYou're Banned!", 'font-size:6rem');
 			return;
 		}
@@ -133,6 +143,13 @@ SPDX-License-Identifier: MPL-2.0
 						async: true
 					});
 					captcha_resp = response;
+					lastJoinPayload = {
+						username,
+						game_pin,
+						hasCaptcha: true,
+						hasCustomField: custom_field ? custom_field_value !== undefined : false
+					};
+					joinStatus = 'emit:join_game';
 					socket.emit('join_game', {
 						username: username,
 						game_pin: game_pin,
@@ -140,6 +157,7 @@ SPDX-License-Identifier: MPL-2.0
 						custom_field: custom_field ? custom_field_value : undefined
 					});
 				} catch (e) {
+					joinStatus = 'captcha_failed';
 					if (import.meta.env.VITE_SENTRY !== null) {
 						Sentry.captureException(e);
 					}
@@ -158,6 +176,13 @@ SPDX-License-Identifier: MPL-2.0
 					grecaptcha
 						.execute(import.meta.env.VITE_RECAPTCHA, { action: 'submit' })
 						.then(function (token) {
+							lastJoinPayload = {
+								username,
+								game_pin,
+								hasCaptcha: true,
+								hasCustomField: custom_field ? custom_field_value !== undefined : false
+							};
+							joinStatus = 'emit:join_game';
 							socket.emit('join_game', {
 								username: username,
 								game_pin: game_pin,
@@ -168,6 +193,13 @@ SPDX-License-Identifier: MPL-2.0
 				});
 			}
 		} else {
+			lastJoinPayload = {
+				username,
+				game_pin,
+				hasCaptcha: false,
+				hasCustomField: custom_field ? custom_field_value !== undefined : false
+			};
+			joinStatus = 'emit:join_game';
 			socket.emit('join_game', {
 				username: username,
 				game_pin: game_pin,
@@ -176,11 +208,27 @@ SPDX-License-Identifier: MPL-2.0
 			});
 		}
 	};
+	socket.on('joined_game', () => {
+		joinStatus = 'joined_game';
+	});
+	socket.on('rejoined_game', () => {
+		joinStatus = 'rejoined_game';
+	});
+	socket.on('username_already_exists', () => {
+		joinStatus = 'username_already_exists';
+	});
+	socket.on('game_already_started', () => {
+		joinStatus = 'game_already_started';
+	});
 	socket.on('game_not_found', () => {
+		joinStatus = 'game_not_found';
 		game_pin = '';
 		if (browser) {
 			alert('Game not found');
 		}
+	});
+	socket.on('error', () => {
+		joinStatus = 'socket_error';
 	});
 	$effect(() => {
 		const cleaned = game_pin.replace(/\D/g, '');
@@ -266,3 +314,18 @@ SPDX-License-Identifier: MPL-2.0
 	data-size="invisible"
 	data-theme="dark"
 ></div>
+
+<SocketDiagnostics
+	socket={socket}
+	label="join"
+	details={{
+		gamePin: game_pin,
+		username,
+		joinAttempted,
+		joinStatus,
+		captchaEnabled: captcha_enabled,
+		captchaCheckStatus,
+		customField: custom_field ?? null,
+		lastJoinPayload
+	}}
+/>
