@@ -10,6 +10,7 @@
 declare namespace App {
 	interface Locals {
 		email: string | null;
+		isAdmin: boolean;
 	}
 
 	// interface Platform {}

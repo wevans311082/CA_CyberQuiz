@@ -22,7 +22,7 @@ from classquiz.config import (
     arq,
 )
 from classquiz.db.models import Quiz, QuizInput, User, QuizQuestionType, StorageItem
-from classquiz.auth import get_current_user
+from classquiz.auth import get_admin_user, user_is_admin
 import os
 from datetime import datetime
 from uuid import UUID
@@ -60,7 +60,7 @@ async def delete_images_for_edit_id(edit_id: str):
 
 
 @router.post("/start", response_model=InitEditorResponse)
-async def init_editor(edit: bool, quiz_id: Optional[UUID] = None, user: User = Depends(get_current_user)):
+async def init_editor(edit: bool, quiz_id: Optional[UUID] = None, user: User = Depends(get_admin_user)):
     if edit and quiz_id is not None and await Quiz.objects.get_or_none(id=quiz_id, user_id=user.id) is None:
         raise HTTPException(status_code=404, detail="Quiz not found")
     if not edit and quiz_id is not None:
@@ -85,6 +85,9 @@ async def finish_edit(edit_id: str, quiz_input: QuizInput):
     if session_data is None:
         raise HTTPException(status_code=401, detail="Edit ID not found!")
     session_data = EditSessionData.model_validate_json(session_data)
+    user = await User.objects.get_or_none(id=session_data.user_id)
+    if user is None or not await user_is_admin(user):
+        raise HTTPException(status_code=401, detail="Admin access required")
     quiz_input.title = bleach.clean(quiz_input.title, tags=ALLOWED_TAGS_FOR_QUIZ, strip=True)
     quiz_input.description = bleach.clean(quiz_input.description, tags=ALLOWED_TAGS_FOR_QUIZ, strip=True)
     if quiz_input.background_color is not None:

@@ -23,6 +23,8 @@ from classquiz.auth import (
     get_password_hash,
     verify_password,
     get_current_user,
+    get_current_user_optional,
+    user_is_admin,
 )
 from classquiz.cache import clear_cache_for_account
 from classquiz.config import redis, settings, meilisearch
@@ -60,7 +62,7 @@ router.include_router(oauth.router, tags=["users", "oauth"], prefix="/oauth")
     response_model_include={"id": ..., "verified": ..., "email": ...},
 )
 async def create_user(user: RouteUser, background_task: BackgroundTasks) -> User | JSONResponse:
-    if settings.registration_disabled:
+    if settings.registration_disabled or await User.objects.count() > 0:
         raise HTTPException(status_code=423)
     user: User = User(
         **user.model_dump(),
@@ -90,6 +92,13 @@ async def create_user(user: RouteUser, background_task: BackgroundTasks) -> User
         background_task.add_task(send_register_email, user)
     await redis.delete("global_user_count")
     return user
+
+
+@router.get("/admin-status")
+async def admin_status(user: User | None = Depends(get_current_user_optional)):
+    if user is None:
+        return {"is_admin": False}
+    return {"is_admin": await user_is_admin(user)}
 
 
 @router.get("/logout")

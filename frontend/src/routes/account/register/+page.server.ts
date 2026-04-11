@@ -9,5 +9,5 @@ export async function load({ parent }) {
 	if (email) {
 		redirect(302, '/dashboard');
 	}
-	return {};
+	redirect(302, '/account/login');
 }

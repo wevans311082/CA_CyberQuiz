@@ -81,15 +81,15 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <svelte:head>
-	<title>ClassQuiz - Login</title>
+	<title>CyberAsk Admin Login</title>
 </svelte:head>
-<div class="flex items-center justify-center h-screen">
+<div class="flex min-h-screen items-center justify-center px-4 py-10">
 	{#if verified}
 		<VerifiedBadge />
 	{/if}
 
 	<div
-		class="lg:w-1/3 max-w-sm mx-auto overflow-hidden bg-white rounded-lg shadow-2xl dark:bg-gray-800"
+		class="w-full max-w-sm overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/80 shadow-[0_30px_80px_rgba(15,23,42,0.18)] backdrop-blur dark:border-slate-700 dark:bg-slate-900/75"
 	>
 		{#if step === 0}
 			<!--			<p>StartWindow</p>-->
@@ -124,4 +124,3 @@ SPDX-License-Identifier: MPL-2.0
 		{/if}
 	</div>
 </div>
-<Footer />

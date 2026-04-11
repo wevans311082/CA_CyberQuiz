@@ -11,6 +11,15 @@ SPDX-License-Identifier: MPL-2.0
 @plugin "@tailwindcss/typography";
 @tailwind utilities;
 
+:root {
+	--cyberask-ink: #0f172a;
+	--cyberask-surface: #f8fafc;
+	--cyberask-border: rgba(15, 23, 42, 0.12);
+	--cyberask-accent: #0f766e;
+	--cyberask-accent-strong: #155e75;
+	--cyberask-panel: rgba(255, 255, 255, 0.78);
+}
+
 .marck-script {
 	font-family: 'Marck Script';
 }
@@ -20,7 +29,7 @@ SPDX-License-Identifier: MPL-2.0
 }
 
 .link-hover:hover {
-	color: #4e6e58;
+	color: var(--cyberask-accent-strong);
 }
 @layer base {
 	button:not(:disabled),
@@ -41,5 +50,5 @@ SPDX-License-Identifier: MPL-2.0
 	@apply px-4 py-2 leading-5 text-black dark:text-white transition-colors duration-200 transform bg-gray-50 dark:bg-gray-700 rounded-sm text-center hover:bg-gray-300 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-gray-600;
 }
 @utility btn-nav {
-	@apply text-lg font-medium px-3 text-gray-600 hover:text-green-600 py-1.5 transition-all duration-300;
+	@apply text-sm font-semibold uppercase tracking-[0.16em] px-3 text-slate-700 hover:text-teal-700 py-1.5 transition-all duration-300;
 }

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	import '../app.css';
 	import Navbar from '$lib/navbar.svelte';
-	import { pathname } from '$lib/stores';
+	import { pathname, signedIn } from '$lib/stores';
 	import { navbarVisible } from '$lib/stores.svelte';
 
 	import { initLocalizationContext } from '$lib/i18n';
@@ -18,7 +18,6 @@ SPDX-License-Identifier: MPL-2.0
 	}
 
 	let { children }: Props = $props();
-	const plausible_data_url = import.meta.env.VITE_PLAUSIBLE_DATA_URL;
 
 	if (browser) {
 		pathname.set(window.location.pathname);
@@ -39,23 +38,6 @@ SPDX-License-Identifier: MPL-2.0
 	initLocalizationContext(start_language);
 </script>
 
-<svelte:head>
-	{#if plausible_data_url}
-		<script
-			defer
-			data-domain={plausible_data_url}
-			src="https://plausible.nexus.mawoka.eu/js/script.file-downloads.outbound-links.pageview-props.tagged-events.js"
-		></script>
-		<script>
-			window.plausible =
-				window.plausible ||
-				function () {
-					(window.plausible.q = window.plausible.q || []).push(arguments);
-				};
-		</script>
-	{/if}
-</svelte:head>
-
 {#if navbarVisible.visible}
 	<Navbar />
 	<div class="pt-16">
@@ -63,47 +45,29 @@ SPDX-License-Identifier: MPL-2.0
 	</div>
 {/if}
 {@render children?.()}
-<CommandPalette />
+{#if $signedIn}
+	<CommandPalette />
+{/if}
 
 <style lang="scss">
 	:global(html:not(.dark)) {
-		// height: 100%;
-		// width: 100%;
-
-		// bg-gradient-to-r from-[#009444] via-[#39b54a] to-[#8dc63f]
-		//background: linear-gradient(to right, #009444, #39b54a, #8dc63f) repeat-y;
-		background-color: #d6edc9;
-		background-size: cover;
-		/*background: linear-gradient(-225deg, #231557 0%, #44107A 29%, #FF1361 67%, #FFF800 100%); */
-		/*background: linear-gradient(-225deg, #22E1FF 0%, #1D8FE1 48%, #625EB1 100%); */
+		background:
+			radial-gradient(circle at top left, rgba(14, 165, 233, 0.15), transparent 35%),
+			radial-gradient(circle at top right, rgba(20, 184, 166, 0.16), transparent 30%),
+			linear-gradient(180deg, #f8fbff 0%, #edf6fb 48%, #f4f7fb 100%);
 		color: black;
-
-		// background-size: 400% 400%;
-
-		//animation: background_animation 5s ease infinite;
 	}
 
 	:global(html.dark) {
-		//background-color: #0f2702;
-		background-color: #4e6e58;
-		background-size: cover;
+		background:
+			radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 30%),
+			radial-gradient(circle at top right, rgba(20, 184, 166, 0.14), transparent 30%),
+			linear-gradient(180deg, #07111d 0%, #0f172a 52%, #111827 100%);
 		color: white;
 
 		:global(#pips-slider) {
 			--pip: white;
 			--pip-active: white;
-		}
-	}
-
-	@keyframes background_animation {
-		0% {
-			background-position: 0% 50%;
-		}
-		50% {
-			background-position: 100% 50%;
-		}
-		100% {
-			background-position: 0% 50%;
 		}
 	}
 </style>

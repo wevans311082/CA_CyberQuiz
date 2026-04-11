@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError, BaseModel
 
-from classquiz.auth import get_current_user
+from classquiz.auth import get_current_user, get_admin_user
 from classquiz.config import redis, settings, storage, meilisearch
 from classquiz.db.models import Quiz, User, PlayGame, GameInLobby, QuizQuestion, QuizQuestionType
 from classquiz.helpers.box_controller import generate_code
@@ -82,7 +82,7 @@ async def start_quiz(
     custom_field: str | None = None,
     cqcs_enabled: bool = False,
     randomize_answers: bool = False,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_admin_user),
 ):
     try:
         quiz_id = uuid.UUID(quiz_id)
@@ -169,7 +169,7 @@ async def get_game_id(game_pin: str):
 
 
 @router.get("/list")
-async def get_quiz_list(user: User = Depends(get_current_user), page_size: int | None = 10, page: int | None = 1):
+async def get_quiz_list(user: User = Depends(get_admin_user), page_size: int | None = 10, page: int | None = 1):
     try:
         return (
             await Quiz.objects.order_by(Quiz.updated_at.desc())
@@ -182,7 +182,7 @@ async def get_quiz_list(user: User = Depends(get_current_user), page_size: int |
 
 
 @router.post("/import/{quiz_id}")
-async def import_quiz_route(quiz_id: str, user: User = Depends(get_current_user)):
+async def import_quiz_route(quiz_id: str, user: User = Depends(get_admin_user)):
     if user.storage_used > settings.free_storage_limit:
         raise HTTPException(status_code=409, detail="Storage limit reached")
     resp_data = await import_quiz(quiz_id, user)
@@ -196,7 +196,7 @@ async def import_quiz_route(quiz_id: str, user: User = Depends(get_current_user)
 
 
 @router.delete("/delete/{quiz_id}")
-async def delete_quiz(quiz_id: str, user: User = Depends(get_current_user)):
+async def delete_quiz(quiz_id: str, user: User = Depends(get_admin_user)):
     try:
         quiz_id = uuid.UUID(quiz_id)
     except ValueError:
@@ -253,6 +253,6 @@ async def export_quiz_answers(export_token: str, game_pin: str):
 
 
 @router.post("/excel-import")
-async def import_from_excel(file: UploadFile = File(), user: User = Depends(get_current_user)) -> Quiz:
+async def import_from_excel(file: UploadFile = File(), user: User = Depends(get_admin_user)) -> Quiz:
     quiz = await handle_import_from_excel(file.file, user)
     return Quiz.model_validate(quiz.model_dump(exclude={"user_id": ...}))

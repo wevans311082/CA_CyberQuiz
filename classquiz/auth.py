@@ -145,10 +145,16 @@ async def get_current_moderator(token: str = Depends(oauth2_scheme)):
     return user
 
 
+async def user_is_admin(user: User) -> bool:
+    admin_user = await User.objects.order_by(User.created_at.asc()).get_or_none()
+    if admin_user is None:
+        return False
+    return admin_user.id == user.id
+
+
 async def get_admin_user(token: str = Depends(oauth2_scheme)) -> User:
     user = await get_current_user(token)
-    admin_user = await User.objects.order_by(User.created_at.asc()).get()
-    if admin_user.id == user.id:
+    if await user_is_admin(user):
         return user
     else:
         raise credentials_exception

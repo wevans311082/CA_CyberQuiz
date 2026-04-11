@@ -6,7 +6,6 @@ SPDX-License-Identifier: MPL-2.0
 
 <script lang="ts">
 	import { getLocalization } from '$lib/i18n';
-	import OAuthBlock from './oauth_block.svelte';
 
 	let { session_data = $bindable({}), step = $bindable() } = $props();
 
@@ -35,14 +34,16 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <div class="px-6 py-4">
-	<h2 class="text-3xl font-bold text-center text-gray-700 dark:text-white">ClassQuiz</h2>
+	<h2 class="text-center text-sm font-semibold uppercase tracking-[0.32em] text-teal-700 dark:text-cyan-300">
+		CyberAsk Admin
+	</h2>
 
 	<h3 class="mt-1 text-xl font-medium text-center text-gray-600 dark:text-gray-200">
-		{$t('login_page.welcome_back')}
+		Admin sign-in
 	</h3>
 
 	<p class="mt-1 text-center text-gray-500 dark:text-gray-400">
-		{$t('login_page.login_or_create_account')}
+		Use your administrator email or username to continue.
 	</p>
 
 	<form onsubmit={start_login}>
@@ -94,19 +95,10 @@ SPDX-License-Identifier: MPL-2.0
 					{/if}
 				</button>
 			</div>
-			<OAuthBlock />
 		</div>
 	</form>
 </div>
 
 <div class="flex items-center justify-center py-4 text-center bg-gray-50 dark:bg-gray-700">
-	<span class="text-sm text-gray-600 dark:text-gray-200"
-		>{$t('login_page.already_have_account')}
-	</span>
-
-	<a
-		href="/account/register"
-		class="mx-2 text-sm font-bold text-blue-500 dark:text-blue-400 hover:underline"
-		>{$t('words.register')}</a
-	>
+	<span class="text-sm text-gray-600 dark:text-gray-200">Authorised administrators only.</span>
 </div>
