@@ -41,7 +41,6 @@ SPDX-License-Identifier: MPL-2.0
 
 	onMount(() => {
 		if (browser) {
-			prefetch_username();
 			hcaptcha = window.hcaptcha;
 			if (hcaptcha.render) {
 				hcaptchaWidgetID = hcaptcha.render('hcaptcha', {
@@ -62,15 +61,6 @@ SPDX-License-Identifier: MPL-2.0
 			};
 		}
 	});
-
-	const prefetch_username = async () => {
-		const res = await fetch('/api/v1/users/me');
-		if (res.status !== 200) {
-			return;
-		}
-		const json = await res.json();
-		username = json.username;
-	};
 
 	const set_game_pin = async () => {
 		let process_var;
@@ -115,6 +105,13 @@ SPDX-License-Identifier: MPL-2.0
 	$effect(() => {
 		if (game_pin.length > 5) {
 			set_game_pin();
+		}
+	});
+
+	socket.on('connect_error', (error) => {
+		console.error('Socket connection failed', error.message);
+		if (browser) {
+			alert('Live connection to the quiz server failed. Please reload and try again.');
 		}
 	});
 
