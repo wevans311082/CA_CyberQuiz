@@ -32,6 +32,11 @@ const matchesPrefix = (pathname: string, prefixes: string[]) =>
 
 const getApiUrl = (path: string) => `${process.env.API_URL}${path}`;
 
+const getReturnTo = (requestUrl: string) => {
+	const { pathname, search } = new URL(requestUrl);
+	return `${pathname}${search}`;
+};
+
 const getAdminStatus = async (cookieHeader: string) => {
 	if (!process.env.API_URL) {
 		return false;
@@ -59,7 +64,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		const pathname = event.url.pathname;
 		if (matchesPrefix(pathname, adminOnlyPrefixes)) {
 			const loginUrl = new URL('/account/login', event.url);
-			loginUrl.searchParams.set('returnTo', `${pathname}${event.url.search}`);
+			loginUrl.searchParams.set('returnTo', getReturnTo(event.request.url));
 			return Response.redirect(loginUrl, 302);
 		}
 		return resolve(event);
@@ -100,7 +105,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			? new URL('/', event.url)
 			: new URL('/account/login', event.url);
 		if (!event.locals.email) {
-			redirectUrl.searchParams.set('returnTo', `${pathname}${event.url.search}`);
+			redirectUrl.searchParams.set('returnTo', getReturnTo(event.request.url));
 		}
 		const response = Response.redirect(redirectUrl, 302);
 		if (setCookieHeader) {
