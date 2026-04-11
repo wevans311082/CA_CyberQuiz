@@ -17,6 +17,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { onMount } from 'svelte';
 	import FinalResults from '$lib/play/admin/final_results.svelte';
 	import GrayButton from '$lib/components/buttons/gray.svelte';
+	import SocketDiagnostics from '$lib/socket_diagnostics.svelte';
 	import { page } from '$app/state';
 
 	navbarVisible.visible = false;
@@ -220,6 +221,18 @@ SPDX-License-Identifier: MPL-2.0
 			{control_visible}
 		/>
 	{/if}
+	<SocketDiagnostics
+		socket={socket}
+		label="admin"
+		details={{
+			gamePin: game_pin,
+			autoConnect: auto_connect,
+			success,
+			gameStarted: game_started,
+			playerCount: players.length,
+			quizLoaded: quiz_data !== undefined
+		}}
+	/>
 </div>
 <a
 	onclick={request_answer_export}

@@ -9,11 +9,14 @@ SPDX-License-Identifier: MPL-2.0
 	import { socket } from '$lib/socket';
 	import JoinGame from '$lib/play/join.svelte';
 	import type { Answer, Question as QuestionType } from '$lib/quiz_types';
+	import { QuizQuestionType } from '$lib/quiz_types';
 	import ShowTitle from '$lib/play/title.svelte';
 	import Question from '$lib/play/question.svelte';
+	import Slide from '$lib/play/admin/slide.svelte';
 	import { navbarVisible } from '$lib/stores.svelte.ts';
 	import ShowEndScreen from '$lib/play/admin/final_results.svelte';
 	import KahootResults from '$lib/play/results_kahoot.svelte';
+	import SocketDiagnostics from '$lib/socket_diagnostics.svelte';
 	import { getLocalization } from '$lib/i18n';
 	import Cookies from 'js-cookie';
 	const { t } = getLocalization();
@@ -124,8 +127,9 @@ SPDX-License-Identifier: MPL-2.0
 		lobbyState.players = gameData.players ?? [];
 		lobbyState.player_count = gameData.player_count ?? lobbyState.players.length;
 		gameMeta.started = gameData.started === true;
-		// eslint-disable-next-line no-undef
-		plausible('Joined Game', { props: { game_id: gameData.game_id } });
+		if (typeof window !== 'undefined' && 'plausible' in window && typeof window.plausible === 'function') {
+			window.plausible('Joined Game', { props: { game_id: gameData.game_id } });
+		}
 		Cookies.set('joined_game', JSON.stringify({ sid: socket.id, username, game_pin }), {
 			expires: 3600
 		});
@@ -160,6 +164,11 @@ SPDX-License-Identifier: MPL-2.0
 
 	socket.on('start_game', () => {
 		gameMeta.started = true;
+	});
+
+	socket.on('game_already_started', () => {
+		window.alert('This quiz has already started. Reloading to rejoin the live session.');
+		window.location.reload();
 	});
 
 	socket.on('question_results', (data) => {
@@ -219,7 +228,11 @@ SPDX-License-Identifier: MPL-2.0
 		{:else if gameMeta.started && gameData !== undefined && question_index !== '' && answer_results === undefined}
 			{#key unique}
 				<div class="text-black dark:text-black">
-					<Question bind:game_mode bind:question {question_index} {solution} />
+					{#if question?.type === QuizQuestionType.SLIDE}
+						<Slide {question} />
+					{:else}
+						<Question bind:game_mode bind:question {question_index} {solution} />
+					{/if}
 				</div>
 			{/key}
 		{:else if gameMeta.started && answer_results !== undefined}
@@ -237,4 +250,17 @@ SPDX-License-Identifier: MPL-2.0
 			{/if}
 		{/if}
 	</div>
+	<SocketDiagnostics
+		socket={socket}
+		label="player"
+		details={{
+			gamePin: game_pin,
+			username,
+			started: gameMeta.started,
+			questionIndex: question_index,
+			hasGameData: gameData !== undefined,
+			hasQuestion: question !== undefined,
+			playerCount: lobbyState.player_count
+		}}
+	/>
 </div>

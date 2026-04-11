@@ -80,15 +80,21 @@ async def emit_lobby_state(game_pin: str, room: str | None = None):
 async def emit_current_question(room: str, game_data: PlayGame):
     if game_data.current_question < 0:
         return
+    temp_return = game_data.model_dump(include={"questions"})["questions"][game_data.current_question]
     if game_data.questions[game_data.current_question].type == QuizQuestionType.SLIDE:
         await sio.emit(
             "set_question_number",
-            {"question_index": game_data.current_question},
+            {
+                "question_index": game_data.current_question,
+                "question": {
+                    **temp_return,
+                    "type": game_data.questions[game_data.current_question].type,
+                },
+            },
             room=room,
         )
         return
 
-    temp_return = game_data.model_dump(include={"questions"})["questions"][game_data.current_question]
     if game_data.questions[game_data.current_question].type == QuizQuestionType.VOTING:
         for i in range(len(temp_return["answers"])):
             temp_return["answers"][i] = VotingQuizAnswer(**temp_return["answers"][i])
@@ -321,8 +327,12 @@ async def set_question_number(sid: str, data: str):
             "set_question_number",
             {
                 "question_index": int(float(data)),
+                "question": {
+                    **temp_return,
+                    "type": game_data.questions[int(float(data))].type,
+                },
             },
-            room=sid,
+            room=game_pin,
         )
         return
     if game_data.questions[int(float(data))].type == QuizQuestionType.VOTING:
@@ -528,3 +538,56 @@ async def connect(sid: str, _environ, _auth):
     sio_session = {"session_id": session_id}
     await sio.save_session(sid, sio_session)
     await sio.emit("session_id", ConnectSessionIdEvent(session_id=session_id).dict())
+
+
+@sio.event
+async def debug_status(sid: str):
+    server_session = await sio.get_session(sid)
+    custom_session = None
+    game_summary = None
+    players = []
+    redis_session_key = None
+    if server_session.get("session_id") is not None:
+        redis_session_key = f"socket_io_session:{server_session['session_id']}"
+        redis_session_data = await redis.get(redis_session_key)
+        if redis_session_data is not None:
+            custom_session = json.loads(redis_session_data)
+    if custom_session and custom_session.get("game_pin"):
+        game_pin = custom_session["game_pin"]
+        players = await get_lobby_players(game_pin)
+        game_data_raw = await redis.get(f"game:{game_pin}")
+        if game_data_raw is not None:
+            game_data = PlayGame.model_validate_json(game_data_raw)
+            game_summary = {
+                "game_pin": game_pin,
+                "started": game_data.started,
+                "current_question": game_data.current_question,
+                "question_show": game_data.question_show,
+                "question_count": len(game_data.questions),
+            }
+    await sio.emit(
+        "debug_status",
+        {
+            "sid": sid,
+            "time": datetime.now().isoformat(),
+            "server_session": server_session,
+            "redis_session_key": redis_session_key,
+            "custom_session": custom_session,
+            "game_summary": game_summary,
+            "players": players,
+        },
+        room=sid,
+    )
+
+
+@sio.event
+async def debug_echo(sid: str, data: dict | None = None):
+    await sio.emit(
+        "debug_echo",
+        {
+            "sid": sid,
+            "time": datetime.now().isoformat(),
+            "payload": data or {},
+        },
+        room=sid,
+    )

@@ -17,3 +17,7 @@ declare namespace App {
 
 	// interface Stuff {}
 }
+
+interface Window {
+	plausible?: (eventName: string, options?: Record<string, unknown>) => void;
+}
