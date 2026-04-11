@@ -56,6 +56,53 @@ def get_fernet_key() -> bytes:
 fernet = Fernet(get_fernet_key())
 
 
+async def get_lobby_players(game_pin: str) -> list[str]:
+    players_raw = await redis.smembers(f"game_session:{game_pin}:players")
+    players: list[str] = []
+    for player_raw in players_raw:
+        try:
+            player = GamePlayer.model_validate_json(player_raw)
+        except ValidationError:
+            continue
+        players.append(player.username)
+    return sorted(players, key=str.casefold)
+
+
+async def emit_lobby_state(game_pin: str, room: str | None = None):
+    players = await get_lobby_players(game_pin)
+    await sio.emit(
+        "lobby_state",
+        {"players": players, "player_count": len(players)},
+        room=game_pin if room is None else room,
+    )
+
+
+async def emit_current_question(room: str, game_data: PlayGame):
+    if game_data.current_question < 0:
+        return
+    if game_data.questions[game_data.current_question].type == QuizQuestionType.SLIDE:
+        await sio.emit(
+            "set_question_number",
+            {"question_index": game_data.current_question},
+            room=room,
+        )
+        return
+
+    temp_return = game_data.model_dump(include={"questions"})["questions"][game_data.current_question]
+    if game_data.questions[game_data.current_question].type == QuizQuestionType.VOTING:
+        for i in range(len(temp_return["answers"])):
+            temp_return["answers"][i] = VotingQuizAnswer(**temp_return["answers"][i])
+    temp_return["type"] = game_data.questions[game_data.current_question].type
+    await sio.emit(
+        "set_question_number",
+        {
+            "question_index": game_data.current_question,
+            "question": ReturnQuestion(**temp_return).model_dump(),
+        },
+        room=room,
+    )
+
+
 async def generate_final_results(game_data: PlayGame, game_pin: str) -> dict:
     results = {}
     for i in range(len(game_data.questions)):
@@ -122,11 +169,16 @@ async def rejoin_game(sid: str, data: dict):
     }
     await save_session(sid, sio, session)
     await sio.enter_room(sid, data.game_pin)
+    payload = game_data.to_player_data()
+    payload["players"] = await get_lobby_players(data.game_pin)
     await sio.emit(
         "rejoined_game",
-        game_data.to_player_data(),
+        payload,
         room=sid,
     )
+    await emit_lobby_state(data.game_pin)
+    if game_data.started and game_data.question_show:
+        await emit_current_question(sid, game_data)
 
 
 @sio.event
@@ -162,13 +214,17 @@ async def join_game(sid: str, data: dict):
         "admin": False,
     }
     await save_session(sid, sio, session)
-    await sio.emit(
-        "joined_game",
-        game_data.to_player_data(),
-        room=sid,
-    )
     await redis.set(f"game_session:{data.game_pin}:players:{data.username}", sid, ex=7200)
     await GamePlayer(username=data.username, sid=sid).to_player_stack(data.game_pin)
+    await sio.enter_room(sid, data.game_pin)
+
+    payload = game_data.to_player_data()
+    payload["players"] = await get_lobby_players(data.game_pin)
+    await sio.emit(
+        "joined_game",
+        payload,
+        room=sid,
+    )
 
     if data.custom_field == "":
         data.custom_field = None
@@ -184,11 +240,11 @@ async def join_game(sid: str, data: dict):
         {"username": data.username, "sid": sid},
         room=f"admin:{data.game_pin}",
     )
+    await emit_lobby_state(data.game_pin)
     # +++ Time-Sync +++
     encrypted_datetime = fernet.encrypt(datetime.now().isoformat().encode("utf-8")).decode("utf-8")
     await sio.emit("time_sync", encrypted_datetime, room=sid)
     # --- Time-Sync ---
-    await sio.enter_room(sid, data.game_pin)
 
 
 @sio.event
@@ -197,10 +253,16 @@ async def start_game(sid: str, _data: dict):
     if not session["admin"]:
         return
     game_data = await PlayGame.get_from_redis(session["game_pin"])
+    if len(game_data.questions) == 0:
+        return
     game_data.started = True
+    game_data.current_question = 0
+    game_data.question_show = True
     await game_data.save(session["game_pin"])
+    await redis.set(f"game:{session['game_pin']}:current_time", datetime.now().isoformat(), ex=7200)
     await redis.delete(f"game_in_lobby:{game_data.user_id.hex}")
     await sio.emit("start_game", room=session["game_pin"])
+    await emit_current_question(session["game_pin"], game_data)
 
 
 @sio.event
@@ -396,8 +458,10 @@ async def kick_player(sid: str, data: dict):
         f"game_session:{session['game_pin']}:players",
         GamePlayer(username=data.username, sid=player_sid).model_dump_json(),
     )
+    await redis.delete(f"game_session:{session['game_pin']}:players:{data.username}")
     await sio.leave_room(player_sid, session["game_pin"])
     await sio.emit("kick", room=player_sid)
+    await emit_lobby_state(session["game_pin"])
 
 
 class _RegisterAsRemoteInput(BaseModel):

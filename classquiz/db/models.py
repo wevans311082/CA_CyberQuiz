@@ -262,12 +262,10 @@ class PlayGame(BaseModel):
         await redis.set(f"game:{game_pin}", self.model_dump_json(), ex=ex)
 
     def to_player_data(self) -> dict:
-        return (
-            {
-                **json.loads(self.model_dump_json(exclude={"quiz_id", "questions", "user_id"})),
-                "question_count": len(self.questions),
-            },
-        )
+        return {
+            **json.loads(self.model_dump_json(exclude={"quiz_id", "questions", "user_id"})),
+            "question_count": len(self.questions),
+        }
 
 
 class GamePlayer(BaseModel):

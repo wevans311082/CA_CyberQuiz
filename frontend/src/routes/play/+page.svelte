@@ -31,6 +31,25 @@ SPDX-License-Identifier: MPL-2.0
 		started: boolean;
 	}
 
+	interface LobbyState {
+		players: string[];
+		player_count: number;
+	}
+
+	interface PlayerGameData {
+		title: string;
+		description: string;
+		cover_image?: string;
+		background_color?: string;
+		started?: boolean;
+		players?: string[];
+		player_count?: number;
+		question_count?: number;
+		current_question?: number;
+		question_show?: boolean;
+		game_id?: string;
+	}
+
 	let game_mode = $state();
 	let final_results: Array<null> | Array<Array<PlayerAnswer>> = $state([null]);
 
@@ -45,10 +64,14 @@ SPDX-License-Identifier: MPL-2.0
 	let unique = $state({});
 	navbarVisible.visible = false;
 	let answer_results: Array<Answer> = $state();
-	let gameData = $state();
+	let gameData: PlayerGameData | undefined = $state();
 	let solution: QuestionType = $state();
 	let username = $state('');
 	let scores = $state({});
+	let lobbyState: LobbyState = $state({
+		players: [],
+		player_count: 0
+	});
 	let gameMeta: GameMeta = $state({
 		started: false
 	});
@@ -61,6 +84,9 @@ SPDX-License-Identifier: MPL-2.0
 	function restart() {
 		unique = {};
 	}
+
+	const normalizeGameData = (payload: PlayerGameData | [PlayerGameData]) =>
+		(Array.isArray(payload) ? payload[0] : payload) as PlayerGameData;
 
 	const confirmUnload = (event: Event) => {
 		if (preventReload) {
@@ -94,7 +120,10 @@ SPDX-License-Identifier: MPL-2.0
 
 	// Socket-events
 	socket.on('joined_game', (data) => {
-		gameData = data;
+		gameData = normalizeGameData(data);
+		lobbyState.players = gameData.players ?? [];
+		lobbyState.player_count = gameData.player_count ?? lobbyState.players.length;
+		gameMeta.started = gameData.started === true;
 		// eslint-disable-next-line no-undef
 		plausible('Joined Game', { props: { game_id: gameData.game_id } });
 		Cookies.set('joined_game', JSON.stringify({ sid: socket.id, username, game_pin }), {
@@ -102,10 +131,14 @@ SPDX-License-Identifier: MPL-2.0
 		});
 	});
 	socket.on('rejoined_game', (data) => {
-		gameData = data;
-		if (data.started) {
-			gameMeta.started = true;
-		}
+		gameData = normalizeGameData(data);
+		lobbyState.players = gameData.players ?? [];
+		lobbyState.player_count = gameData.player_count ?? lobbyState.players.length;
+		gameMeta.started = gameData.started === true;
+	});
+
+	socket.on('lobby_state', (data: LobbyState) => {
+		lobbyState = data;
 	});
 
 	socket.on('game_not_found', () => {
@@ -179,6 +212,9 @@ SPDX-License-Identifier: MPL-2.0
 				title={gameData.title}
 				description={gameData.description}
 				cover_image={gameData.cover_image}
+				players={lobbyState.players}
+				player_count={lobbyState.player_count}
+				started={gameMeta.started}
 			/>
 		{:else if gameMeta.started && gameData !== undefined && question_index !== '' && answer_results === undefined}
 			{#key unique}
