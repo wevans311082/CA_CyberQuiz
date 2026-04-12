@@ -61,6 +61,14 @@ SPDX-License-Identifier: MPL-2.0
 				});
 			}
 		}
+
+		socket.on('connect_error', onConnectError);
+		socket.on('joined_game', onJoinedGame);
+		socket.on('rejoined_game', onRejoinedGame);
+		socket.on('username_already_exists', onUsernameAlreadyExists);
+		socket.on('game_already_started', onGameAlreadyStarted);
+		socket.on('game_not_found', onGameNotFound);
+		socket.on('error', onSocketError);
 	});
 
 	onDestroy(() => {
@@ -161,14 +169,6 @@ SPDX-License-Identifier: MPL-2.0
 	const onSocketError = () => {
 		joinStatus = 'socket_error';
 	};
-
-	socket.on('connect_error', onConnectError);
-	socket.on('joined_game', onJoinedGame);
-	socket.on('rejoined_game', onRejoinedGame);
-	socket.on('username_already_exists', onUsernameAlreadyExists);
-	socket.on('game_already_started', onGameAlreadyStarted);
-	socket.on('game_not_found', onGameNotFound);
-	socket.on('error', onSocketError);
 
 	const setUsername = async (e: Event) => {
 		e.preventDefault();

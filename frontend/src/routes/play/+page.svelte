@@ -18,6 +18,7 @@ SPDX-License-Identifier: MPL-2.0
 	import KahootResults from '$lib/play/results_kahoot.svelte';
 	import SocketDiagnostics from '$lib/socket_diagnostics.svelte';
 	import { getLocalization } from '$lib/i18n';
+	import { onDestroy, onMount } from 'svelte';
 	import Cookies from 'js-cookie';
 	const { t } = getLocalization();
 
@@ -97,6 +98,12 @@ SPDX-License-Identifier: MPL-2.0
 		gameData ?? (joinGameData !== undefined ? normalizeGameData(joinGameData) : undefined)
 	);
 
+	$effect(() => {
+		if (!joinCompleted && effectiveGameData !== undefined) {
+			joinCompleted = true;
+		}
+	});
+
 	const confirmUnload = (event: Event) => {
 		if (preventReload) {
 			event.preventDefault();
@@ -106,11 +113,11 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
-	socket.on('time_sync', (data) => {
+	const onTimeSync = (data: string) => {
 		socket.emit('echo_time_sync', data);
-	});
+	};
 
-	socket.on('connect', async () => {
+	const onConnect = async () => {
 		console.log('Connected!');
 		const cookie_data = Cookies.get('joined_game');
 		if (!cookie_data) {
@@ -129,10 +136,9 @@ SPDX-License-Identifier: MPL-2.0
 		} catch (error) {
 			console.error('Failed to refresh game mode on reconnect', error);
 		}
-	});
+	};
 
-	// Socket-events
-	socket.on('joined_game', (data) => {
+	const onJoinedGame = (data: PlayerGameData | [PlayerGameData]) => {
 		console.log('[JOINED_GAME] Handler fired with data:', data);
 		gameData = normalizeGameData(data);
 		joinGameData = data;
@@ -148,21 +154,22 @@ SPDX-License-Identifier: MPL-2.0
 		Cookies.set('joined_game', JSON.stringify({ sid: socket.id, username, game_pin }), {
 			expires: 3600
 		});
-	});
-	socket.on('rejoined_game', (data) => {
+	};
+
+	const onRejoinedGame = (data: PlayerGameData | [PlayerGameData]) => {
 		gameData = normalizeGameData(data);
 		joinGameData = data;
 		joinCompleted = true;
 		lobbyState.players = gameData.players ?? [];
 		lobbyState.player_count = gameData.player_count ?? lobbyState.players.length;
 		gameMeta.started = gameData.started === true;
-	});
+	};
 
-	socket.on('lobby_state', (data: LobbyState) => {
+	const onLobbyState = (data: LobbyState) => {
 		lobbyState = data;
-	});
+	};
 
-	socket.on('game_not_found', () => {
+	const onGameNotFound = () => {
 		joinCompleted = false;
 		const cookie_data = Cookies.get('joined_game');
 		if (cookie_data) {
@@ -170,35 +177,35 @@ SPDX-License-Identifier: MPL-2.0
 			window.location.reload();
 			return;
 		}
-	});
+	};
 
-	socket.on('set_question_number', (data) => {
+	const onSetQuestionNumber = (data: { question: QuestionType; question_index: string }) => {
 		solution = undefined;
 		restart();
 		question = data.question;
 		question_index = data.question_index;
 		answer_results = undefined;
-	});
+	};
 
-	socket.on('start_game', () => {
+	const onStartGame = () => {
 		gameMeta.started = true;
-	});
+	};
 
-	socket.on('game_already_started', () => {
+	const onGameAlreadyStarted = () => {
 		window.alert('This quiz has already started. Reloading to rejoin the live session.');
 		window.location.reload();
-	});
+	};
 
-	socket.on('question_results', (data) => {
+	const onQuestionResults = (data: Array<Answer>) => {
 		restart();
 		answer_results = data;
-	});
+	};
 
-	socket.on('username_already_exists', () => {
+	const onUsernameAlreadyExists = () => {
 		window.alert('Username already exists!');
-	});
+	};
 
-	socket.on('kick', () => {
+	const onKick = () => {
 		window.alert('You got kicked');
 		preventReload = false;
 		joinCompleted = false;
@@ -206,14 +213,49 @@ SPDX-License-Identifier: MPL-2.0
 		username = '';
 		Cookies.set('kicked', 'value', { expires: 1 });
 		window.location.reload();
-	});
-	socket.on('final_results', (data) => {
+	};
+
+	const onFinalResults = (data: Array<Array<PlayerAnswer>>) => {
 		final_results = data;
 		Cookies.remove('joined_game');
+	};
+
+	const onSolutions = (data: QuestionType) => {
+		solution = data;
+	};
+
+	onMount(() => {
+		socket.on('time_sync', onTimeSync);
+		socket.on('connect', onConnect);
+		socket.on('joined_game', onJoinedGame);
+		socket.on('rejoined_game', onRejoinedGame);
+		socket.on('lobby_state', onLobbyState);
+		socket.on('game_not_found', onGameNotFound);
+		socket.on('set_question_number', onSetQuestionNumber);
+		socket.on('start_game', onStartGame);
+		socket.on('game_already_started', onGameAlreadyStarted);
+		socket.on('question_results', onQuestionResults);
+		socket.on('username_already_exists', onUsernameAlreadyExists);
+		socket.on('kick', onKick);
+		socket.on('final_results', onFinalResults);
+		socket.on('solutions', onSolutions);
 	});
 
-	socket.on('solutions', (data) => {
-		solution = data;
+	onDestroy(() => {
+		socket.off('time_sync', onTimeSync);
+		socket.off('connect', onConnect);
+		socket.off('joined_game', onJoinedGame);
+		socket.off('rejoined_game', onRejoinedGame);
+		socket.off('lobby_state', onLobbyState);
+		socket.off('game_not_found', onGameNotFound);
+		socket.off('set_question_number', onSetQuestionNumber);
+		socket.off('start_game', onStartGame);
+		socket.off('game_already_started', onGameAlreadyStarted);
+		socket.off('question_results', onQuestionResults);
+		socket.off('username_already_exists', onUsernameAlreadyExists);
+		socket.off('kick', onKick);
+		socket.off('final_results', onFinalResults);
+		socket.off('solutions', onSolutions);
 	});
 
 	let bg_color = $derived(effectiveGameData ? effectiveGameData.background_color : undefined);
@@ -231,7 +273,7 @@ SPDX-License-Identifier: MPL-2.0
 	class:text-black={bg_color}
 >
 	<div>
-		{#if !joinCompleted}
+		{#if !joinCompleted && effectiveGameData === undefined}
 			<JoinGame bind:game_pin bind:game_mode bind:username bind:game_data={joinGameData} bind:joined={joinCompleted} />
 		{:else if JSON.stringify(final_results) !== JSON.stringify([null])}
 			<ShowEndScreen bind:data={scores} show_final_results={true} {username} />
