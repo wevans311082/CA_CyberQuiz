@@ -6,14 +6,44 @@ SPDX-License-Identifier: MPL-2.0
 
 <script lang="ts">
 	import MediaComponent from '$lib/editor/MediaComponent.svelte';
+	import PlayerAvatarChip from '$lib/play/player_avatar_chip.svelte';
+
+	interface AvatarParams {
+		skin_color?: number;
+		hair_color?: number;
+		facial_hair_type?: number;
+		facial_hair_color?: number;
+		top_type?: number;
+		hat_color?: number;
+		mouth_type?: number;
+		eyebrow_type?: number;
+		nose_type?: number;
+		accessories_type?: number;
+		clothe_type?: number;
+		clothe_color?: number;
+		clothe_graphic_type?: number;
+	}
+
+	interface LobbyPlayer {
+		username: string;
+		avatar_params?: AvatarParams | null;
+	}
 
 	interface Props {
 		title: string;
 		description: string;
 		cover_image: string | undefined;
-		players?: string[];
+		players?: LobbyPlayer[];
 		player_count?: number;
 		started?: boolean;
+		socket?: any;
+		chat_messages?: Array<{
+			sender: string;
+			content: string;
+			timestamp: string;
+			sender_is_admin?: boolean;
+		}>;
+		chat_block_reason?: string | null;
 	}
 
 	let {
@@ -22,8 +52,37 @@ SPDX-License-Identifier: MPL-2.0
 		cover_image,
 		players = [],
 		player_count = 0,
-		started = false
+		started = false,
+		socket,
+		chat_messages = [],
+		chat_block_reason = null
 	}: Props = $props();
+	let chat_input = $state('');
+
+	const friendlyChatBlockReason = (reason: string | null) => {
+		if (!reason) {
+			return null;
+		}
+		const reasonMap: Record<string, string> = {
+			not_in_game: 'You are not in an active lobby.',
+			game_already_started: 'Chat is closed after the quiz starts.',
+			empty_message: 'Message cannot be empty.',
+			message_too_long: 'Message is too long (max 280 characters).',
+			message_blocked_by_moderation: 'Message blocked by moderation policy.',
+			rate_limited: 'You are sending messages too quickly. Slow down a bit.',
+			too_many_messages: 'Too many messages in a short time. Please wait a moment.'
+		};
+		return reasonMap[reason] ?? 'Message blocked.';
+	};
+
+	const send_chat_message = () => {
+		const content = chat_input.trim();
+		if (!content || !socket) {
+			return;
+		}
+		socket.emit('send_chat_message', { content });
+		chat_input = '';
+	};
 
 	const sceneElements = Array.from({ length: 14 }, (_, index) => ({
 		id: index,
@@ -86,15 +145,52 @@ SPDX-License-Identifier: MPL-2.0
 			</div>
 			{#if players.length > 0}
 				<div class="mt-5 grid max-h-[45vh] gap-3 overflow-auto pr-2">
-					{#each players as player}
-						<div class="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3 text-base font-medium text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100">
-							{player}
+					{#each players as player, idx}
+						<div style="animation-delay: {idx * 50}ms" class="chip-reveal">
+							<PlayerAvatarChip username={player.username} avatar_params={player.avatar_params} />
 						</div>
 					{/each}
 				</div>
 			{:else}
 				<p class="mt-5 text-sm leading-6 text-slate-600 dark:text-slate-400">No one else is in the lobby yet.</p>
 			{/if}
+
+			<div class="mt-6 border-t border-slate-200/70 pt-4 dark:border-slate-700/70">
+				<p class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Community Chat</p>
+				<div class="mt-3 max-h-44 space-y-2 overflow-auto rounded-xl border border-slate-200/70 bg-white/70 p-3 dark:border-slate-700 dark:bg-slate-950/60">
+					{#if chat_messages.length === 0}
+						<p class="text-xs text-slate-500 dark:text-slate-400">No messages yet.</p>
+					{:else}
+						{#each chat_messages as message}
+							<div class="rounded-lg bg-slate-100/70 px-2 py-1 text-xs dark:bg-slate-800/80">
+								<p class="font-semibold text-slate-700 dark:text-slate-200">
+									{message.sender}{message.sender_is_admin ? ' (host)' : ''}
+								</p>
+								<p class="text-slate-700 dark:text-slate-200">{message.content}</p>
+							</div>
+						{/each}
+					{/if}
+				</div>
+				{#if chat_block_reason}
+					<p class="mt-2 text-xs font-medium text-red-600 dark:text-red-400">{friendlyChatBlockReason(chat_block_reason)}</p>
+				{/if}
+				<div class="mt-3 flex gap-2">
+					<input
+						class="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-hidden focus:border-teal-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+						bind:value={chat_input}
+						maxlength="280"
+						onkeydown={(e) => {
+							if (e.key === 'Enter') {
+								send_chat_message();
+							}
+						}}
+						placeholder="Type a message"
+					/>
+					<button type="button" class="rounded-xl bg-teal-600 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-700" onclick={send_chat_message}>
+						Send
+					</button>
+				</div>
+			</div>
 		</aside>
 	</div>
 </div>
@@ -130,6 +226,19 @@ SPDX-License-Identifier: MPL-2.0
 		100% {
 			transform: translate3d(-8px, 108vh, 0) scale(0.94);
 			opacity: 0.14;
+		}
+	}
+
+	.chip-reveal {
+		opacity: 0;
+		transform: translateY(6px) scale(0.98);
+		animation: chipReveal 280ms ease-out forwards;
+	}
+
+	@keyframes chipReveal {
+		to {
+			opacity: 1;
+			transform: translateY(0) scale(1);
 		}
 	}
 </style>

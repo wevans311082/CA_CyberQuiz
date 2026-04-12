@@ -55,6 +55,21 @@ export const getWinnersSorted = (
 
 export interface Player {
 	username: string;
+	avatar_params?: {
+		skin_color?: number;
+		hair_color?: number;
+		facial_hair_type?: number;
+		facial_hair_color?: number;
+		top_type?: number;
+		hat_color?: number;
+		mouth_type?: number;
+		eyebrow_type?: number;
+		nose_type?: number;
+		accessories_type?: number;
+		clothe_type?: number;
+		clothe_color?: number;
+		clothe_graphic_type?: number;
+	} | null;
 }
 
 export interface PlayerAnswer {

@@ -31,6 +31,7 @@ SPDX-License-Identifier: MPL-2.0
 		quiz_data: QuizData;
 		bg_color: string;
 		final_results?: Array<null> | Array<Array<PlayerAnswer>>;
+		final_results_avatar_map?: Record<string, any>;
 		control_visible: boolean;
 		player_scores: any;
 	}
@@ -40,6 +41,7 @@ SPDX-License-Identifier: MPL-2.0
 		quiz_data = $bindable(),
 		bg_color,
 		final_results = $bindable([null]),
+		final_results_avatar_map = $bindable({}),
 		control_visible,
 		player_scores = $bindable()
 	}: Props = $props();
@@ -67,7 +69,13 @@ SPDX-License-Identifier: MPL-2.0
 		// data = JSON.parse(data);
 		final_results_clicked = true;
 		timer_res = '0';
-		final_results = data;
+		if (data && typeof data === 'object' && 'results' in data) {
+			final_results = data.results;
+			final_results_avatar_map = data.avatar_map ?? {};
+		} else {
+			final_results = data;
+			final_results_avatar_map = {};
+		}
 	});
 
 	socket.on('everyone_answered', (_) => {

@@ -271,6 +271,7 @@ class PlayGame(BaseModel):
 class GamePlayer(BaseModel):
     username: str
     sid: str | None = None
+    avatar_params: dict | None = None  # Stores avatar parameters as dict for redis serialization
 
     async def to_player_stack(self, game_pin: str):
         await redis.sadd(

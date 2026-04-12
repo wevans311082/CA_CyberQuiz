@@ -154,7 +154,11 @@ SPDX-License-Identifier: MPL-2.0
 
 	socket.on('final_results', (data) => {
 		// data = JSON.parse(data);
-		final_results = data;
+		if (data && typeof data === 'object' && 'results' in data) {
+			final_results = data.results;
+		} else {
+			final_results = data;
+		}
 	});
 
 	socket.on('everyone_answered', (_) => {

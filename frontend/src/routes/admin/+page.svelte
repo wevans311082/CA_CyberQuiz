@@ -20,6 +20,7 @@ SPDX-License-Identifier: MPL-2.0
 	import SocketDiagnostics from '$lib/socket_diagnostics.svelte';
 	import { FRONTEND_BUILD_NUMBER } from '$lib/build_info';
 	import { page } from '$app/state';
+	import CountdownOverlay from '$lib/play/countdown_overlay.svelte';
 
 	navbarVisible.visible = false;
 
@@ -48,10 +49,41 @@ SPDX-License-Identifier: MPL-2.0
 	//let question_number = '0';
 	// let question_results = null;
 	let final_results: Array<null> | Array<Array<PlayerAnswer>> = $state([null]);
+	let final_results_avatar_map = $state<Record<string, any>>({});
 	let success = $state(false);
 	let dataexport_download_a = $state();
 	let warnToLeave = true;
 	let export_token = $state(undefined);
+	let chat_messages = $state<Array<{ sender: string; content: string; timestamp: string; sender_is_admin?: boolean }>>([]);
+	let chat_block_reason = $state<string | null>(null);
+	let countdown_active = $state(false);
+	let countdown_remaining_seconds = $state(0);
+	let countdown_total_seconds = $state(5);
+	let countdown_timer: ReturnType<typeof setInterval> | null = null;
+
+	const startCountdownFromServer = (data: { server_timestamp: string; duration_seconds: number; remaining_seconds?: number }) => {
+		if (countdown_timer) {
+			clearInterval(countdown_timer);
+			countdown_timer = null;
+		}
+		const duration = Number(data.duration_seconds || 5);
+		const serverStart = new Date(data.server_timestamp).getTime();
+		const elapsed = Math.max(0, (Date.now() - serverStart) / 1000);
+		countdown_total_seconds = duration;
+		countdown_remaining_seconds = Math.max(0, data.remaining_seconds ?? duration - elapsed);
+		countdown_active = countdown_remaining_seconds > 0;
+		countdown_timer = setInterval(() => {
+			const elapsedNow = Math.max(0, (Date.now() - serverStart) / 1000);
+			countdown_remaining_seconds = Math.max(0, duration - elapsedNow);
+			if (countdown_remaining_seconds <= 0) {
+				countdown_active = false;
+				if (countdown_timer) {
+					clearInterval(countdown_timer);
+					countdown_timer = null;
+				}
+			}
+		}, 100);
+	};
 
 	const connect = async () => {
 		socket.emit('register_as_admin', {
@@ -77,7 +109,23 @@ SPDX-License-Identifier: MPL-2.0
 		success = true;
 	});
 	socket.on('player_joined', (int_data) => {
-		players = [...players, int_data];
+		players = [...players.filter((player) => player.username !== int_data.username), int_data];
+	});
+	socket.on('lobby_state', (data) => {
+		if (!data || !Array.isArray(data.players)) {
+			return;
+		}
+		players = data.players;
+	});
+	socket.on('chat_history', (data) => {
+		chat_messages = Array.isArray(data?.messages) ? data.messages : [];
+	});
+	socket.on('chat_message_received', (data) => {
+		chat_messages = [...chat_messages, data].slice(-40);
+		chat_block_reason = null;
+	});
+	socket.on('chat_blocked', (data) => {
+		chat_block_reason = data?.reason ?? 'blocked';
 	});
 	socket.on('already_registered_as_admin', () => {
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -87,6 +135,10 @@ SPDX-License-Identifier: MPL-2.0
 
 	socket.on('start_game', (_) => {
 		game_started = true;
+	});
+
+	socket.on('countdown_start', (data) => {
+		startCountdownFromServer(data);
 	});
 
 	socket.on('control_visibility', (data) => {
@@ -202,8 +254,23 @@ SPDX-License-Identifier: MPL-2.0
 				</div>
 			</div>
 		{/if}
-		<FinalResults bind:data={player_scores} {show_final_results} />
+		<FinalResults
+			bind:data={player_scores}
+			{show_final_results}
+			raw_final_results={final_results}
+			avatar_map={
+				Object.keys(final_results_avatar_map).length > 0
+					? final_results_avatar_map
+					: Object.fromEntries(players.map((player) => [player.username, player.avatar_params]))
+			}
+		/>
 	{/if}
+	<CountdownOverlay
+		active={countdown_active}
+		remaining_seconds={countdown_remaining_seconds}
+		total_seconds={countdown_total_seconds}
+		label="Question goes live in"
+	/>
 	{#if !success}
 		{#if errorMessage !== ''}
 			<p class="text-red-700">{errorMessage}</p>
@@ -213,11 +280,14 @@ SPDX-License-Identifier: MPL-2.0
 			{game_pin}
 			bind:players
 			{socket}
+			{chat_messages}
+			chat_block_reason={chat_block_reason}
 			cqc_code={page.url.searchParams.get('cqc_code')}
 		/>
 	{:else}
 		<SomeAdminScreen
 			bind:final_results
+			bind:final_results_avatar_map
 			{game_token}
 			bind:quiz_data
 			{bg_color}

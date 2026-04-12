@@ -8,9 +8,12 @@ import hashlib
 import json
 import os
 import random
+import re
+import asyncio
 
 import socketio
 from cryptography.fernet import Fernet
+from better_profanity import profanity
 
 from classquiz.config import redis, settings
 from classquiz.db.models import (
@@ -38,6 +41,8 @@ from .models import (
     RegisterAsAdminData,
     KickPlayerInput,
     ConnectSessionIdEvent,
+    ChatMessage,
+    SendChatMessageData,
 )
 
 from classquiz.socket_server.export_helpers import save_quiz_to_storage
@@ -54,18 +59,152 @@ def get_fernet_key() -> bytes:
 
 
 fernet = Fernet(get_fernet_key())
+profanity.load_censor_words()
+
+CHAT_HISTORY_LIMIT = 40
+CHAT_MESSAGE_MAX_LEN = 280
+COUNTDOWN_DURATION_SECONDS = 5
+CHAT_COOLDOWN_SECONDS = 0.8
+CHAT_BURST_WINDOW_SECONDS = 10
+CHAT_BURST_LIMIT = 12
+_PROFANITY_EXTRA_TERMS = {
+    "rape",
+    "rapist",
+    "porn",
+    "sexual",
+    "sex",
+    "nude",
+    "naked",
+    "cum",
+    "dick",
+    "penis",
+    "vagina",
+    "cock",
+    "bitch",
+    "bastard",
+    "asshole",
+    "faggot",
+    "nigger",
+    "retard",
+}
 
 
-async def get_lobby_players(game_pin: str) -> list[str]:
+def _normalize_text(input_text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", input_text.lower())
+
+
+def contains_blocked_language(input_text: str) -> bool:
+    if not input_text:
+        return False
+    text_lower = input_text.lower()
+    if profanity.contains_profanity(text_lower):
+        return True
+    normalized = _normalize_text(text_lower)
+    if any(term in normalized for term in _PROFANITY_EXTRA_TERMS):
+        return True
+    return False
+
+
+async def get_chat_history(game_pin: str) -> list[dict]:
+    key = f"game_session:{game_pin}:chat_history"
+    messages = await redis.lrange(key, 0, CHAT_HISTORY_LIMIT - 1)
+    result: list[dict] = []
+    for message_raw in reversed(messages):
+        try:
+            message = ChatMessage.model_validate_json(message_raw)
+            result.append(message.model_dump(mode="json"))
+        except ValidationError:
+            continue
+    return result
+
+
+async def append_chat_message(game_pin: str, message: ChatMessage):
+    key = f"game_session:{game_pin}:chat_history"
+    await redis.lpush(key, message.model_dump_json())
+    await redis.ltrim(key, 0, CHAT_HISTORY_LIMIT - 1)
+    await redis.expire(key, 7200)
+
+
+async def get_countdown_state(game_pin: str) -> dict | None:
+    countdown_start = await redis.get(f"game:{game_pin}:countdown_start")
+    countdown_duration = await redis.get(f"game:{game_pin}:countdown_duration")
+    if countdown_start is None or countdown_duration is None:
+        return None
+    try:
+        start_dt = datetime.fromisoformat(countdown_start)
+        duration = int(countdown_duration)
+    except ValueError:
+        return None
+
+    elapsed = (datetime.now() - start_dt).total_seconds()
+    remaining = max(0, duration - elapsed)
+    return {
+        "server_timestamp": countdown_start,
+        "duration_seconds": duration,
+        "remaining_seconds": remaining,
+    }
+
+
+async def enforce_chat_rate_limit(game_pin: str, username: str) -> str | None:
+    cooldown_key = f"game_session:{game_pin}:chat:last_message_at:{username}"
+    burst_key = f"game_session:{game_pin}:chat:burst:{username}"
+    now_ts = datetime.now().timestamp()
+
+    last_message_at = await redis.get(cooldown_key)
+    if last_message_at is not None:
+        try:
+            if now_ts - float(last_message_at) < CHAT_COOLDOWN_SECONDS:
+                return "rate_limited"
+        except ValueError:
+            pass
+
+    await redis.set(cooldown_key, str(now_ts), ex=7200)
+    burst_count = await redis.incr(burst_key)
+    if burst_count == 1:
+        await redis.expire(burst_key, CHAT_BURST_WINDOW_SECONDS)
+    if burst_count > CHAT_BURST_LIMIT:
+        return "too_many_messages"
+    return None
+
+
+async def get_lobby_players(game_pin: str) -> list[dict]:
+    """Return enriched player data (username, avatar_params) sorted by username."""
     players_raw = await redis.smembers(f"game_session:{game_pin}:players")
-    players: list[str] = []
+    players: list[dict] = []
+    for player_raw in players_raw:
+        try:
+            player = GamePlayer.model_validate_json(player_raw)
+            players.append({
+                "username": player.username,
+                "avatar_params": player.avatar_params,
+            })
+        except ValidationError:
+            continue
+    return sorted(players, key=lambda p: p["username"].lower())
+
+
+async def get_avatar_map(game_pin: str) -> dict:
+    players = await get_lobby_players(game_pin)
+    return {player["username"]: player.get("avatar_params") for player in players}
+
+
+async def get_player_record(game_pin: str, username: str) -> GamePlayer | None:
+    players_raw = await redis.smembers(f"game_session:{game_pin}:players")
     for player_raw in players_raw:
         try:
             player = GamePlayer.model_validate_json(player_raw)
         except ValidationError:
             continue
-        players.append(player.username)
-    return sorted(players, key=str.casefold)
+        if player.username == username:
+            return player
+    return None
+
+
+async def remove_player_record(game_pin: str, username: str):
+    player = await get_player_record(game_pin, username)
+    if player is None:
+        return
+    await redis.srem(f"game_session:{game_pin}:players", player.model_dump_json())
 
 
 async def emit_lobby_state(game_pin: str, room: str | None = None):
@@ -158,13 +297,13 @@ async def rejoin_game(sid: str, data: dict):
     encrypted_datetime = fernet.encrypt(datetime.now().isoformat().encode("utf-8")).decode("utf-8")
     await sio.emit("time_sync", encrypted_datetime, room=sid)
     await redis.set(redis_sid_key, sid)
-    await redis.srem(
-        f"game_session:{data.game_pin}:players",
-        GamePlayer(username=data.username, sid=data.old_sid).model_dump_json(),
-    )
+    existing_player = await get_player_record(data.game_pin, data.username)
+    existing_avatar_params = existing_player.avatar_params if existing_player is not None else None
+    await remove_player_record(data.game_pin, data.username)
+    avatar_params = data.avatar_params.model_dump() if data.avatar_params else existing_avatar_params
     await redis.sadd(
         f"game_session:{data.game_pin}:players",
-        GamePlayer(username=data.username, sid=sid).model_dump_json(),
+        GamePlayer(username=data.username, sid=sid, avatar_params=avatar_params).model_dump_json(),
     )
     game_data = PlayGame.model_validate_json(redis_res)
     session = {
@@ -182,7 +321,11 @@ async def rejoin_game(sid: str, data: dict):
         payload,
         room=sid,
     )
+    await sio.emit("chat_history", {"messages": await get_chat_history(data.game_pin)}, room=sid)
     await emit_lobby_state(data.game_pin)
+    countdown_state = await get_countdown_state(data.game_pin)
+    if countdown_state is not None and countdown_state["remaining_seconds"] > 0:
+        await sio.emit("countdown_start", countdown_state, room=sid)
     if game_data.started and game_data.question_show:
         await emit_current_question(sid, game_data)
 
@@ -200,6 +343,9 @@ async def join_game(sid: str, data: dict):
         print(e)
         return
     game_data = PlayGame.model_validate_json(redis_res)
+    if contains_blocked_language(data.username):
+        await sio.emit("username_blocked", {"reason": "username_blocked_by_moderation"}, room=sid)
+        return
     if game_data.started:
         await sio.emit("game_already_started", room=sid)
         return
@@ -221,7 +367,11 @@ async def join_game(sid: str, data: dict):
     }
     await save_session(sid, sio, session)
     await redis.set(f"game_session:{data.game_pin}:players:{data.username}", sid, ex=7200)
-    await GamePlayer(username=data.username, sid=sid).to_player_stack(data.game_pin)
+    await GamePlayer(
+        username=data.username,
+        sid=sid,
+        avatar_params=data.avatar_params.model_dump() if data.avatar_params else None
+    ).to_player_stack(data.game_pin)
     await sio.enter_room(sid, data.game_pin)
 
     payload = game_data.to_player_data()
@@ -231,6 +381,10 @@ async def join_game(sid: str, data: dict):
         payload,
         room=sid,
     )
+    await sio.emit("chat_history", {"messages": await get_chat_history(data.game_pin)}, room=sid)
+    countdown_state = await get_countdown_state(data.game_pin)
+    if countdown_state is not None and countdown_state["remaining_seconds"] > 0:
+        await sio.emit("countdown_start", countdown_state, room=sid)
 
     if data.custom_field == "":
         data.custom_field = None
@@ -243,7 +397,11 @@ async def join_game(sid: str, data: dict):
 
     await sio.emit(
         "player_joined",
-        {"username": data.username, "sid": sid},
+        {
+            "username": data.username,
+            "sid": sid,
+            "avatar_params": data.avatar_params.model_dump() if data.avatar_params else None,
+        },
         room=f"admin:{data.game_pin}",
     )
     await emit_lobby_state(data.game_pin)
@@ -263,11 +421,35 @@ async def start_game(sid: str, _data: dict):
         return
     game_data.started = True
     game_data.current_question = 0
+    game_data.question_show = False
+    await game_data.save(session["game_pin"])
+    await redis.delete(f"game_in_lobby:{game_data.user_id.hex}")
+    await sio.emit("start_game", room=session["game_pin"])
+
+    countdown_start = datetime.now().isoformat()
+    await redis.set(f"game:{session['game_pin']}:countdown_start", countdown_start, ex=7200)
+    await redis.set(
+        f"game:{session['game_pin']}:countdown_duration",
+        COUNTDOWN_DURATION_SECONDS,
+        ex=7200,
+    )
+    await sio.emit(
+        "countdown_start",
+        {
+            "server_timestamp": countdown_start,
+            "duration_seconds": COUNTDOWN_DURATION_SECONDS,
+            "remaining_seconds": COUNTDOWN_DURATION_SECONDS,
+        },
+        room=session["game_pin"],
+    )
+    await asyncio.sleep(COUNTDOWN_DURATION_SECONDS)
+
+    game_data = await PlayGame.get_from_redis(session["game_pin"])
     game_data.question_show = True
     await game_data.save(session["game_pin"])
     await redis.set(f"game:{session['game_pin']}:current_time", datetime.now().isoformat(), ex=7200)
-    await redis.delete(f"game_in_lobby:{game_data.user_id.hex}")
-    await sio.emit("start_game", room=session["game_pin"])
+    await redis.delete(f"game:{session['game_pin']}:countdown_start")
+    await redis.delete(f"game:{session['game_pin']}:countdown_duration")
     await emit_current_question(session["game_pin"], game_data)
 
 
@@ -294,7 +476,69 @@ async def register_as_admin(sid: str, data: dict):
         {"game_id": game_id, "game": await redis.get(f"game:{game_pin}")},
         room=sid,
     )
+    await sio.emit("chat_history", {"messages": await get_chat_history(game_pin)}, room=sid)
+    countdown_state = await get_countdown_state(game_pin)
+    if countdown_state is not None and countdown_state["remaining_seconds"] > 0:
+        await sio.emit("countdown_start", countdown_state, room=sid)
     await debug_status(sid)
+
+
+@sio.event
+async def send_chat_message(sid: str, data: dict):
+    try:
+        data = SendChatMessageData(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    game_pin = session.get("game_pin")
+    username = session.get("username", "Admin")
+    if game_pin is None:
+        await sio.emit("chat_blocked", {"reason": "not_in_game"}, room=sid)
+        return
+
+    game_data = await PlayGame.get_from_redis(game_pin)
+    if game_data.started:
+        await sio.emit("chat_blocked", {"reason": "game_already_started"}, room=sid)
+        return
+
+    content = data.content.strip()
+    if content == "":
+        await sio.emit("chat_blocked", {"reason": "empty_message"}, room=sid)
+        return
+    if len(content) > CHAT_MESSAGE_MAX_LEN:
+        await sio.emit("chat_blocked", {"reason": "message_too_long"}, room=sid)
+        return
+    rate_limit_reason = await enforce_chat_rate_limit(game_pin, username)
+    if rate_limit_reason is not None:
+        await sio.emit("chat_blocked", {"reason": rate_limit_reason}, room=sid)
+        return
+    if contains_blocked_language(content):
+        await sio.emit("chat_blocked", {"reason": "message_blocked_by_moderation"}, room=sid)
+        return
+
+    player = None
+    if not session.get("admin", False):
+        player = await get_player_record(game_pin, username)
+
+    message = ChatMessage(
+        sender=username,
+        content=content,
+        timestamp=datetime.now(),
+        blocked=False,
+    )
+    await append_chat_message(game_pin, message)
+    await sio.emit(
+        "chat_message_received",
+        {
+            **message.model_dump(mode="json"),
+            "sender_avatar_params": player.avatar_params if player is not None else None,
+            "sender_is_admin": session.get("admin", False),
+        },
+        room=game_pin,
+    )
 
 
 @sio.event
@@ -412,7 +656,15 @@ async def get_final_results(sid: str, _data: dict):
         return
     game_data = await PlayGame.get_from_redis(session["game_pin"])
     results = await generate_final_results(game_data, session["game_pin"])
-    await sio.emit("final_results", results, room=session["game_pin"])
+    avatar_map = await get_avatar_map(session["game_pin"])
+    await sio.emit(
+        "final_results",
+        {
+            "results": results,
+            "avatar_map": avatar_map,
+        },
+        room=session["game_pin"],
+    )
 
 
 @sio.event
@@ -465,10 +717,7 @@ async def kick_player(sid: str, data: dict):
         return
 
     player_sid = await redis.get(f"game_session:{session['game_pin']}:players:{data.username}")
-    await redis.srem(
-        f"game_session:{session['game_pin']}:players",
-        GamePlayer(username=data.username, sid=player_sid).model_dump_json(),
-    )
+    await remove_player_record(session["game_pin"], data.username)
     await redis.delete(f"game_session:{session['game_pin']}:players:{data.username}")
     await sio.leave_room(player_sid, session["game_pin"])
     await sio.emit("kick", room=player_sid)

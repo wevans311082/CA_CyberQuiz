@@ -18,6 +18,7 @@ SPDX-License-Identifier: MPL-2.0
 	import KahootResults from '$lib/play/results_kahoot.svelte';
 	import SocketDiagnostics from '$lib/socket_diagnostics.svelte';
 	import { FRONTEND_BUILD_NUMBER } from '$lib/build_info';
+	import CountdownOverlay from '$lib/play/countdown_overlay.svelte';
 	import { getLocalization } from '$lib/i18n';
 	import { onDestroy, onMount } from 'svelte';
 	import Cookies from 'js-cookie';
@@ -42,7 +43,7 @@ SPDX-License-Identifier: MPL-2.0
 		cover_image?: string;
 		background_color?: string;
 		started?: boolean;
-		players?: string[];
+		players?: Array<{username: string; avatar_params?: any}>;
 		player_count?: number;
 		question_count?: number;
 		current_question?: number;
@@ -73,6 +74,13 @@ SPDX-License-Identifier: MPL-2.0
 	});
 
 	let question: Question = $state();
+	let chat_messages = $state<Array<{ sender: string; content: string; timestamp: string; sender_is_admin?: boolean }>>([]);
+	let chat_block_reason = $state<string | null>(null);
+	let final_results_avatar_map = $state<Record<string, any>>({});
+	let countdown_active = $state(false);
+	let countdown_remaining_seconds = $state(0);
+	let countdown_total_seconds = $state(5);
+	let countdown_timer: ReturnType<typeof setInterval> | null = null;
 
 	let preventReload = true;
 
@@ -104,7 +112,8 @@ SPDX-License-Identifier: MPL-2.0
 		socket.emit('rejoin_game', {
 			old_sid: data.sid,
 			username: data.username,
-			game_pin: data.game_pin
+			game_pin: data.game_pin,
+			avatar_params: data.avatar_params
 		});
 		try {
 			const res = await fetch(`/api/v1/quiz/play/check_captcha/${game_pin}`);
@@ -124,7 +133,18 @@ SPDX-License-Identifier: MPL-2.0
 		if (typeof window !== 'undefined' && 'plausible' in window && typeof window.plausible === 'function') {
 			window.plausible('Joined Game', { props: { game_id: gameData.game_id } });
 		}
-		Cookies.set('joined_game', JSON.stringify({ sid: socket.id, username, game_pin }), {
+		const avatar_params = (() => {
+			const cookie_data = Cookies.get('joined_game');
+			if (!cookie_data) {
+				return undefined;
+			}
+			try {
+				return JSON.parse(cookie_data).avatar_params;
+			} catch {
+				return undefined;
+			}
+		})();
+		Cookies.set('joined_game', JSON.stringify({ sid: socket.id, username, game_pin, avatar_params }), {
 			expires: 3600
 		});
 	};
@@ -146,6 +166,11 @@ SPDX-License-Identifier: MPL-2.0
 	};
 
 	const onSetQuestionNumber = (data: { question: QuestionType; question_index: string }) => {
+		countdown_active = false;
+		if (countdown_timer) {
+			clearInterval(countdown_timer);
+			countdown_timer = null;
+		}
 		solution = undefined;
 		restart();
 		question = data.question;
@@ -155,6 +180,31 @@ SPDX-License-Identifier: MPL-2.0
 
 	const onStartGame = () => {
 		gameMeta.started = true;
+	};
+
+	const startCountdownFromServer = (data: { server_timestamp: string; duration_seconds: number; remaining_seconds?: number }) => {
+		if (countdown_timer) {
+			clearInterval(countdown_timer);
+			countdown_timer = null;
+		}
+		const duration = Number(data.duration_seconds || 5);
+		const serverStart = new Date(data.server_timestamp).getTime();
+		const elapsed = Math.max(0, (Date.now() - serverStart) / 1000);
+		countdown_total_seconds = duration;
+		countdown_remaining_seconds = Math.max(0, data.remaining_seconds ?? duration - elapsed);
+		countdown_active = countdown_remaining_seconds > 0;
+
+		countdown_timer = setInterval(() => {
+			const elapsedNow = Math.max(0, (Date.now() - serverStart) / 1000);
+			countdown_remaining_seconds = Math.max(0, duration - elapsedNow);
+			if (countdown_remaining_seconds <= 0) {
+				countdown_active = false;
+				if (countdown_timer) {
+					clearInterval(countdown_timer);
+					countdown_timer = null;
+				}
+			}
+		}, 100);
 	};
 
 	const onGameAlreadyStarted = () => {
@@ -180,13 +230,36 @@ SPDX-License-Identifier: MPL-2.0
 		window.location.reload();
 	};
 
-	const onFinalResults = (data: Array<Array<PlayerAnswer>>) => {
-		final_results = data;
+	const onFinalResults = (data: any) => {
+		if (data && typeof data === 'object' && 'results' in data) {
+			final_results = data.results;
+			final_results_avatar_map = data.avatar_map ?? {};
+		} else {
+			final_results = data;
+			final_results_avatar_map = {};
+		}
 		Cookies.remove('joined_game');
 	};
 
 	const onSolutions = (data: QuestionType) => {
 		solution = data;
+	};
+
+	const onCountdownStart = (data: { server_timestamp: string; duration_seconds: number; remaining_seconds?: number }) => {
+		startCountdownFromServer(data);
+	};
+
+	const onChatHistory = (data: { messages: Array<{ sender: string; content: string; timestamp: string; sender_is_admin?: boolean }> }) => {
+		chat_messages = Array.isArray(data?.messages) ? data.messages : [];
+	};
+
+	const onChatMessageReceived = (data: { sender: string; content: string; timestamp: string; sender_is_admin?: boolean }) => {
+		chat_messages = [...chat_messages, data].slice(-40);
+		chat_block_reason = null;
+	};
+
+	const onChatBlocked = (data: { reason?: string }) => {
+		chat_block_reason = data?.reason ?? 'blocked';
 	};
 
 	onMount(() => {
@@ -203,6 +276,10 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('kick', onKick);
 		socket.on('final_results', onFinalResults);
 		socket.on('solutions', onSolutions);
+		socket.on('countdown_start', onCountdownStart);
+		socket.on('chat_history', onChatHistory);
+		socket.on('chat_message_received', onChatMessageReceived);
+		socket.on('chat_blocked', onChatBlocked);
 	});
 
 	onDestroy(() => {
@@ -219,6 +296,14 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('kick', onKick);
 		socket.off('final_results', onFinalResults);
 		socket.off('solutions', onSolutions);
+		socket.off('countdown_start', onCountdownStart);
+		socket.off('chat_history', onChatHistory);
+		socket.off('chat_message_received', onChatMessageReceived);
+		socket.off('chat_blocked', onChatBlocked);
+		if (countdown_timer) {
+			clearInterval(countdown_timer);
+			countdown_timer = null;
+		}
 	});
 
 	let bg_color = $derived(gameData ? gameData.background_color : undefined);
@@ -239,15 +324,37 @@ SPDX-License-Identifier: MPL-2.0
 		build #{FRONTEND_BUILD_NUMBER}
 	</div>
 	<div>
+		<CountdownOverlay
+			active={countdown_active}
+			remaining_seconds={countdown_remaining_seconds}
+			total_seconds={countdown_total_seconds}
+			label="Quiz starts in"
+		/>
 		{#if !gameMeta.started && gameData === undefined}
 			<JoinGame bind:game_pin bind:game_mode bind:username />
 		{:else if JSON.stringify(final_results) !== JSON.stringify([null])}
-			<ShowEndScreen bind:data={scores} show_final_results={true} {username} />
+			<ShowEndScreen
+				bind:data={scores}
+				show_final_results={true}
+				{username}
+				raw_final_results={final_results}
+				avatar_map={
+					Object.keys(final_results_avatar_map).length > 0
+						? final_results_avatar_map
+						: Object.fromEntries((gameData?.players ?? []).map((player) => [player.username, player.avatar_params]))
+				}
+			/>
 		{:else if gameData !== undefined && question_index === ''}
 			<ShowTitle
 				title={gameData.title}
 				description={gameData.description}
 				cover_image={gameData.cover_image}
+				players={gameData.players}
+				player_count={gameData.player_count}
+				started={gameMeta.started}
+				socket={socket}
+				{chat_messages}
+				chat_block_reason={chat_block_reason}
 			/>
 		{:else if gameMeta.started && gameData !== undefined && question_index !== '' && answer_results === undefined}
 			{#key unique}

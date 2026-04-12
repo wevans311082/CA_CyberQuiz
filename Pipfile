@@ -50,6 +50,7 @@ pydantic-settings = "*"
 asyncpg = "*"
 psycopg2 = "*"
 fastapi = "*"
+better-profanity = "*"
 
 [dev-packages]
 coverage = "*"

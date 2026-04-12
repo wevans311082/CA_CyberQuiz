@@ -4,6 +4,43 @@
 
 from pydantic import BaseModel, field_validator, ValidationInfo
 from classquiz.db.models import QuizQuestion, QuizQuestionType, VotingQuizAnswer
+from datetime import datetime
+
+
+class AvatarParams(BaseModel):
+    """Avatar customization parameters for game session players."""
+    skin_color: int = 0
+    hair_color: int = 0
+    facial_hair_type: int = 0
+    facial_hair_color: int = 0
+    top_type: int = 0
+    hat_color: int = 0
+    mouth_type: int = 0
+    eyebrow_type: int = 0
+    nose_type: int = 0
+    accessories_type: int = 0
+    clothe_type: int = 0
+    clothe_color: int = 0
+    clothe_graphic_type: int = 0
+
+
+class PlayerData(BaseModel):
+    """Enriched player data emitted in lobby_state, joined_game, and player_joined events."""
+    username: str
+    avatar_params: AvatarParams | None = None
+    sid: str | None = None
+
+
+class ChatMessage(BaseModel):
+    """Chat message structure for lobby community chat."""
+    sender: str  # username
+    content: str
+    timestamp: datetime
+    blocked: bool = False  # True if message was filtered by profanity check
+
+
+class SendChatMessageData(BaseModel):
+    content: str
 
 
 class JoinGameData(BaseModel):
@@ -11,12 +48,14 @@ class JoinGameData(BaseModel):
     game_pin: str
     captcha: str | None = None
     custom_field: str | None = None
+    avatar_params: AvatarParams | None = None
 
 
 class RejoinGameData(BaseModel):
     old_sid: str
     game_pin: str
     username: str
+    avatar_params: AvatarParams | None = None
 
 
 class RegisterAsAdminData(BaseModel):
