@@ -146,11 +146,23 @@ SPDX-License-Identifier: MPL-2.0
 		joinStatus = 'joined_game';
 		joined = true;
 		game_data = data;
+		Cookies.set('joined_game', JSON.stringify({ sid: socket.id, username, game_pin }), {
+			expires: 3600
+		});
+		if (browser && window.location.pathname !== '/play') {
+			window.location.assign(`/play?pin=${encodeURIComponent(game_pin)}`);
+		}
 	};
 	const onRejoinedGame = (data) => {
 		joinStatus = 'rejoined_game';
 		joined = true;
 		game_data = data;
+		Cookies.set('joined_game', JSON.stringify({ sid: socket.id, username, game_pin }), {
+			expires: 3600
+		});
+		if (browser && window.location.pathname !== '/play') {
+			window.location.assign(`/play?pin=${encodeURIComponent(game_pin)}`);
+		}
 	};
 	const onUsernameAlreadyExists = () => {
 		joinStatus = 'username_already_exists';
