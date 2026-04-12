@@ -17,6 +17,7 @@ SPDX-License-Identifier: MPL-2.0
 	import ShowEndScreen from '$lib/play/admin/final_results.svelte';
 	import KahootResults from '$lib/play/results_kahoot.svelte';
 	import SocketDiagnostics from '$lib/socket_diagnostics.svelte';
+	import { FRONTEND_BUILD_NUMBER } from '$lib/build_info';
 	import { getLocalization } from '$lib/i18n';
 	import { onDestroy, onMount } from 'svelte';
 	import Cookies from 'js-cookie';
@@ -33,11 +34,6 @@ SPDX-License-Identifier: MPL-2.0
 	// Types
 	interface GameMeta {
 		started: boolean;
-	}
-
-	interface LobbyState {
-		players: string[];
-		player_count: number;
 	}
 
 	interface PlayerGameData {
@@ -69,15 +65,9 @@ SPDX-License-Identifier: MPL-2.0
 	navbarVisible.visible = false;
 	let answer_results: Array<Answer> = $state();
 	let gameData: PlayerGameData | undefined = $state();
-	let joinGameData: PlayerGameData | [PlayerGameData] | undefined = $state();
-	let joinCompleted = $state(false);
 	let solution: QuestionType = $state();
 	let username = $state('');
 	let scores = $state({});
-	let lobbyState: LobbyState = $state({
-		players: [],
-		player_count: 0
-	});
 	let gameMeta: GameMeta = $state({
 		started: false
 	});
@@ -90,19 +80,6 @@ SPDX-License-Identifier: MPL-2.0
 	function restart() {
 		unique = {};
 	}
-
-	const normalizeGameData = (payload: PlayerGameData | [PlayerGameData]) =>
-		(Array.isArray(payload) ? payload[0] : payload) as PlayerGameData;
-
-	const effectiveGameData = $derived(
-		gameData ?? (joinGameData !== undefined ? normalizeGameData(joinGameData) : undefined)
-	);
-
-	$effect(() => {
-		if (!joinCompleted && effectiveGameData !== undefined) {
-			joinCompleted = true;
-		}
-	});
 
 	const confirmUnload = (event: Event) => {
 		if (preventReload) {
@@ -138,14 +115,10 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
-	const onJoinedGame = (data: PlayerGameData | [PlayerGameData]) => {
+	const onJoinedGame = (data: PlayerGameData) => {
 		console.log('[JOINED_GAME] Handler fired with data:', data);
-		gameData = normalizeGameData(data);
-		joinGameData = data;
-		joinCompleted = true;
+		gameData = data;
 		console.log('[JOINED_GAME] gameData set to:', gameData);
-		lobbyState.players = gameData.players ?? [];
-		lobbyState.player_count = gameData.player_count ?? lobbyState.players.length;
 		gameMeta.started = gameData.started === true;
 		console.log('[JOINED_GAME] gameMeta.started set to:', gameMeta.started);
 		if (typeof window !== 'undefined' && 'plausible' in window && typeof window.plausible === 'function') {
@@ -156,21 +129,14 @@ SPDX-License-Identifier: MPL-2.0
 		});
 	};
 
-	const onRejoinedGame = (data: PlayerGameData | [PlayerGameData]) => {
-		gameData = normalizeGameData(data);
-		joinGameData = data;
-		joinCompleted = true;
-		lobbyState.players = gameData.players ?? [];
-		lobbyState.player_count = gameData.player_count ?? lobbyState.players.length;
-		gameMeta.started = gameData.started === true;
-	};
-
-	const onLobbyState = (data: LobbyState) => {
-		lobbyState = data;
+	const onRejoinedGame = (data: PlayerGameData) => {
+		gameData = data;
+		if (data.started) {
+			gameMeta.started = true;
+		}
 	};
 
 	const onGameNotFound = () => {
-		joinCompleted = false;
 		const cookie_data = Cookies.get('joined_game');
 		if (cookie_data) {
 			Cookies.remove('joined_game');
@@ -208,7 +174,6 @@ SPDX-License-Identifier: MPL-2.0
 	const onKick = () => {
 		window.alert('You got kicked');
 		preventReload = false;
-		joinCompleted = false;
 		game_pin = '';
 		username = '';
 		Cookies.set('kicked', 'value', { expires: 1 });
@@ -229,7 +194,6 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('connect', onConnect);
 		socket.on('joined_game', onJoinedGame);
 		socket.on('rejoined_game', onRejoinedGame);
-		socket.on('lobby_state', onLobbyState);
 		socket.on('game_not_found', onGameNotFound);
 		socket.on('set_question_number', onSetQuestionNumber);
 		socket.on('start_game', onStartGame);
@@ -246,7 +210,6 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('connect', onConnect);
 		socket.off('joined_game', onJoinedGame);
 		socket.off('rejoined_game', onRejoinedGame);
-		socket.off('lobby_state', onLobbyState);
 		socket.off('game_not_found', onGameNotFound);
 		socket.off('set_question_number', onSetQuestionNumber);
 		socket.off('start_game', onStartGame);
@@ -258,7 +221,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('solutions', onSolutions);
 	});
 
-	let bg_color = $derived(effectiveGameData ? effectiveGameData.background_color : undefined);
+	let bg_color = $derived(gameData ? gameData.background_color : undefined);
 
 	// The rest
 </script>
@@ -272,24 +235,21 @@ SPDX-License-Identifier: MPL-2.0
 	style="background: {bg_color ? bg_color : 'transparent'}"
 	class:text-black={bg_color}
 >
+	<div class="fixed right-4 top-4 z-50 rounded-md border border-black/20 bg-white/90 px-3 py-1 text-xs font-semibold text-black shadow-sm">
+		build #{FRONTEND_BUILD_NUMBER}
+	</div>
 	<div>
-		{#if !joinCompleted && effectiveGameData === undefined}
-			<JoinGame bind:game_pin bind:game_mode bind:username bind:game_data={joinGameData} bind:joined={joinCompleted} />
+		{#if !gameMeta.started && gameData === undefined}
+			<JoinGame bind:game_pin bind:game_mode bind:username />
 		{:else if JSON.stringify(final_results) !== JSON.stringify([null])}
 			<ShowEndScreen bind:data={scores} show_final_results={true} {username} />
-		{:else if question_index === '' || !gameMeta.started}
-			<!-- Show lobby/title screen when: no question has been sent yet OR the game hasn't started.
-			     Both states mean the player should see the waiting screen with quiz title and player list. -->
+		{:else if gameData !== undefined && question_index === ''}
 			<ShowTitle
-				title={effectiveGameData?.title ?? ''}
-				description={effectiveGameData?.description ?? ''}
-				cover_image={effectiveGameData?.cover_image}
-				players={lobbyState.players}
-				player_count={lobbyState.player_count}
-				started={gameMeta.started}
+				title={gameData.title}
+				description={gameData.description}
+				cover_image={gameData.cover_image}
 			/>
-		{:else if answer_results === undefined}
-			<!-- At this point: joinCompleted=true, game started, question_index is set, awaiting player answer -->
+		{:else if gameMeta.started && gameData !== undefined && question_index !== '' && answer_results === undefined}
 			{#key unique}
 				<div class="text-black dark:text-black">
 					{#if question?.type === QuizQuestionType.SLIDE}
@@ -323,11 +283,9 @@ SPDX-License-Identifier: MPL-2.0
 			started: gameMeta.started,
 			questionIndex: question_index,
 			hasGameData: gameData !== undefined,
-			hasJoinGameData: joinGameData !== undefined,
-			hasEffectiveGameData: effectiveGameData !== undefined,
-			joinCompleted,
+			buildNumber: FRONTEND_BUILD_NUMBER,
 			hasQuestion: question !== undefined,
-			playerCount: lobbyState.player_count
+				playerCount: gameData?.players?.length ?? 0
 		}}
 	/>
 </div>

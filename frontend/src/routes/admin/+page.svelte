@@ -18,6 +18,7 @@ SPDX-License-Identifier: MPL-2.0
 	import FinalResults from '$lib/play/admin/final_results.svelte';
 	import GrayButton from '$lib/components/buttons/gray.svelte';
 	import SocketDiagnostics from '$lib/socket_diagnostics.svelte';
+	import { FRONTEND_BUILD_NUMBER } from '$lib/build_info';
 	import { page } from '$app/state';
 
 	navbarVisible.visible = false;
@@ -157,6 +158,9 @@ SPDX-License-Identifier: MPL-2.0
 		: `unset`}; background-color: {bg_color ? bg_color : 'transparent'}"
 	class:text-black={bg_color}
 >
+	<div class="fixed right-4 top-4 z-50 rounded-md border border-black/20 bg-white/90 px-3 py-1 text-xs font-semibold text-black shadow-sm">
+		build #{FRONTEND_BUILD_NUMBER}
+	</div>
 	{#if JSON.stringify(final_results) !== JSON.stringify([null])}
 		{#if control_visible}
 			<div class="w-screen flex justify-center mt-16">
@@ -228,6 +232,7 @@ SPDX-License-Identifier: MPL-2.0
 			gamePin: game_pin,
 			autoConnect: auto_connect,
 			success,
+			buildNumber: FRONTEND_BUILD_NUMBER,
 			gameStarted: game_started,
 			playerCount: players.length,
 			quizLoaded: quiz_data !== undefined
