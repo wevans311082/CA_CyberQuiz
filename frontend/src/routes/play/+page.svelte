@@ -231,20 +231,20 @@ SPDX-License-Identifier: MPL-2.0
 	class:text-black={bg_color}
 >
 	<div>
-		{#if !joinCompleted && !gameMeta.started && effectiveGameData === undefined}
+		{#if !joinCompleted}
 			<JoinGame bind:game_pin bind:game_mode bind:username bind:game_data={joinGameData} bind:joined={joinCompleted} />
 		{:else if JSON.stringify(final_results) !== JSON.stringify([null])}
 			<ShowEndScreen bind:data={scores} show_final_results={true} {username} />
-		{:else if effectiveGameData !== undefined && question_index === ''}
+		{:else if question_index === '' || !gameMeta.started}
 			<ShowTitle
-				title={effectiveGameData.title}
-				description={effectiveGameData.description}
-				cover_image={effectiveGameData.cover_image}
+				title={effectiveGameData?.title ?? ''}
+				description={effectiveGameData?.description ?? ''}
+				cover_image={effectiveGameData?.cover_image}
 				players={lobbyState.players}
 				player_count={lobbyState.player_count}
 				started={gameMeta.started}
 			/>
-		{:else if gameMeta.started && effectiveGameData !== undefined && question_index !== '' && answer_results === undefined}
+		{:else if answer_results === undefined}
 			{#key unique}
 				<div class="text-black dark:text-black">
 					{#if question?.type === QuizQuestionType.SLIDE}
@@ -254,7 +254,7 @@ SPDX-License-Identifier: MPL-2.0
 					{/if}
 				</div>
 			{/key}
-		{:else if gameMeta.started && answer_results !== undefined}
+		{:else}
 			{#if answer_results === null}
 				<div class="w-full flex justify-center">
 					<h1 class="text-3xl">{$t('admin_page.no_answers')}</h1>

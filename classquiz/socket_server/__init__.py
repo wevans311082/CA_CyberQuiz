@@ -205,7 +205,7 @@ async def join_game(sid: str, data: dict):
         return
     # +++ START checking captcha +++
     if game_data.captcha_enabled:
-        captcha_res = check_captcha(data.captcha)
+        captcha_res = await check_captcha(data.captcha)
         if not captcha_res:
             return
     # --- END checking captcha ---
@@ -370,7 +370,7 @@ async def submit_answer(sid: str, data: dict):
         await sio.emit("already_replied", room=sid)
         return
     answer_right, answer = check_answer(game_data, data)
-    latency = int(float(session["ping"]))
+    latency = int(float(session.get("ping", 0)))
     time_q_started = datetime.fromisoformat(await redis.get(f"game:{session['game_pin']}:current_time"))
     diff = (time_q_started - now).total_seconds() * 1000  # - timedelta(milliseconds=latency)
     score = 0
