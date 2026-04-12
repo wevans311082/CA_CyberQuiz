@@ -12,6 +12,7 @@ RUN apt update && \
     sed -i "s/psycopg2-binary/psycopg2/g" requirements.txt
 
 RUN pip install -r requirements.txt && \
+    pip install better-profanity && \
     apt remove -y jq gcc
 
 COPY classquiz/ /app/classquiz/

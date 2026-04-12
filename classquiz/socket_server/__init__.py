@@ -13,7 +13,10 @@ import asyncio
 
 import socketio
 from cryptography.fernet import Fernet
-from better_profanity import profanity
+try:
+    from better_profanity import profanity
+except ImportError:
+    profanity = None
 
 from classquiz.config import redis, settings
 from classquiz.db.models import (
@@ -59,7 +62,8 @@ def get_fernet_key() -> bytes:
 
 
 fernet = Fernet(get_fernet_key())
-profanity.load_censor_words()
+if profanity is not None:
+    profanity.load_censor_words()
 
 CHAT_HISTORY_LIMIT = 40
 CHAT_MESSAGE_MAX_LEN = 280
@@ -97,7 +101,7 @@ def contains_blocked_language(input_text: str) -> bool:
     if not input_text:
         return False
     text_lower = input_text.lower()
-    if profanity.contains_profanity(text_lower):
+    if profanity is not None and profanity.contains_profanity(text_lower):
         return True
     normalized = _normalize_text(text_lower)
     if any(term in normalized for term in _PROFANITY_EXTRA_TERMS):
