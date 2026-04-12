@@ -71,6 +71,7 @@ COUNTDOWN_DURATION_SECONDS = 5
 CHAT_COOLDOWN_SECONDS = 0.8
 CHAT_BURST_WINDOW_SECONDS = 10
 CHAT_BURST_LIMIT = 12
+SOCKET_DIAGNOSTICS_DEFAULT_ENABLED = False
 _PROFANITY_EXTRA_TERMS = {
     "rape",
     "rapist",
@@ -120,6 +121,22 @@ async def get_chat_history(game_pin: str) -> list[dict]:
         except ValidationError:
             continue
     return result
+
+
+async def get_socket_diagnostics_enabled(game_pin: str) -> bool:
+    value = await redis.get(f"game:{game_pin}:socket_diagnostics_enabled")
+    if value is None:
+        return SOCKET_DIAGNOSTICS_DEFAULT_ENABLED
+    return str(value).lower() in {"1", "true", "yes", "on"}
+
+
+async def emit_socket_diagnostics_visibility(game_pin: str, room: str | None = None):
+    enabled = await get_socket_diagnostics_enabled(game_pin)
+    await sio.emit(
+        "socket_diagnostics_visibility",
+        {"enabled": enabled},
+        room=game_pin if room is None else room,
+    )
 
 
 async def append_chat_message(game_pin: str, message: ChatMessage):
@@ -325,6 +342,7 @@ async def rejoin_game(sid: str, data: dict):
         payload,
         room=sid,
     )
+    await emit_socket_diagnostics_visibility(data.game_pin, room=sid)
     await sio.emit("chat_history", {"messages": await get_chat_history(data.game_pin)}, room=sid)
     await emit_lobby_state(data.game_pin)
     countdown_state = await get_countdown_state(data.game_pin)
@@ -480,6 +498,7 @@ async def register_as_admin(sid: str, data: dict):
         {"game_id": game_id, "game": await redis.get(f"game:{game_pin}")},
         room=sid,
     )
+    await emit_socket_diagnostics_visibility(game_pin, room=sid)
     await sio.emit("chat_history", {"messages": await get_chat_history(game_pin)}, room=sid)
     countdown_state = await get_countdown_state(game_pin)
     if countdown_state is not None and countdown_state["remaining_seconds"] > 0:
@@ -746,6 +765,7 @@ async def register_as_remote(sid: str, data: dict):
         {"game_id": data.game_id, "game": await redis.get(f"game:{data.game_pin}")},
         room=sid,
     )
+    await emit_socket_diagnostics_visibility(data.game_pin, room=sid)
     await sio.emit("control_visibility", {"visible": False}, room=f"admin:{data.game_pin}")
     session = await get_session(sid, sio)
     session["game_pin"] = data.game_pin
@@ -758,6 +778,10 @@ async def register_as_remote(sid: str, data: dict):
 
 class _SetControlVisibilityInput(BaseModel):
     visible: bool
+
+
+class _SetSocketDiagnosticsVisibilityInput(BaseModel):
+    enabled: bool
 
 
 @sio.event
@@ -774,6 +798,26 @@ async def set_control_visibility(sid: str, data: dict):
         {"visible": data.visible},
         room=f"admin:{session['game_pin']}",
     )
+
+
+@sio.event
+async def set_socket_diagnostics_visibility(sid: str, data: dict):
+    try:
+        data = _SetSocketDiagnosticsVisibilityInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+    session: dict = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    game_pin = session["game_pin"]
+    await redis.set(
+        f"game:{game_pin}:socket_diagnostics_enabled",
+        "1" if data.enabled else "0",
+        ex=7200,
+    )
+    await emit_socket_diagnostics_visibility(game_pin)
 
 
 @sio.event

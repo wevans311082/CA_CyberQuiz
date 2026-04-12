@@ -29,6 +29,7 @@ SPDX-License-Identifier: MPL-2.0
 	}
 
 	let { username, avatar_params = null, compact = false, clickable = false }: Props = $props();
+	let avatar_load_failed = $state(false);
 
 	const defaults: Required<AvatarParams> = {
 		skin_color: 0,
@@ -52,6 +53,7 @@ SPDX-License-Identifier: MPL-2.0
 			Object.fromEntries(Object.entries(merged).map(([key, value]) => [key, String(value)]))
 		).toString()}`
 	);
+	const initials = $derived((username || '?').slice(0, 2).toUpperCase());
 </script>
 
 <div
@@ -60,14 +62,32 @@ SPDX-License-Identifier: MPL-2.0
 	class:hover:shadow-md={clickable}
 	class:transition-all={clickable}
 >
-	<img
-		src={avatar_url}
-		alt="avatar"
-		class="rounded-full border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900"
-		class:h-10={!compact}
-		class:w-10={!compact}
-		class:h-8={compact}
-		class:w-8={compact}
-	/>
+	{#if avatar_load_failed}
+		<div
+			class="avatar-fallback flex items-center justify-center rounded-full border border-slate-300 bg-gradient-to-br from-teal-500 to-cyan-600 font-semibold text-white dark:border-slate-700"
+			class:h-10={!compact}
+			class:w-10={!compact}
+			class:h-8={compact}
+			class:w-8={compact}
+			class:text-xs={compact}
+			class:text-sm={!compact}
+			aria-label="avatar fallback"
+		>
+			{initials}
+		</div>
+	{:else}
+		<img
+			src={avatar_url}
+			alt="avatar"
+			class="rounded-full border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900"
+			class:h-10={!compact}
+			class:w-10={!compact}
+			class:h-8={compact}
+			class:w-8={compact}
+			onerror={() => {
+				avatar_load_failed = true;
+			}}
+		/>
+	{/if}
 	<span class="truncate font-medium text-slate-900 dark:text-slate-100" class:text-sm={compact}>{username}</span>
 </div>

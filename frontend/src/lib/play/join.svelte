@@ -40,6 +40,7 @@ SPDX-License-Identifier: MPL-2.0
 	let captchaCheckStatus = $state('idle');
 	let usernameLength = $state(0);
 	let submitCount = $state(0);
+	let socket_diagnostics_enabled = $state(false);
 	const avatarOptionCounts = {
 		skin_color: 7,
 		top_type: 35,
@@ -101,6 +102,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('game_not_found', onGameNotFound);
 		socket.on('error', onSocketError);
 		socket.on('username_blocked', onUsernameBlocked);
+		socket.on('socket_diagnostics_visibility', onSocketDiagnosticsVisibility);
 	});
 
 	onDestroy(() => {
@@ -119,6 +121,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('game_not_found', onGameNotFound);
 		socket.off('error', onSocketError);
 		socket.off('username_blocked', onUsernameBlocked);
+		socket.off('socket_diagnostics_visibility', onSocketDiagnosticsVisibility);
 	});
 
 	const set_game_pin = async () => {
@@ -220,6 +223,10 @@ SPDX-License-Identifier: MPL-2.0
 		if (browser) {
 			alert('That username is blocked by moderation. Please choose another one.');
 		}
+	};
+
+	const onSocketDiagnosticsVisibility = (data: { enabled?: boolean }) => {
+		socket_diagnostics_enabled = Boolean(data?.enabled);
 	};
 
 	const setUsername = async (e: Event) => {
@@ -476,6 +483,7 @@ SPDX-License-Identifier: MPL-2.0
 <SocketDiagnostics
 	socket={socket}
 	label="join"
+	enabled={socket_diagnostics_enabled}
 	details={{
 		gamePin: game_pin,
 		username,

@@ -60,8 +60,11 @@ SPDX-License-Identifier: MPL-2.0
 	let countdown_remaining_seconds = $state(0);
 	let countdown_total_seconds = $state(5);
 	let countdown_timer: ReturnType<typeof setInterval> | null = null;
+	let countdown_event_received = $state(false);
+	let socket_diagnostics_enabled = $state(false);
 
 	const startCountdownFromServer = (data: { server_timestamp: string; duration_seconds: number; remaining_seconds?: number }) => {
+		countdown_event_received = true;
 		if (countdown_timer) {
 			clearInterval(countdown_timer);
 			countdown_timer = null;
@@ -77,6 +80,7 @@ SPDX-License-Identifier: MPL-2.0
 			countdown_remaining_seconds = Math.max(0, duration - elapsedNow);
 			if (countdown_remaining_seconds <= 0) {
 				countdown_active = false;
+				countdown_event_received = false;
 				if (countdown_timer) {
 					clearInterval(countdown_timer);
 					countdown_timer = null;
@@ -127,6 +131,9 @@ SPDX-License-Identifier: MPL-2.0
 	socket.on('chat_blocked', (data) => {
 		chat_block_reason = data?.reason ?? 'blocked';
 	});
+	socket.on('socket_diagnostics_visibility', (data) => {
+		socket_diagnostics_enabled = Boolean(data?.enabled);
+	});
 	socket.on('already_registered_as_admin', () => {
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
@@ -135,11 +142,22 @@ SPDX-License-Identifier: MPL-2.0
 
 	socket.on('start_game', (_) => {
 		game_started = true;
+		setTimeout(() => {
+			if (!countdown_event_received && !countdown_active) {
+				startCountdownFromServer({ server_timestamp: new Date().toISOString(), duration_seconds: 5 });
+			}
+		}, 350);
 	});
 
 	socket.on('countdown_start', (data) => {
 		startCountdownFromServer(data);
 	});
+
+	const toggleSocketDiagnostics = () => {
+		socket.emit('set_socket_diagnostics_visibility', {
+			enabled: !socket_diagnostics_enabled
+		});
+	};
 
 	socket.on('control_visibility', (data) => {
 		control_visible = data.visible;
@@ -288,16 +306,19 @@ SPDX-License-Identifier: MPL-2.0
 		<SomeAdminScreen
 			bind:final_results
 			bind:final_results_avatar_map
+			bind:socket_diagnostics_enabled
 			{game_token}
 			bind:quiz_data
 			{bg_color}
 			bind:player_scores
 			{control_visible}
+			on_toggle_socket_diagnostics={toggleSocketDiagnostics}
 		/>
 	{/if}
 	<SocketDiagnostics
 		socket={socket}
 		label="admin"
+		enabled={socket_diagnostics_enabled}
 		details={{
 			gamePin: game_pin,
 			autoConnect: auto_connect,

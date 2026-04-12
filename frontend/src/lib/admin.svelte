@@ -34,6 +34,8 @@ SPDX-License-Identifier: MPL-2.0
 		final_results_avatar_map?: Record<string, any>;
 		control_visible: boolean;
 		player_scores: any;
+		socket_diagnostics_enabled: boolean;
+		on_toggle_socket_diagnostics: () => void;
 	}
 
 	let {
@@ -43,7 +45,9 @@ SPDX-License-Identifier: MPL-2.0
 		final_results = $bindable([null]),
 		final_results_avatar_map = $bindable({}),
 		control_visible,
-		player_scores = $bindable()
+		player_scores = $bindable(),
+		socket_diagnostics_enabled = $bindable(false),
+		on_toggle_socket_diagnostics
 	}: Props = $props();
 
 	socket.on('get_question_results', () => {
@@ -118,6 +122,8 @@ SPDX-License-Identifier: MPL-2.0
 		{question_results}
 		{game_token}
 		{shown_question_now}
+		{socket_diagnostics_enabled}
+		{on_toggle_socket_diagnostics}
 	/>
 {/if}
 {#if timer_res !== '0' && selected_question >= 0}

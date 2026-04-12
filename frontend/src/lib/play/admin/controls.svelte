@@ -20,6 +20,8 @@ SPDX-License-Identifier: MPL-2.0
 		game_token: string;
 		question_results: any;
 		shown_question_now: number;
+		socket_diagnostics_enabled: boolean;
+		on_toggle_socket_diagnostics: () => void;
 	}
 
 	let {
@@ -31,7 +33,9 @@ SPDX-License-Identifier: MPL-2.0
 		socket,
 		game_token,
 		question_results,
-		shown_question_now
+		shown_question_now,
+		socket_diagnostics_enabled,
+		on_toggle_socket_diagnostics
 	}: Props = $props();
 
 	const { t } = getLocalization();
@@ -64,6 +68,11 @@ SPDX-License-Identifier: MPL-2.0
 		{selected_question === -1 ? '0' : selected_question + 1}
 		/{quiz_data.questions.length}
 	</p>
+	<div class="justify-self-center col-start-2 col-end-2">
+		<button onclick={on_toggle_socket_diagnostics} class="admin-button">
+			Diagnostics: {socket_diagnostics_enabled ? 'On' : 'Off'}
+		</button>
+	</div>
 	<div class="justify-self-end ml-auto mr-0 col-start-3 col-end-3">
 		{#if selected_question + 1 === quiz_data.questions.length && ((timer_res === '0' && question_results !== null) || quiz_data?.questions?.[selected_question]?.type === QuizQuestionType.SLIDE)}
 			{#if JSON.stringify(final_results) === JSON.stringify([null])}
