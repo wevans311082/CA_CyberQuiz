@@ -236,6 +236,8 @@ SPDX-License-Identifier: MPL-2.0
 		{:else if JSON.stringify(final_results) !== JSON.stringify([null])}
 			<ShowEndScreen bind:data={scores} show_final_results={true} {username} />
 		{:else if question_index === '' || !gameMeta.started}
+			<!-- Show lobby/title screen when: no question has been sent yet OR the game hasn't started.
+			     Both states mean the player should see the waiting screen with quiz title and player list. -->
 			<ShowTitle
 				title={effectiveGameData?.title ?? ''}
 				description={effectiveGameData?.description ?? ''}
@@ -245,6 +247,7 @@ SPDX-License-Identifier: MPL-2.0
 				started={gameMeta.started}
 			/>
 		{:else if answer_results === undefined}
+			<!-- At this point: joinCompleted=true, game started, question_index is set, awaiting player answer -->
 			{#key unique}
 				<div class="text-black dark:text-black">
 					{#if question?.type === QuizQuestionType.SLIDE}
