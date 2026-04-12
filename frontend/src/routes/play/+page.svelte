@@ -276,6 +276,15 @@ SPDX-License-Identifier: MPL-2.0
 		socket_diagnostics_enabled = Boolean(data?.enabled);
 	};
 
+	const onLobbyState = (data: { players?: Array<{ username: string; avatar_params?: any }>; player_count?: number }) => {
+		if (!data?.players) {
+			return;
+		}
+		if (gameData) {
+			gameData = { ...gameData, players: data.players, player_count: data.player_count ?? data.players.length };
+		}
+	};
+
 	onMount(() => {
 		socket.on('time_sync', onTimeSync);
 		socket.on('connect', onConnect);
@@ -295,6 +304,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('chat_message_received', onChatMessageReceived);
 		socket.on('chat_blocked', onChatBlocked);
 		socket.on('socket_diagnostics_visibility', onSocketDiagnosticsVisibility);
+		socket.on('lobby_state', onLobbyState);
 	});
 
 	onDestroy(() => {
@@ -316,6 +326,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('chat_message_received', onChatMessageReceived);
 		socket.off('chat_blocked', onChatBlocked);
 		socket.off('socket_diagnostics_visibility', onSocketDiagnosticsVisibility);
+		socket.off('lobby_state', onLobbyState);
 		if (countdown_timer) {
 			clearInterval(countdown_timer);
 			countdown_timer = null;

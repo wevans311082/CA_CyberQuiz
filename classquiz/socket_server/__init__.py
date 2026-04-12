@@ -396,13 +396,16 @@ async def join_game(sid: str, data: dict):
     ).to_player_stack(data.game_pin)
     await sio.enter_room(sid, data.game_pin)
 
+    lobby_players = await get_lobby_players(data.game_pin)
     payload = game_data.to_player_data()
-    payload["players"] = await get_lobby_players(data.game_pin)
+    payload["players"] = lobby_players
+    payload["player_count"] = len(lobby_players)
     await sio.emit(
         "joined_game",
         payload,
         room=sid,
     )
+    await emit_socket_diagnostics_visibility(data.game_pin, room=sid)
     await sio.emit("chat_history", {"messages": await get_chat_history(data.game_pin)}, room=sid)
     countdown_state = await get_countdown_state(data.game_pin)
     if countdown_state is not None and countdown_state["remaining_seconds"] > 0:

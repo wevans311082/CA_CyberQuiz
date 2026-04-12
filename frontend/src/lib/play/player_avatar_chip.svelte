@@ -54,6 +54,13 @@ SPDX-License-Identifier: MPL-2.0
 		).toString()}`
 	);
 	const initials = $derived((username || '?').slice(0, 2).toUpperCase());
+
+	// Reset failed-load state whenever the URL changes so a new image gets a fresh attempt.
+	$effect(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		avatar_url;
+		avatar_load_failed = false;
+	});
 </script>
 
 <div
