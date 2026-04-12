@@ -71,6 +71,13 @@ SPDX-License-Identifier: MPL-2.0
 				render: () => {}
 			};
 		}
+		socket.off('connect_error', onConnectError);
+		socket.off('joined_game', onJoinedGame);
+		socket.off('rejoined_game', onRejoinedGame);
+		socket.off('username_already_exists', onUsernameAlreadyExists);
+		socket.off('game_already_started', onGameAlreadyStarted);
+		socket.off('game_not_found', onGameNotFound);
+		socket.off('error', onSocketError);
 	});
 
 	const set_game_pin = async () => {
@@ -120,13 +127,48 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	});
 
-	socket.on('connect_error', (error) => {
+	const onConnectError = (error) => {
 		joinStatus = `connect_error:${error.message}`;
 		console.error('Socket connection failed', error.message);
 		if (browser) {
 			alert('Live connection to the quiz server failed. Please reload and try again.');
 		}
-	});
+	};
+	const onJoinedGame = (data) => {
+		joinStatus = 'joined_game';
+		joined = true;
+		game_data = data;
+	};
+	const onRejoinedGame = (data) => {
+		joinStatus = 'rejoined_game';
+		joined = true;
+		game_data = data;
+	};
+	const onUsernameAlreadyExists = () => {
+		joinStatus = 'username_already_exists';
+	};
+	const onGameAlreadyStarted = () => {
+		joinStatus = 'game_already_started';
+	};
+	const onGameNotFound = () => {
+		joinStatus = 'game_not_found';
+		joined = false;
+		game_pin = '';
+		if (browser) {
+			alert('Game not found');
+		}
+	};
+	const onSocketError = () => {
+		joinStatus = 'socket_error';
+	};
+
+	socket.on('connect_error', onConnectError);
+	socket.on('joined_game', onJoinedGame);
+	socket.on('rejoined_game', onRejoinedGame);
+	socket.on('username_already_exists', onUsernameAlreadyExists);
+	socket.on('game_already_started', onGameAlreadyStarted);
+	socket.on('game_not_found', onGameNotFound);
+	socket.on('error', onSocketError);
 
 	const setUsername = async (e: Event) => {
 		e.preventDefault();
@@ -218,33 +260,6 @@ SPDX-License-Identifier: MPL-2.0
 			});
 		}
 	};
-	socket.on('joined_game', (data) => {
-		joinStatus = 'joined_game';
-		joined = true;
-		game_data = data;
-	});
-	socket.on('rejoined_game', (data) => {
-		joinStatus = 'rejoined_game';
-		joined = true;
-		game_data = data;
-	});
-	socket.on('username_already_exists', () => {
-		joinStatus = 'username_already_exists';
-	});
-	socket.on('game_already_started', () => {
-		joinStatus = 'game_already_started';
-	});
-	socket.on('game_not_found', () => {
-		joinStatus = 'game_not_found';
-		joined = false;
-		game_pin = '';
-		if (browser) {
-			alert('Game not found');
-		}
-	});
-	socket.on('error', () => {
-		joinStatus = 'socket_error';
-	});
 	$effect(() => {
 		const cleaned = game_pin.replace(/\D/g, '');
 		if (game_pin.replace(/\D/g, '') === game_pin) {
