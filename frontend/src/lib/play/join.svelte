@@ -21,13 +21,15 @@ SPDX-License-Identifier: MPL-2.0
 		game_mode: any;
 		username: any;
 		game_data?: Record<string, unknown> | undefined;
+		joined?: boolean;
 	}
 
 	let {
 		game_pin = $bindable(),
 		game_mode = $bindable(),
 		username = $bindable(),
-		game_data = $bindable()
+		game_data = $bindable(),
+		joined = $bindable(false)
 	}: Props = $props();
 	let custom_field = $state();
 	let custom_field_value = $state();
@@ -128,6 +130,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	const setUsername = async (e: Event) => {
 		e.preventDefault();
+		joined = false;
 		submitCount += 1;
 		usernameLength = username?.length ?? 0;
 		if (username.length <= 3) {
@@ -217,10 +220,12 @@ SPDX-License-Identifier: MPL-2.0
 	};
 	socket.on('joined_game', (data) => {
 		joinStatus = 'joined_game';
+		joined = true;
 		game_data = data;
 	});
 	socket.on('rejoined_game', (data) => {
 		joinStatus = 'rejoined_game';
+		joined = true;
 		game_data = data;
 	});
 	socket.on('username_already_exists', () => {
@@ -231,6 +236,7 @@ SPDX-License-Identifier: MPL-2.0
 	});
 	socket.on('game_not_found', () => {
 		joinStatus = 'game_not_found';
+		joined = false;
 		game_pin = '';
 		if (browser) {
 			alert('Game not found');
@@ -336,6 +342,7 @@ SPDX-License-Identifier: MPL-2.0
 		username,
 		usernameLength,
 		submitCount,
+		joined,
 		joinAttempted,
 		joinStatus,
 		captchaEnabled: captcha_enabled,
