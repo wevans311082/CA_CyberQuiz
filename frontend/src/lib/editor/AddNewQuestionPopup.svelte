@@ -86,6 +86,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	const add_question = (index: number) => {
 		const empty_question: Question = {
+			id: crypto.randomUUID(),
 			type: question_types[index].type,
 			time: '20',
 			question: '',

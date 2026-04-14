@@ -228,9 +228,22 @@ SPDX-License-Identifier: MPL-2.0
 		: `unset`}; background-color: {bg_color ? bg_color : 'transparent'}"
 	class:text-black={bg_color}
 >
+	{#if socket_diagnostics_enabled}
 	<div class="fixed right-4 top-4 z-50 rounded-md border border-black/20 bg-white/90 px-3 py-1 text-xs font-semibold text-black shadow-sm">
 		build #{FRONTEND_BUILD_NUMBER}
 	</div>
+	{/if}
+	<!-- Always-available diagnostics toggle -->
+	<button
+		class="fixed left-4 top-4 z-50 rounded-full p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition opacity-30 hover:opacity-100"
+		onclick={() => { socket_diagnostics_enabled = !socket_diagnostics_enabled; }}
+		title="Toggle diagnostics"
+	>
+		<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+			<path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+		</svg>
+	</button>
 	{#if JSON.stringify(final_results) !== JSON.stringify([null])}
 		{#if control_visible}
 			<div class="w-screen flex justify-center mt-16">

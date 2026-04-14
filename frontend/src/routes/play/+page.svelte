@@ -18,6 +18,8 @@ SPDX-License-Identifier: MPL-2.0
 	import KahootResults from '$lib/play/results_kahoot.svelte';
 	import SocketDiagnostics from '$lib/socket_diagnostics.svelte';
 	import { FRONTEND_BUILD_NUMBER } from '$lib/build_info';
+	import SituationRoom from '$lib/play/SituationRoom.svelte';
+	import AnswerSummary from '$lib/play/AnswerSummary.svelte';
 	import CountdownOverlay from '$lib/play/countdown_overlay.svelte';
 	import { getLocalization } from '$lib/i18n';
 	import { onDestroy, onMount } from 'svelte';
@@ -98,6 +100,9 @@ SPDX-License-Identifier: MPL-2.0
 	let active_injects = $state<Inject[]>([]);
 	let situation_status = $state<SituationStatus | null>(null);
 	let discussion_time = $state<number | null>(null);
+	let injects_log = $state<Array<{ inject: Inject; triggered_by: string; timestamp: string }>>([]);
+	let situation_room_open = $state(false);
+	let answer_summary = $state<{ total: number; answers: Record<string, number> } | null>(null);
 
 	let preventReload = true;
 
@@ -198,6 +203,7 @@ SPDX-License-Identifier: MPL-2.0
 		question = data.question;
 		question_index = data.question_index;
 		answer_results = undefined;
+		answer_summary = null;
 		// Capture tabletop metadata from question payload
 		current_allowed_roles = data.question?.allowed_roles ?? undefined;
 		current_decision_mode = data.question?.decision_mode ?? undefined;
@@ -338,12 +344,29 @@ SPDX-License-Identifier: MPL-2.0
 	const onInjectReceived = (data: Inject) => {
 		if (data) {
 			active_injects = [...active_injects, data];
+			// Also record in inject history for situation room
+			injects_log = [...injects_log, { inject: data, triggered_by: 'facilitator', timestamp: new Date().toISOString() }];
 		}
 	};
 
 	const onSituationUpdated = (data: SituationStatus) => {
 		if (data) {
 			situation_status = data;
+		}
+	};
+
+	const onSituationRoomData = (data: { status: SituationStatus; injects_log: Array<{ inject: Inject; triggered_by: string; timestamp: string }> }) => {
+		if (data?.status) {
+			situation_status = data.status;
+		}
+		if (data?.injects_log) {
+			injects_log = data.injects_log;
+		}
+	};
+
+	const onAnswerSummary = (data: { total: number; answers: Record<string, number> }) => {
+		if (data) {
+			answer_summary = data;
 		}
 	};
 
@@ -379,6 +402,8 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('tie_detected', onTieDetected);
 		socket.on('inject_received', onInjectReceived);
 		socket.on('situation_updated', onSituationUpdated);
+		socket.on('situation_room_data', onSituationRoomData);
+		socket.on('answer_summary', onAnswerSummary);
 	});
 
 	onDestroy(() => {
@@ -408,6 +433,8 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('tie_detected', onTieDetected);
 		socket.off('inject_received', onInjectReceived);
 		socket.off('situation_updated', onSituationUpdated);
+		socket.off('situation_room_data', onSituationRoomData);
+		socket.off('answer_summary', onAnswerSummary);
 		if (countdown_timer) {
 			clearInterval(countdown_timer);
 			countdown_timer = null;
@@ -428,9 +455,22 @@ SPDX-License-Identifier: MPL-2.0
 	style="background: {bg_color ? bg_color : 'transparent'}"
 	class:text-black={bg_color}
 >
+	{#if socket_diagnostics_enabled}
 	<div class="fixed right-4 top-4 z-50 rounded-md border border-black/20 bg-white/90 px-3 py-1 text-xs font-semibold text-black shadow-sm">
 		build #{FRONTEND_BUILD_NUMBER}
 	</div>
+	{/if}
+	<!-- Always-available diagnostics toggle -->
+	<button
+		class="fixed left-4 top-4 z-50 rounded-full p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition opacity-30 hover:opacity-100"
+		onclick={() => { socket_diagnostics_enabled = !socket_diagnostics_enabled; }}
+		title="Toggle diagnostics"
+	>
+		<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+			<path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+		</svg>
+	</button>
 	<div>
 		<CountdownOverlay
 			active={countdown_active}
@@ -489,6 +529,9 @@ SPDX-License-Identifier: MPL-2.0
 				{#key unique}
 					<KahootResults {username} question_results={answer_results} bind:scores />
 				{/key}
+				{#if answer_summary}
+					<AnswerSummary total={answer_summary.total} answers={answer_summary.answers} />
+				{/if}
 			{/if}
 		{/if}
 	</div>
@@ -507,6 +550,15 @@ SPDX-License-Identifier: MPL-2.0
 				playerCount: gameData?.players?.length ?? 0
 		}}
 	/>
+	<!-- Situation Room Pop-out -->
+	{#if scenario_type === 'tabletop' && gameMeta.started}
+		<SituationRoom
+			bind:open={situation_room_open}
+			{situation_status}
+			{injects_log}
+			{socket}
+		/>
+	{/if}
 	<!-- Situation Status Bar -->
 	{#if scenario_type === 'tabletop' && situation_status}
 		<div class="fixed bottom-0 left-0 w-full z-40 flex items-center gap-4 px-4 py-2 text-xs text-white"

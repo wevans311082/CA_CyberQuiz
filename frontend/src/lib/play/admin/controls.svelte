@@ -59,7 +59,12 @@ SPDX-License-Identifier: MPL-2.0
 
 	const { t } = getLocalization();
 	const set_question_number = (q_number: number) => {
-		socket.emit('set_question_number', q_number.toString());
+		if (is_tabletop && selected_question >= 0) {
+			// In tabletop mode, use branching-aware advance instead of sequential
+			advance_tabletop();
+		} else {
+			socket.emit('set_question_number', q_number.toString());
+		}
 	};
 
 	const get_question_results = () => {

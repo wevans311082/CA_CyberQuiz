@@ -408,7 +408,7 @@ SPDX-License-Identifier: MPL-2.0
 				type="button"
 				class="h-full flex justify-center w-full dark:text-white flex-col"
 				onclick={() => {
-					data.questions = [...data.questions, { ...empy_slide }];
+					data.questions = [...data.questions, { ...empy_slide, id: crypto.randomUUID() }];
 				}}
 			>
 				<span class="w-full text-center">{$t('words.slide')}</span>

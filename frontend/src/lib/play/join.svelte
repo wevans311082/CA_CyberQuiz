@@ -13,6 +13,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { getLocalization } from '$lib/i18n';
 	import Cookies from 'js-cookie';
 	import BrownButton from '$lib/components/buttons/brown.svelte';
+	import AvatarPicker from '$lib/play/AvatarPicker.svelte';
 
 	const { t } = getLocalization();
 
@@ -41,20 +42,6 @@ SPDX-License-Identifier: MPL-2.0
 	let usernameLength = $state(0);
 	let submitCount = $state(0);
 	let socket_diagnostics_enabled = $state(false);
-	const avatarOptionCounts = {
-		skin_color: 7,
-		top_type: 35,
-		hair_color: 10,
-		facial_hair_type: 6,
-		facial_hair_color: 10,
-		mouth_type: 12,
-		eyebrow_type: 13,
-		accessories_type: 7,
-		hat_color: 15,
-		clothe_type: 9,
-		clothe_color: 15,
-		clothe_graphic_type: 11
-	};
 
 	let avatar_params = $state({
 		skin_color: 0,
@@ -330,17 +317,6 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
-	const updateAvatarParam = (key: string, value: string) => {
-		avatar_params = { ...avatar_params, [key]: parseInt(value, 10) };
-		avatarConfirmed = false;
-		joinStatus = 'editing_avatar';
-	};
-
-	const avatarPreviewUrl = $derived(
-		`/api/v1/avatar/custom?${new URLSearchParams(
-			Object.fromEntries(Object.entries(avatar_params).map(([k, v]) => [k, String(v)]))
-		).toString()}`
-	);
 	$effect(() => {
 		const cleaned = game_pin.replace(/\D/g, '');
 		if (game_pin.replace(/\D/g, '') === game_pin) {
@@ -409,54 +385,15 @@ SPDX-License-Identifier: MPL-2.0
 				maxlength="17"
 			/>
 
-			<div class="mt-4 rounded-2xl border border-slate-300 bg-white/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-950/70">
-				<p class="text-center text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Avatar</p>
-				<img src={avatarPreviewUrl} alt="Avatar preview" class="mx-auto mt-3 h-24 w-24 rounded-full border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900" />
-				<div class="mt-3 grid grid-cols-2 gap-2 text-sm">
-					<label class="flex flex-col gap-1">
-						<span>Hair</span>
-						<select value={String(avatar_params.top_type)} onchange={(e) => updateAvatarParam('top_type', e.currentTarget.value)}>
-							{#each Array.from({ length: avatarOptionCounts.top_type }, (_, idx) => idx) as option}
-								<option value={String(option)}>{option}</option>
-							{/each}
-						</select>
-					</label>
-					<label class="flex flex-col gap-1">
-						<span>Shirt</span>
-						<select value={String(avatar_params.clothe_type)} onchange={(e) => updateAvatarParam('clothe_type', e.currentTarget.value)}>
-							{#each Array.from({ length: avatarOptionCounts.clothe_type }, (_, idx) => idx) as option}
-								<option value={String(option)}>{option}</option>
-							{/each}
-						</select>
-					</label>
-					<label class="flex flex-col gap-1">
-						<span>Skin</span>
-						<select value={String(avatar_params.skin_color)} onchange={(e) => updateAvatarParam('skin_color', e.currentTarget.value)}>
-							{#each Array.from({ length: avatarOptionCounts.skin_color }, (_, idx) => idx) as option}
-								<option value={String(option)}>{option}</option>
-							{/each}
-						</select>
-					</label>
-					<label class="flex flex-col gap-1">
-						<span>Mouth</span>
-						<select value={String(avatar_params.mouth_type)} onchange={(e) => updateAvatarParam('mouth_type', e.currentTarget.value)}>
-							{#each Array.from({ length: avatarOptionCounts.mouth_type }, (_, idx) => idx) as option}
-								<option value={String(option)}>{option}</option>
-							{/each}
-						</select>
-					</label>
-				</div>
-				<div class="mt-3">
-					<BrownButton
-						type="button"
-						onclick={() => {
-							avatarConfirmed = true;
-							joinStatus = 'avatar_confirmed';
-						}}
-					>
-						{avatarConfirmed ? 'Avatar Selected' : 'Use This Avatar'}
-					</BrownButton>
-				</div>
+			<div class="mt-4">
+				<AvatarPicker
+					bind:avatar_params={avatar_params}
+					bind:confirmed={avatarConfirmed}
+					onconfirm={() => {
+						avatarConfirmed = true;
+						joinStatus = 'avatar_confirmed';
+					}}
+				/>
 			</div>
 			{#if custom_field}
 				<h1 class="mt-4 text-center text-sm font-medium text-slate-700 dark:text-slate-300">{custom_field}</h1>

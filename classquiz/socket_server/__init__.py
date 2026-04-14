@@ -644,6 +644,14 @@ async def get_question_results(sid: str, data: dict):
     game_data.question_show = False
     await game_data.save(game_pin)
     await sio.emit("question_results", answer_data_list.model_dump(), room=game_pin)
+    # Also emit anonymous answer summary for all players
+    from collections import Counter
+    answer_counts = Counter(ad.answer for ad in answer_data_list)
+    total = len(answer_data_list)
+    await sio.emit("answer_summary", {
+        "total": total,
+        "answers": {a: c for a, c in answer_counts.most_common()},
+    }, room=game_pin)
 
 
 @sio.event
@@ -1018,7 +1026,7 @@ async def assign_role(sid: str, data: dict):
 
     await set_player_role(game_pin, data.username, data.role)
     roles = await get_all_player_roles(game_pin)
-    await sio.emit("roles_updated", {"roles": roles}, room=game_pin)
+    await sio.emit("roles_updated", {"player_roles": roles}, room=game_pin)
 
 
 class _BulkAssignRolesInput(BaseModel):
@@ -1044,7 +1052,7 @@ async def bulk_assign_roles(sid: str, data: dict):
         await set_player_role(game_pin, username, role)
 
     roles = await get_all_player_roles(game_pin)
-    await sio.emit("roles_updated", {"roles": roles}, room=game_pin)
+    await sio.emit("roles_updated", {"player_roles": roles}, room=game_pin)
 
 
 class _ForceNextQuestionInput(BaseModel):
@@ -1355,11 +1363,15 @@ async def update_situation(sid: str, data: dict):
 
 @sio.event
 async def get_situation(sid: str, _data: dict):
-    """Any participant requests the current situation status."""
+    """Any participant requests the current situation status + inject history."""
     session = await get_session(sid, sio)
     game_pin = session.get("game_pin")
     if not game_pin:
         return
 
     status = await get_situation_status(game_pin)
-    await sio.emit("situation_updated", status or {}, room=sid)
+    injects_log = await get_injects_log(game_pin)
+    await sio.emit("situation_room_data", {
+        "status": status or {},
+        "injects_log": injects_log or [],
+    }, room=sid)

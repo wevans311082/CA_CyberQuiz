@@ -54,6 +54,9 @@ SPDX-License-Identifier: MPL-2.0
 				} else {
 					temp_data.questions[i].type = QuizQuestionType[question.type];
 				}
+				if (!temp_data.questions[i].id) {
+					temp_data.questions[i].id = crypto.randomUUID();
+				}
 			}
 			quiz_data = temp_data;
 			return;
