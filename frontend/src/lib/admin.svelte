@@ -5,7 +5,7 @@ SPDX-License-Identifier: MPL-2.0
 -->
 
 <script lang="ts">
-	import type { QuizData } from '$lib/quiz_types';
+	import type { QuizData, Inject, SituationStatus } from '$lib/quiz_types';
 	import { getLocalization } from '$lib/i18n';
 	import { get_question_title } from '$lib/admin.ts';
 	import type { PlayerAnswer } from '$lib/admin.ts';
@@ -25,6 +25,17 @@ SPDX-License-Identifier: MPL-2.0
 	let final_results_clicked = $state(false);
 	let timer_interval: NodeJS.Timeout;
 	let answer_count = $state(0);
+
+	// Tabletop state
+	let tie_pending = $state(false);
+	let tie_votes = $state<Record<string, number>>({});
+	let admin_player_roles = $state<Record<string, string>>({});
+	let role_assign_username = $state('');
+	let role_assign_role = $state('');
+
+	// Facilitator notes & inject/situation state
+	let facilitator_notes = $state<string | null>(null);
+	let situation_status = $state<SituationStatus>({ severity: 'low', phase: 'Detection', affected_systems: [], summary: '' });
 
 	interface Props {
 		game_token: string;
@@ -96,6 +107,29 @@ SPDX-License-Identifier: MPL-2.0
 		answer_count += 1;
 	});
 
+	// Tabletop admin events
+	socket.on('tie_detected', (data) => {
+		tie_pending = true;
+		tie_votes = data?.votes ?? {};
+	});
+	socket.on('branch_resolved', (_) => {
+		tie_pending = false;
+		tie_votes = {};
+	});
+	socket.on('roles_updated', (data) => {
+		if (data?.player_roles) {
+			admin_player_roles = data.player_roles;
+		}
+	});
+	socket.on('facilitator_notes', (data) => {
+		facilitator_notes = data?.notes ?? null;
+	});
+	socket.on('situation_updated', (data) => {
+		if (data) {
+			situation_status = { ...situation_status, ...data };
+		}
+	});
+
 	const timer = (time: string) => {
 		let seconds = Number(time);
 		timer_interval = setInterval(() => {
@@ -124,6 +158,11 @@ SPDX-License-Identifier: MPL-2.0
 		{shown_question_now}
 		{socket_diagnostics_enabled}
 		{on_toggle_socket_diagnostics}
+		scenario_type={quiz_data.scenario_type}
+		{tie_pending}
+		{tie_votes}
+		{facilitator_notes}
+		bind:situation_status
 	/>
 {/if}
 {#if timer_res !== '0' && selected_question >= 0}
@@ -190,6 +229,46 @@ SPDX-License-Identifier: MPL-2.0
 							src="/api/v1/storage/download/{quiz_data.cover_image}"
 							alt="Not provided"
 						/>
+					</div>
+				</div>
+			{/if}
+			{#if quiz_data.scenario_type === 'tabletop' && quiz_data.roles?.length}
+				<div class="mx-auto mt-8 w-full max-w-lg rounded-xl border border-gray-300 bg-white/80 p-6 dark:border-gray-600 dark:bg-gray-800/80">
+					<h2 class="mb-4 text-xl font-semibold text-center">Assign Player Roles</h2>
+					<div class="flex flex-col gap-3">
+						{#each Object.entries(admin_player_roles) as [player, role]}
+							<div class="flex items-center justify-between gap-2 rounded-lg bg-gray-100 p-2 text-sm dark:bg-gray-700">
+								<span class="font-medium">{player}</span>
+								<span class="rounded-full bg-teal-600 px-2 py-0.5 text-xs text-white">{role}</span>
+							</div>
+						{/each}
+					</div>
+					<div class="mt-4 flex items-center gap-2">
+						<input
+							type="text"
+							placeholder="Username"
+							bind:value={role_assign_username}
+							class="flex-1 rounded-lg border border-gray-400 p-2 text-sm dark:bg-gray-700 outline-hidden"
+						/>
+						<select
+							bind:value={role_assign_role}
+							class="rounded-lg border border-gray-400 p-2 text-sm dark:bg-gray-700 outline-hidden"
+						>
+							<option value="">Select Role</option>
+							{#each quiz_data.roles as r}
+								<option value={r}>{r}</option>
+							{/each}
+						</select>
+						<button
+							type="button"
+							class="rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+							disabled={!role_assign_username || !role_assign_role}
+							onclick={() => {
+								socket.emit('assign_role', { username: role_assign_username, role: role_assign_role });
+								role_assign_username = '';
+								role_assign_role = '';
+							}}
+						>Assign</button>
 					</div>
 				</div>
 			{/if}

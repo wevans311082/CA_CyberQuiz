@@ -8,7 +8,7 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	import { socket } from '$lib/socket';
 	import JoinGame from '$lib/play/join.svelte';
-	import type { Answer, Question as QuestionType } from '$lib/quiz_types';
+	import type { Answer, Question as QuestionType, Inject, SituationStatus } from '$lib/quiz_types';
 	import { QuizQuestionType } from '$lib/quiz_types';
 	import ShowTitle from '$lib/play/title.svelte';
 	import Question from '$lib/play/question.svelte';
@@ -49,6 +49,8 @@ SPDX-License-Identifier: MPL-2.0
 		current_question?: number;
 		question_show?: boolean;
 		game_id?: string;
+		scenario_type?: string;
+		roles?: string[];
 	}
 
 	let game_mode = $state();
@@ -83,6 +85,19 @@ SPDX-License-Identifier: MPL-2.0
 	let countdown_timer: ReturnType<typeof setInterval> | null = null;
 	let countdown_event_received = $state(false);
 	let socket_diagnostics_enabled = $state(false);
+
+	// Tabletop exercise state
+	let scenario_type = $state<string | undefined>(undefined);
+	let my_role = $state<string | undefined>(undefined);
+	let player_roles = $state<Record<string, string>>({});
+	let current_allowed_roles = $state<string[] | undefined>(undefined);
+	let current_decision_mode = $state<string | undefined>(undefined);
+	let branch_path = $state<string[]>([]);
+
+	// Inject & situation state
+	let active_injects = $state<Inject[]>([]);
+	let situation_status = $state<SituationStatus | null>(null);
+	let discussion_time = $state<number | null>(null);
 
 	let preventReload = true;
 
@@ -132,6 +147,10 @@ SPDX-License-Identifier: MPL-2.0
 		console.log('[JOINED_GAME] gameData set to:', gameData);
 		gameMeta.started = gameData.started === true;
 		console.log('[JOINED_GAME] gameMeta.started set to:', gameMeta.started);
+		// Capture tabletop scenario type
+		if (gameData.scenario_type) {
+			scenario_type = gameData.scenario_type;
+		}
 		if (typeof window !== 'undefined' && 'plausible' in window && typeof window.plausible === 'function') {
 			window.plausible('Joined Game', { props: { game_id: gameData.game_id } });
 		}
@@ -179,6 +198,9 @@ SPDX-License-Identifier: MPL-2.0
 		question = data.question;
 		question_index = data.question_index;
 		answer_results = undefined;
+		// Capture tabletop metadata from question payload
+		current_allowed_roles = data.question?.allowed_roles ?? undefined;
+		current_decision_mode = data.question?.decision_mode ?? undefined;
 	};
 
 	const onStartGame = () => {
@@ -285,6 +307,51 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
+	// Tabletop socket event handlers
+	const onRolesUpdated = (data: { player_roles?: Record<string, string>; roles?: string[] }) => {
+		if (data?.player_roles) {
+			player_roles = data.player_roles;
+			if (username && data.player_roles[username]) {
+				my_role = data.player_roles[username];
+			}
+		}
+	};
+
+	const onRoleNotAllowed = () => {
+		// Answer rejected server-side — no action needed, button should already be disabled
+	};
+
+	const onBranchResolved = (data: { question_id?: string; branch_path?: string[] }) => {
+		if (data?.branch_path) {
+			branch_path = data.branch_path;
+		}
+	};
+
+	const onScenarioComplete = () => {
+		// Scenario finished, final results will follow
+	};
+
+	const onTieDetected = (_data: { votes?: Record<string, number> }) => {
+		// Tie detected — players wait for facilitator to resolve
+	};
+
+	const onInjectReceived = (data: Inject) => {
+		if (data) {
+			active_injects = [...active_injects, data];
+		}
+	};
+
+	const onSituationUpdated = (data: SituationStatus) => {
+		if (data) {
+			situation_status = data;
+		}
+	};
+
+	const dismissInject = (id: string) => {
+		active_injects = active_injects.filter(inj => inj.id !== id);
+		socket.emit('dismiss_inject', { inject_id: id });
+	};
+
 	onMount(() => {
 		socket.on('time_sync', onTimeSync);
 		socket.on('connect', onConnect);
@@ -305,6 +372,13 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('chat_blocked', onChatBlocked);
 		socket.on('socket_diagnostics_visibility', onSocketDiagnosticsVisibility);
 		socket.on('lobby_state', onLobbyState);
+		socket.on('roles_updated', onRolesUpdated);
+		socket.on('role_not_allowed', onRoleNotAllowed);
+		socket.on('branch_resolved', onBranchResolved);
+		socket.on('scenario_complete', onScenarioComplete);
+		socket.on('tie_detected', onTieDetected);
+		socket.on('inject_received', onInjectReceived);
+		socket.on('situation_updated', onSituationUpdated);
 	});
 
 	onDestroy(() => {
@@ -327,6 +401,13 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('chat_blocked', onChatBlocked);
 		socket.off('socket_diagnostics_visibility', onSocketDiagnosticsVisibility);
 		socket.off('lobby_state', onLobbyState);
+		socket.off('roles_updated', onRolesUpdated);
+		socket.off('role_not_allowed', onRoleNotAllowed);
+		socket.off('branch_resolved', onBranchResolved);
+		socket.off('scenario_complete', onScenarioComplete);
+		socket.off('tie_detected', onTieDetected);
+		socket.off('inject_received', onInjectReceived);
+		socket.off('situation_updated', onSituationUpdated);
 		if (countdown_timer) {
 			clearInterval(countdown_timer);
 			countdown_timer = null;
@@ -382,6 +463,9 @@ SPDX-License-Identifier: MPL-2.0
 				socket={socket}
 				{chat_messages}
 				chat_block_reason={chat_block_reason}
+				{my_role}
+				{player_roles}
+				{scenario_type}
 			/>
 		{:else if gameMeta.started && gameData !== undefined && question_index !== '' && answer_results === undefined}
 			{#key unique}
@@ -389,7 +473,7 @@ SPDX-License-Identifier: MPL-2.0
 					{#if question?.type === QuizQuestionType.SLIDE}
 						<Slide {question} />
 					{:else}
-						<Question bind:game_mode bind:question {question_index} {solution} />
+						<Question bind:game_mode bind:question {question_index} {solution} {my_role} {scenario_type} allowed_roles={current_allowed_roles} />
 					{/if}
 				</div>
 			{/key}
@@ -423,4 +507,56 @@ SPDX-License-Identifier: MPL-2.0
 				playerCount: gameData?.players?.length ?? 0
 		}}
 	/>
+	<!-- Situation Status Bar -->
+	{#if scenario_type === 'tabletop' && situation_status}
+		<div class="fixed bottom-0 left-0 w-full z-40 flex items-center gap-4 px-4 py-2 text-xs text-white"
+			class:bg-green-700={situation_status.severity === 'low'}
+			class:bg-yellow-600={situation_status.severity === 'medium'}
+			class:bg-orange-600={situation_status.severity === 'high'}
+			class:bg-red-700={situation_status.severity === 'critical'}
+		>
+			<span class="font-bold uppercase">Severity: {situation_status.severity}</span>
+			<span>|</span>
+			<span>Phase: {situation_status.phase}</span>
+			{#if situation_status.affected_systems?.length}
+				<span>|</span>
+				<span>Systems: {situation_status.affected_systems.join(', ')}</span>
+			{/if}
+			{#if situation_status.summary}
+				<span>|</span>
+				<span class="truncate max-w-xs">{situation_status.summary}</span>
+			{/if}
+		</div>
+	{/if}
+	<!-- Inject Notifications -->
+	{#if active_injects.length > 0}
+		<div class="fixed top-16 right-4 z-50 flex flex-col gap-2 max-w-sm">
+			{#each active_injects as inject (inject.id)}
+				<div class="rounded-lg border-2 p-3 shadow-xl animate-pulse-once"
+					class:border-blue-400={inject.severity === 'info'}
+					class:bg-blue-50={inject.severity === 'info'}
+					class:border-yellow-400={inject.severity === 'warning'}
+					class:bg-yellow-50={inject.severity === 'warning'}
+					class:border-red-400={inject.severity === 'critical'}
+					class:bg-red-50={inject.severity === 'critical'}
+				>
+					<div class="flex items-center justify-between mb-1">
+						<span class="text-xs font-bold uppercase"
+							class:text-blue-700={inject.severity === 'info'}
+							class:text-yellow-700={inject.severity === 'warning'}
+							class:text-red-700={inject.severity === 'critical'}
+						>INJECT — {inject.severity}</span>
+						<button
+							class="text-gray-500 hover:text-gray-800 text-lg leading-none"
+							onclick={() => dismissInject(inject.id)}
+						>&times;</button>
+					</div>
+					<h4 class="font-semibold text-sm text-gray-900">{inject.title}</h4>
+					{#if inject.content}
+						<p class="text-xs text-gray-700 mt-1 whitespace-pre-wrap">{inject.content}</p>
+					{/if}
+				</div>
+			{/each}
+		</div>
+	{/if}
 </div>

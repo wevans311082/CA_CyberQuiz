@@ -278,7 +278,7 @@ SPDX-License-Identifier: MPL-2.0
 		transition:fade|global={{ duration: 150 }}
 	>
 		<div
-			class="w-1/4 h-1/3 m-auto bg-white dark:bg-gray-700 rounded-lg flex flex-col p-2 gap-2"
+			class="w-1/3 max-h-[70vh] overflow-auto m-auto bg-white dark:bg-gray-700 rounded-lg flex flex-col p-4 gap-3"
 		>
 			<h1 class="text-3xl mx-auto">{$t('editor.advanced_settings')}</h1>
 			<label class="flex justify-around text-lg">
@@ -288,6 +288,104 @@ SPDX-License-Identifier: MPL-2.0
 					bind:checked={data.questions[selected_question]['hide_results']}
 				/>
 			</label>
+			{#if data.scenario_type === 'tabletop'}
+				<hr class="border-gray-300 dark:border-gray-600" />
+				<h2 class="text-xl font-semibold text-center">Tabletop Settings</h2>
+				<!-- Allowed Roles -->
+				<div class="flex flex-col gap-1">
+					<span class="text-sm font-medium">Allowed Roles (who can answer)</span>
+					<div class="flex flex-wrap gap-1">
+						{#each data.roles ?? [] as role}
+							<label class="inline-flex items-center gap-1 text-sm">
+								<input
+									type="checkbox"
+									checked={(data.questions[selected_question].allowed_roles ?? []).includes(role)}
+									onchange={() => {
+										const q = data.questions[selected_question];
+										const current = q.allowed_roles ?? [];
+										if (current.includes(role)) {
+											q.allowed_roles = current.filter(r => r !== role);
+										} else {
+											q.allowed_roles = [...current, role];
+										}
+										if (q.allowed_roles.length === 0) q.allowed_roles = undefined;
+										data = data;
+									}}
+								/>
+								{role}
+							</label>
+						{/each}
+					</div>
+					{#if !data.roles?.length}
+						<p class="text-xs text-gray-500">Add roles in quiz settings first.</p>
+					{/if}
+				</div>
+				<!-- Decision Mode -->
+				<div class="flex flex-col gap-1">
+					<span class="text-sm font-medium">Decision Mode</span>
+					<select
+						class="rounded-lg border border-gray-400 p-1.5 text-sm dark:bg-gray-600 outline-hidden"
+						value={data.questions[selected_question].decision_mode ?? 'majority_vote'}
+						onchange={(e) => {
+							data.questions[selected_question].decision_mode = e.currentTarget.value === 'majority_vote' ? undefined : e.currentTarget.value;
+							data = data;
+						}}
+					>
+						<option value="majority_vote">Majority Vote</option>
+						<option value="facilitator_only">Facilitator Only</option>
+					</select>
+				</div>
+				<!-- Default Next Question -->
+				<div class="flex flex-col gap-1">
+					<span class="text-sm font-medium">Default Next Question</span>
+					<select
+						class="rounded-lg border border-gray-400 p-1.5 text-sm dark:bg-gray-600 outline-hidden"
+						value={data.questions[selected_question].default_next_question_id ?? ''}
+						onchange={(e) => {
+							data.questions[selected_question].default_next_question_id = e.currentTarget.value || undefined;
+							data = data;
+						}}
+					>
+						<option value="">Sequential (next in list)</option>
+						{#each data.questions as q, qi}
+							{#if qi !== selected_question}
+								<option value={q.id ?? ''}>{qi + 1}. {q.question?.replace(/<[^>]*>/g, '').slice(0, 40) || 'Untitled'}</option>
+							{/if}
+						{/each}
+					</select>
+				</div>
+				<!-- Facilitator Notes -->
+				<div class="flex flex-col gap-1">
+					<span class="text-sm font-medium">Facilitator Notes (private, admin only)</span>
+					<textarea
+						placeholder="Private notes for the facilitator (markdown supported)..."
+						class="w-full rounded-lg border border-gray-400 p-2 text-sm dark:bg-gray-600 outline-hidden resize-y min-h-[80px]"
+						value={data.questions[selected_question].facilitator_notes ?? ''}
+						oninput={(e) => {
+							data.questions[selected_question].facilitator_notes = e.currentTarget.value || undefined;
+							data = data;
+						}}
+					></textarea>
+				</div>
+				<!-- Discussion Timer -->
+				<div class="flex flex-col gap-1">
+					<span class="text-sm font-medium">Discussion Timer (seconds)</span>
+					<p class="text-xs text-gray-500">Separate from answer timer. Used for group discussion phase.</p>
+					<input
+						type="number"
+						min="0"
+						max="3600"
+						placeholder="e.g. 300 for 5 minutes"
+						class="w-full rounded-lg border border-gray-400 p-1.5 text-sm dark:bg-gray-600 outline-hidden"
+						value={data.questions[selected_question].discussion_time ?? ''}
+						oninput={(e) => {
+							const val = parseInt(e.currentTarget.value);
+							data.questions[selected_question].discussion_time = isNaN(val) ? undefined : val;
+							data = data;
+						}}
+					/>
+				</div>
+			{/if}
 			<div class="mt-auto w-full">
 				<BrownButton onclick={() => (advanced_options_open = false)}
 					>{$t('words.close')}</BrownButton

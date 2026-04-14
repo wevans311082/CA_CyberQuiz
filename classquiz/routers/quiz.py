@@ -125,6 +125,8 @@ async def start_quiz(
         background_color=quiz.background_color,
         custom_field=custom_field,
         background_image=quiz.background_image,
+        scenario_type=getattr(quiz, "scenario_type", None),
+        injects=[inj if isinstance(inj, dict) else inj for inj in quiz.injects] if getattr(quiz, "injects", None) else None,
     )
     code = None
     if cqcs_enabled:

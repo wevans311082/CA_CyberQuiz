@@ -127,6 +127,10 @@ async def finish_edit(edit_id: str, quiz_input: QuizInput):
     if quiz_input.background_image is not None and not check_image_string(quiz_input.background_image)[0]:
         raise HTTPException(status_code=400, detail="image url is not valid")
 
+    # Ensure all questions have stable IDs for branching
+    from classquiz.socket_server.branching import ensure_question_ids
+    quiz_input.questions = ensure_question_ids(quiz_input.questions)
+
     if session_data.edit:
         await arq.enqueue_job("quiz_update", old_quiz_data, old_quiz_data.id, _defer_by=2)
         quiz = old_quiz_data
@@ -144,6 +148,9 @@ async def finish_edit(edit_id: str, quiz_input: QuizInput):
         quiz.background_color = quiz_input.background_color
         quiz.background_image = quiz_input.background_image
         quiz.mod_rating = None
+        quiz.scenario_type = quiz_input.scenario_type
+        quiz.roles = quiz_input.roles
+        quiz.injects = [inj.model_dump() for inj in quiz_input.injects] if quiz_input.injects else None
         for image in images_to_delete:
             if image is not None:
                 try:

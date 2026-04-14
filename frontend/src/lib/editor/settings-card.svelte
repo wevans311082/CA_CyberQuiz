@@ -5,7 +5,7 @@ SPDX-License-Identifier: MPL-2.0
 -->
 
 <script lang="ts">
-	import type { EditorData } from '$lib/quiz_types';
+	import type { EditorData, Inject } from '$lib/quiz_types';
 	import { getLocalization } from '$lib/i18n';
 	import Spinner from '$lib/Spinner.svelte';
 	import { createTippy } from 'svelte-tippy';
@@ -23,6 +23,7 @@ SPDX-License-Identifier: MPL-2.0
 	let { edit_id = $bindable(), data = $bindable() }: Props = $props();
 
 	let custom_bg_color = $state(Boolean(data.background_color));
+	let new_role_input = $state('');
 	const tippy = createTippy({
 		arrow: true,
 		animation: 'perspective-subtle'
@@ -203,6 +204,152 @@ SPDX-License-Identifier: MPL-2.0
 					{/await}
 				{/if}
 			</div>
+			<!-- Scenario Type & Roles (Tabletop) -->
+			<div class="flex justify-center pt-10">
+				<h3>Scenario Type</h3>
+			</div>
+			<div class="pt-4 w-full flex justify-center">
+				<div class="flex items-center gap-4">
+					<span class="text-sm" class:font-semibold={data.scenario_type !== 'tabletop'}>Classic Quiz</span>
+					<label for="scenario-toggle" class="inline-flex relative items-center cursor-pointer">
+						<input
+							type="checkbox"
+							checked={data.scenario_type === 'tabletop'}
+							onchange={() => {
+								data.scenario_type = data.scenario_type === 'tabletop' ? undefined : 'tabletop';
+								if (data.scenario_type === 'tabletop' && !data.roles) {
+									data.roles = [];
+								}
+							}}
+							id="scenario-toggle"
+							class="sr-only peer"
+						/>
+						<span class="w-14 h-7 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-teal-600"></span>
+					</label>
+					<span class="text-sm" class:font-semibold={data.scenario_type === 'tabletop'}>Tabletop Exercise</span>
+				</div>
+			</div>
+			{#if data.scenario_type === 'tabletop'}
+				<div class="flex justify-center pt-6">
+					<h3>Roles</h3>
+				</div>
+				<div class="pt-2 w-full flex justify-center">
+					<div class="flex flex-col items-center gap-2 w-1/2">
+						<div class="flex flex-wrap gap-2 justify-center">
+							{#each data.roles ?? [] as role, i}
+								<span class="inline-flex items-center gap-1 rounded-full bg-teal-600 px-3 py-1 text-sm text-white">
+									{role}
+									<button type="button" class="ml-1 hover:text-red-200" onclick={() => {
+										data.roles = (data.roles ?? []).filter((_, idx) => idx !== i);
+									}}>&times;</button>
+								</span>
+							{/each}
+						</div>
+						<div class="flex gap-2 w-full max-w-xs">
+							<input
+								type="text"
+								bind:value={new_role_input}
+								placeholder="Add role (e.g. CISO)"
+								class="flex-1 rounded-lg border border-gray-400 p-1.5 text-sm dark:bg-gray-600 outline-hidden"
+								onkeydown={(e) => {
+									if (e.key === 'Enter') {
+										e.preventDefault();
+										const v = new_role_input.trim();
+										if (v && !(data.roles ?? []).includes(v)) {
+											data.roles = [...(data.roles ?? []), v];
+											new_role_input = '';
+										}
+									}
+								}}
+							/>
+							<button
+								type="button"
+								class="rounded-lg bg-teal-600 px-3 py-1.5 text-sm text-white hover:bg-teal-700"
+								onclick={() => {
+									const v = new_role_input.trim();
+									if (v && !(data.roles ?? []).includes(v)) {
+										data.roles = [...(data.roles ?? []), v];
+										new_role_input = '';
+									}
+								}}
+							>Add</button>
+						</div>
+					</div>
+				</div>
+				<!-- Injects Editor -->
+				<div class="flex justify-center pt-6">
+					<h3>Injects</h3>
+				</div>
+				<div class="pt-2 w-full flex justify-center">
+					<div class="flex flex-col items-center gap-3 w-2/3">
+						{#each data.injects ?? [] as inject, i}
+							<div class="w-full rounded-lg border p-3 dark:border-gray-500 flex flex-col gap-2"
+								class:border-blue-400={inject.severity === 'info'}
+								class:border-yellow-400={inject.severity === 'warning'}
+								class:border-red-400={inject.severity === 'critical'}
+							>
+								<div class="flex gap-2 items-center">
+									<input
+										type="text"
+										bind:value={inject.title}
+										placeholder="Inject title"
+										class="flex-1 rounded-lg border border-gray-400 p-1.5 text-sm dark:bg-gray-600 outline-hidden"
+									/>
+									<select
+										bind:value={inject.severity}
+										class="rounded-lg border border-gray-400 p-1.5 text-sm dark:bg-gray-600 outline-hidden"
+									>
+										<option value="info">Info</option>
+										<option value="warning">Warning</option>
+										<option value="critical">Critical</option>
+									</select>
+									<button
+										type="button"
+										class="text-red-500 hover:text-red-700 text-lg"
+										onclick={() => {
+											data.injects = (data.injects ?? []).filter((_, idx) => idx !== i);
+										}}
+									>&times;</button>
+								</div>
+								<textarea
+									bind:value={inject.content}
+									placeholder="Inject content (markdown)"
+									class="w-full rounded-lg border border-gray-400 p-1.5 text-sm dark:bg-gray-600 outline-hidden resize-y min-h-[60px]"
+								></textarea>
+								<div class="flex gap-2 items-center">
+									<span class="text-xs text-gray-500">Auto-trigger after:</span>
+									<select
+										class="rounded-lg border border-gray-400 p-1.5 text-xs dark:bg-gray-600 outline-hidden"
+										value={inject.trigger_after_question_id ?? ''}
+										onchange={(e) => {
+											inject.trigger_after_question_id = e.currentTarget.value || undefined;
+											data = data;
+										}}
+									>
+										<option value="">Manual only</option>
+										{#each data.questions as q, qi}
+											<option value={q.id ?? ''}>{qi + 1}. {q.question?.replace(/<[^>]*>/g, '').slice(0, 30) || 'Untitled'}</option>
+										{/each}
+									</select>
+								</div>
+							</div>
+						{/each}
+						<button
+							type="button"
+							class="rounded-lg bg-teal-600 px-4 py-2 text-sm text-white hover:bg-teal-700"
+							onclick={() => {
+								const newInject: Inject = {
+									id: crypto.randomUUID(),
+									title: '',
+									content: '',
+									severity: 'info'
+								};
+								data.injects = [...(data.injects ?? []), newInject];
+							}}
+						>+ Add Inject</button>
+					</div>
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>

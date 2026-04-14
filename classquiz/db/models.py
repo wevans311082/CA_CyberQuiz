@@ -113,6 +113,7 @@ class ABCDQuizAnswer(BaseModel):
     right: bool
     answer: str
     color: str | None = None
+    next_question_id: str | None = None
 
 
 class RangeQuizAnswer(BaseModel):
@@ -143,13 +144,29 @@ class TextQuizAnswer(BaseModel):
     case_sensitive: bool
 
 
+class Inject(BaseModel):
+    """A mid-exercise information card pushed by the facilitator."""
+    id: str | None = None
+    title: str
+    content: str  # markdown body
+    image: str | None = None
+    severity: str = "info"  # info | warning | critical
+    trigger_after_question_id: str | None = None  # auto-push after this question
+
+
 class QuizQuestion(BaseModel):
+    id: str | None = None
     question: str
     time: str  # in Secs
     type: None | QuizQuestionType = QuizQuestionType.ABCD
     answers: list[ABCDQuizAnswer] | RangeQuizAnswer | list[TextQuizAnswer] | list[VotingQuizAnswer] | str
     image: str | None = None
     hide_results: bool | None = False
+    allowed_roles: list[str] | None = None
+    default_next_question_id: str | None = None
+    decision_mode: str | None = None
+    facilitator_notes: str | None = None  # markdown, admin-only
+    discussion_time: int | None = None  # seconds, separate from answer timer
 
     @field_validator("answers")
     def answers_not_none_if_abcd_type(cls, v, info: ValidationInfo):
@@ -178,6 +195,9 @@ class QuizInput(BaseModel):
     background_color: str | None = None
     questions: list[QuizQuestion]
     background_image: str | None = None
+    scenario_type: str | None = None
+    roles: list[str] | None = None
+    injects: list[Inject] | None = None
 
 
 class Quiz(ormar.Model):
@@ -199,6 +219,9 @@ class Quiz(ormar.Model):
     plays: int = ormar.Integer(nullable=False, default=0, server_default="0")
     views: int = ormar.Integer(nullable=False, default=0, server_default="0")
     mod_rating: int | None = ormar.SmallInteger(nullable=True)
+    scenario_type: str | None = ormar.Text(nullable=True, unique=False)
+    roles: Json[list[str]] | None = ormar.JSON(nullable=True)
+    injects: Json[list[dict]] | None = ormar.JSON(nullable=True)
 
     ormar_config = ormar.OrmarConfig(
         tablename="quiz",
@@ -251,6 +274,10 @@ class PlayGame(BaseModel):
     background_image: str | None = None
     custom_field: str | None = None
     question_show: bool = False
+    scenario_type: str | None = None
+    current_question_id: str | None = None
+    injects: list[Inject] | None = None
+    situation_status: dict | None = None  # {severity, phase, affected_systems, summary}
 
     @classmethod
     async def get_from_redis(self, game_pin: str) -> Self:
@@ -375,6 +402,12 @@ class GameResults(ormar.Model):
     title: str = ormar.Text(nullable=False)
     description: str = ormar.Text(nullable=False)
     questions: Json[list[QuizQuestion]] = ormar.JSON(nullable=False)
+    player_roles: Json[dict[str, str]] | None = ormar.JSON(nullable=True)
+    branch_path: Json[list[str]] | None = ormar.JSON(nullable=True)
+    facilitator_overrides: Json[list[dict]] | None = ormar.JSON(nullable=True)
+    scenario_type: str | None = ormar.Text(nullable=True, unique=False)
+    injects_log: Json[list[dict]] | None = ormar.JSON(nullable=True)
+    situation_log: Json[list[dict]] | None = ormar.JSON(nullable=True)
 
     ormar_config = ormar.OrmarConfig(
         tablename="game_results",

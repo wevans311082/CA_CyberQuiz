@@ -44,6 +44,9 @@ SPDX-License-Identifier: MPL-2.0
 			sender_is_admin?: boolean;
 		}>;
 		chat_block_reason?: string | null;
+		my_role?: string;
+		player_roles?: Record<string, string>;
+		scenario_type?: string;
 	}
 
 	let {
@@ -55,7 +58,10 @@ SPDX-License-Identifier: MPL-2.0
 		started = false,
 		socket,
 		chat_messages = [],
-		chat_block_reason = null
+		chat_block_reason = null,
+		my_role = undefined,
+		player_roles = {},
+		scenario_type = undefined
 	}: Props = $props();
 	let chat_input = $state('');
 
@@ -118,6 +124,12 @@ SPDX-License-Identifier: MPL-2.0
 			{#if description}
 				<p class="mt-4 text-base leading-7 text-slate-600 dark:text-slate-400">{@html description}</p>
 			{/if}
+			{#if scenario_type === 'tabletop' && my_role}
+				<div class="mt-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-900 dark:text-cyan-100">
+					<span class="h-2 w-2 rounded-full bg-cyan-500"></span>
+					Your Role: {my_role}
+				</div>
+			{/if}
 			<div class="mt-8 inline-flex items-center gap-3 rounded-full border border-teal-700/20 bg-teal-600/10 px-5 py-3 text-sm font-medium text-teal-900 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-100">
 				<span class="h-2.5 w-2.5 rounded-full bg-teal-600 dark:bg-cyan-300"></span>
 				{#if started}
@@ -146,8 +158,11 @@ SPDX-License-Identifier: MPL-2.0
 			{#if players.length > 0}
 				<div class="mt-5 grid max-h-[45vh] gap-3 overflow-auto pr-2">
 					{#each players as player, idx}
-						<div style="animation-delay: {idx * 50}ms" class="chip-reveal">
+						<div style="animation-delay: {idx * 50}ms" class="chip-reveal flex items-center gap-2">
 							<PlayerAvatarChip username={player.username} avatar_params={player.avatar_params} />
+							{#if scenario_type === 'tabletop' && player_roles[player.username]}
+								<span class="rounded-full bg-teal-600/80 px-2 py-0.5 text-[10px] font-semibold text-white">{player_roles[player.username]}</span>
+							{/if}
 						</div>
 					{/each}
 				</div>

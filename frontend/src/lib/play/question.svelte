@@ -24,14 +24,26 @@ SPDX-License-Identifier: MPL-2.0
 		game_mode: any;
 		question_index: string | number;
 		solution: any;
+		my_role?: string;
+		scenario_type?: string;
+		allowed_roles?: string[];
 	}
 
 	let {
 		question = $bindable(),
 		game_mode = $bindable(),
 		question_index,
-		solution
+		solution,
+		my_role = undefined,
+		scenario_type = undefined,
+		allowed_roles = undefined
 	}: Props = $props();
+
+	// In tabletop mode, check if this player's role is allowed to answer
+	let is_tabletop = $derived(scenario_type === 'tabletop');
+	let role_blocked = $derived(
+		is_tabletop && allowed_roles != null && allowed_roles.length > 0 && my_role != null && !allowed_roles.includes(my_role)
+	);
 
 	if (question.type === undefined) {
 		question.type = QuizQuestionType.ABCD;
@@ -144,6 +156,17 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <div class="h-screen w-screen">
+	{#if is_tabletop && my_role}
+		<div class="absolute top-2 left-2 z-50 rounded-full bg-teal-600 px-3 py-1 text-xs font-semibold text-white shadow">
+			{my_role}
+		</div>
+	{/if}
+	{#if role_blocked}
+		<div class="flex h-screen w-screen flex-col items-center justify-center gap-4 text-center">
+			<p class="text-2xl font-semibold text-slate-700 dark:text-slate-200">Waiting for {allowed_roles?.join(', ')} to decide</p>
+			<p class="text-sm text-slate-500 dark:text-slate-400">This decision is restricted to specific roles.</p>
+		</div>
+	{:else}
 	{#if game_mode === 'normal'}
 		<div
 			class="flex flex-col justify-start"
@@ -362,5 +385,6 @@ SPDX-License-Identifier: MPL-2.0
 				</div>
 			{/await}
 		{/if}
+	{/if}
 	{/if}
 </div>

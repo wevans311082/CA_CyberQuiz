@@ -25,6 +25,25 @@ export interface QuizData {
 	dislikes: number;
 	plays: number;
 	views: number;
+	scenario_type?: string;
+	roles?: string[];
+	injects?: Inject[];
+}
+
+export interface Inject {
+	id: string;
+	title: string;
+	content: string;
+	image?: string;
+	severity: 'info' | 'warning' | 'critical';
+	trigger_after_question_id?: string;
+}
+
+export interface SituationStatus {
+	severity: string;
+	phase: string;
+	affected_systems: string[];
+	summary: string;
 }
 
 export enum QuizQuestionType {
@@ -62,6 +81,12 @@ export interface Question {
 	image?: string;
 	answers: Answers;
 	hide_results?: boolean;
+	id?: string;
+	allowed_roles?: string[];
+	default_next_question_id?: string;
+	decision_mode?: string;
+	facilitator_notes?: string;
+	discussion_time?: number;
 }
 
 export type Answers =
@@ -76,6 +101,7 @@ export interface Answer {
 	right: boolean;
 	answer: string;
 	color?: string;
+	next_question_id?: string;
 }
 
 export interface VotingAnswer {
@@ -92,6 +118,9 @@ export interface EditorData {
 	cover_image?: string;
 	background_color?: string;
 	background_image?: string;
+	scenario_type?: string;
+	roles?: string[];
+	injects?: Inject[];
 }
 
 export interface PrivateImageData {

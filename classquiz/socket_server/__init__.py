@@ -27,6 +27,7 @@ from classquiz.db.models import (
     VotingQuizAnswer,
     AnswerDataList,
     AnswerData,
+    Inject,
 )
 from pydantic import BaseModel, ValidationError
 from datetime import datetime
@@ -46,6 +47,34 @@ from .models import (
     ConnectSessionIdEvent,
     ChatMessage,
     SendChatMessageData,
+)
+from classquiz.socket_server.branching import (
+    is_tabletop,
+    get_allowed_roles,
+    get_player_role,
+    get_all_player_roles,
+    set_player_role,
+    get_eligible_player_count,
+    check_player_role_allowed,
+    tally_votes,
+    resolve_next_question_id,
+    determine_winning_answer,
+    append_branch_path,
+    get_branch_path,
+    log_facilitator_override,
+    get_facilitator_overrides,
+    find_question_by_id,
+    find_question_index_by_id,
+    ensure_question_ids,
+    ensure_inject_ids,
+    get_auto_injects_for_question,
+    log_inject,
+    get_injects_log,
+    set_situation_status,
+    get_situation_status,
+    log_situation_change,
+    get_situation_log,
+    TABLETOP_FLAT_SCORE,
 )
 
 from classquiz.socket_server.export_helpers import save_quiz_to_storage
@@ -240,33 +269,52 @@ async def emit_lobby_state(game_pin: str, room: str | None = None):
 async def emit_current_question(room: str, game_data: PlayGame):
     if game_data.current_question < 0:
         return
+    current_q = game_data.questions[game_data.current_question]
     temp_return = game_data.model_dump(include={"questions"})["questions"][game_data.current_question]
-    if game_data.questions[game_data.current_question].type == QuizQuestionType.SLIDE:
-        await sio.emit(
-            "set_question_number",
-            {
-                "question_index": game_data.current_question,
-                "question": {
-                    **temp_return,
-                    "type": game_data.questions[game_data.current_question].type,
-                },
-            },
-            room=room,
-        )
-        return
+    game_pin = game_data.game_pin
 
-    if game_data.questions[game_data.current_question].type == QuizQuestionType.VOTING:
-        for i in range(len(temp_return["answers"])):
-            temp_return["answers"][i] = VotingQuizAnswer(**temp_return["answers"][i])
-    temp_return["type"] = game_data.questions[game_data.current_question].type
-    await sio.emit(
-        "set_question_number",
-        {
+    if current_q.type == QuizQuestionType.SLIDE:
+        payload = {
+            "question_index": game_data.current_question,
+            "question": {
+                **temp_return,
+                "type": current_q.type,
+            },
+        }
+        if is_tabletop(game_data):
+            payload["allowed_roles"] = current_q.allowed_roles
+            payload["decision_mode"] = current_q.decision_mode
+            payload["discussion_time"] = current_q.discussion_time
+        await sio.emit("set_question_number", payload, room=room)
+    else:
+        if current_q.type == QuizQuestionType.VOTING:
+            for i in range(len(temp_return["answers"])):
+                temp_return["answers"][i] = VotingQuizAnswer(**temp_return["answers"][i])
+        temp_return["type"] = current_q.type
+        payload = {
             "question_index": game_data.current_question,
             "question": ReturnQuestion(**temp_return).model_dump(),
-        },
-        room=room,
-    )
+        }
+        if is_tabletop(game_data):
+            payload["allowed_roles"] = current_q.allowed_roles
+            payload["decision_mode"] = current_q.decision_mode
+            payload["discussion_time"] = current_q.discussion_time
+        await sio.emit("set_question_number", payload, room=room)
+
+    # Send facilitator notes to admin only
+    if is_tabletop(game_data) and current_q.facilitator_notes:
+        await sio.emit(
+            "facilitator_notes",
+            {"question_index": game_data.current_question, "notes": current_q.facilitator_notes},
+            room=f"admin:{game_pin}",
+        )
+
+    # Auto-fire injects triggered by this question
+    if is_tabletop(game_data) and game_data.injects and current_q.id:
+        auto_injects = get_auto_injects_for_question(game_data.injects, current_q.id)
+        for inj in auto_injects:
+            await log_inject(game_pin, inj, triggered_by="auto")
+            await sio.emit("inject_received", inj.model_dump(), room=game_pin)
 
 
 async def generate_final_results(game_data: PlayGame, game_pin: str) -> dict:
@@ -444,11 +492,29 @@ async def start_game(sid: str, _data: dict):
     game_data = await PlayGame.get_from_redis(session["game_pin"])
     if len(game_data.questions) == 0:
         return
+
+    # Ensure all questions have IDs for tabletop branching
+    if is_tabletop(game_data):
+        game_data.questions = ensure_question_ids(game_data.questions)
+        game_data.injects = ensure_inject_ids(game_data.injects)
+
     game_data.started = True
     game_data.current_question = 0
     game_data.question_show = False
+
+    # Track current question ID for tabletop branching
+    if is_tabletop(game_data) and game_data.questions[0].id:
+        game_data.current_question_id = game_data.questions[0].id
+        await append_branch_path(session["game_pin"], game_data.questions[0].id)
+
     await game_data.save(session["game_pin"])
     await redis.delete(f"game_in_lobby:{game_data.user_id.hex}")
+
+    # Emit roles to all players for tabletop mode
+    if is_tabletop(game_data):
+        roles = await get_all_player_roles(session["game_pin"])
+        await sio.emit("roles_updated", {"roles": roles}, room=session["game_pin"])
+
     await sio.emit("start_game", room=session["game_pin"])
 
     countdown_start = datetime.now().isoformat()
@@ -635,6 +701,17 @@ async def submit_answer(sid: str, data: dict):
     session = await get_session(sid, sio)
     question_index = int(float(data.question_index))
     game_data = await PlayGame.get_from_redis(session["game_pin"])
+
+    # --- Role-gated answering for tabletop mode ---
+    if is_tabletop(game_data):
+        current_q = game_data.questions[question_index]
+        allowed_roles = get_allowed_roles(current_q)
+        if allowed_roles is not None:
+            player_role = await get_player_role(session["game_pin"], session["username"])
+            if not check_player_role_allowed(player_role, allowed_roles):
+                await sio.emit("role_not_allowed", {"allowed_roles": allowed_roles}, room=sid)
+                return
+
     already_answered = await has_already_answered(session["game_pin"], question_index, session["username"])
     if already_answered:
         await sio.emit("already_replied", room=sid)
@@ -643,14 +720,20 @@ async def submit_answer(sid: str, data: dict):
     latency = int(float(session.get("ping", 0)))
     time_q_started = datetime.fromisoformat(await redis.get(f"game:{session['game_pin']}:current_time"))
     diff = (time_q_started - now).total_seconds() * 1000  # - timedelta(milliseconds=latency)
-    score = 0
-    if answer_right:
-        score = calculate_score(
-            abs(diff) - latency,
-            int(float(game_data.questions[question_index].time)),
-        )
-        if score > 1000:
-            score = 1000
+
+    # --- Tabletop flat scoring vs speed-based ---
+    if is_tabletop(game_data):
+        score = TABLETOP_FLAT_SCORE if answer_right else 0
+    else:
+        score = 0
+        if answer_right:
+            score = calculate_score(
+                abs(diff) - latency,
+                int(float(game_data.questions[question_index].time)),
+            )
+            if score > 1000:
+                score = 1000
+
     await redis.hincrby(f"game_session:{session['game_pin']}:player_scores", session["username"], score)
     answer_data = AnswerData(
         username=session["username"],
@@ -666,9 +749,17 @@ async def submit_answer(sid: str, data: dict):
         data=answer_data,
         q_index=int(float(data.question_index)),
     )
-    player_count = await redis.scard(f"game_session:{session['game_pin']}:players")
+
+    # --- Eligible player count (role-aware for tabletop) ---
+    if is_tabletop(game_data):
+        current_q = game_data.questions[question_index]
+        allowed_roles = get_allowed_roles(current_q)
+        eligible_count = await get_eligible_player_count(session["game_pin"], allowed_roles)
+    else:
+        eligible_count = await redis.scard(f"game_session:{session['game_pin']}:players")
+
     await sio.emit("player_answer", {})
-    if len(answers) == player_count:
+    if len(answers) >= eligible_count:
         game_data = await PlayGame.get_from_redis(session["game_pin"])
         game_data.question_show = False
         await game_data.save(session["game_pin"])
@@ -892,3 +983,383 @@ async def debug_echo(sid: str, data: dict | None = None):
         },
         room=sid,
     )
+
+
+# ============================================================
+# Tabletop exercise events: role assignment, branching, overrides
+# ============================================================
+
+
+class _AssignRoleInput(BaseModel):
+    username: str
+    role: str
+
+
+@sio.event
+async def assign_role(sid: str, data: dict):
+    """Admin assigns a role to a player. Works in lobby or during game."""
+    try:
+        data = _AssignRoleInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    # Verify the player exists
+    player = await get_player_record(game_pin, data.username)
+    if player is None:
+        await sio.emit("error", {"message": "player_not_found"}, room=sid)
+        return
+
+    await set_player_role(game_pin, data.username, data.role)
+    roles = await get_all_player_roles(game_pin)
+    await sio.emit("roles_updated", {"roles": roles}, room=game_pin)
+
+
+class _BulkAssignRolesInput(BaseModel):
+    assignments: dict[str, str]  # {username: role}
+
+
+@sio.event
+async def bulk_assign_roles(sid: str, data: dict):
+    """Admin assigns roles to multiple players at once."""
+    try:
+        data = _BulkAssignRolesInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    for username, role in data.assignments.items():
+        await set_player_role(game_pin, username, role)
+
+    roles = await get_all_player_roles(game_pin)
+    await sio.emit("roles_updated", {"roles": roles}, room=game_pin)
+
+
+class _ForceNextQuestionInput(BaseModel):
+    question_id: str
+
+
+@sio.event
+async def force_next_question(sid: str, data: dict):
+    """Admin overrides branching and forces a specific next question."""
+    try:
+        data = _ForceNextQuestionInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    game_data = await PlayGame.get_from_redis(game_pin)
+
+    result = find_question_by_id(game_data.questions, data.question_id)
+    if result is None:
+        await sio.emit("error", {"message": "question_not_found"}, room=sid)
+        return
+
+    target_index, _target_question = result
+
+    # Log the override
+    await log_facilitator_override(
+        game_pin,
+        game_data.current_question_id,
+        data.question_id,
+    )
+
+    # Advance to the forced question
+    game_data.current_question = target_index
+    game_data.current_question_id = data.question_id
+    game_data.question_show = True
+    await game_data.save(game_pin)
+    await redis.set(f"game:{game_pin}:current_time", datetime.now().isoformat(), ex=7200)
+
+    await append_branch_path(game_pin, data.question_id)
+    await emit_current_question(game_pin, game_data)
+
+
+class _ResolveTieInput(BaseModel):
+    answer_text: str
+
+
+@sio.event
+async def resolve_tie(sid: str, data: dict):
+    """Admin breaks a tie by selecting the winning answer, then resolves branching."""
+    try:
+        data = _ResolveTieInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    game_data = await PlayGame.get_from_redis(game_pin)
+    current_q = game_data.questions[game_data.current_question]
+
+    # Resolve the next question based on the admin-chosen answer
+    next_q_id = resolve_next_question_id(current_q, data.answer_text)
+
+    if next_q_id is None:
+        # Scenario complete — no further questions
+        branch_path = await get_branch_path(game_pin)
+        await sio.emit(
+            "scenario_complete",
+            {"branch_path": branch_path, "winning_answer": data.answer_text},
+            room=game_pin,
+        )
+        return
+
+    result = find_question_by_id(game_data.questions, next_q_id)
+    if result is None:
+        await sio.emit("error", {"message": "branch_target_not_found"}, room=sid)
+        return
+
+    target_index, _target_question = result
+    game_data.current_question = target_index
+    game_data.current_question_id = next_q_id
+    game_data.question_show = True
+    await game_data.save(game_pin)
+    await redis.set(f"game:{game_pin}:current_time", datetime.now().isoformat(), ex=7200)
+
+    await append_branch_path(game_pin, next_q_id)
+    await sio.emit(
+        "branch_resolved",
+        {"winning_answer": data.answer_text, "next_question_id": next_q_id},
+        room=game_pin,
+    )
+    await emit_current_question(game_pin, game_data)
+
+
+@sio.event
+async def advance_tabletop(sid: str, _data: dict):
+    """Admin advances to the next question using branching logic (majority vote).
+
+    Called after everyone has answered or after showing solutions.
+    Resolves the winning answer, determines the next question, and emits it.
+    """
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    game_data = await PlayGame.get_from_redis(game_pin)
+
+    if not is_tabletop(game_data):
+        return
+
+    current_q = game_data.questions[game_data.current_question]
+    q_index = game_data.current_question
+
+    # Tally the votes for the current question
+    answer_data_list = await AnswerDataList.get_redis_or_empty(game_pin, str(q_index))
+    vote_tally = tally_votes(answer_data_list)
+
+    winning_answer, is_tie = determine_winning_answer(vote_tally)
+
+    if is_tie:
+        # Notify admin of tie — they must call resolve_tie
+        tied_answers = [
+            answer for answer, count in vote_tally.most_common()
+            if count == vote_tally.most_common()[0][1]
+        ]
+        await sio.emit(
+            "tie_detected",
+            {"tied_answers": tied_answers, "vote_tally": dict(vote_tally)},
+            room=f"admin:{game_pin}",
+        )
+        return
+
+    # Resolve next question
+    next_q_id = resolve_next_question_id(current_q, winning_answer)
+
+    if next_q_id is None:
+        # Scenario complete
+        branch_path = await get_branch_path(game_pin)
+        await sio.emit(
+            "scenario_complete",
+            {"branch_path": branch_path, "winning_answer": winning_answer},
+            room=game_pin,
+        )
+        return
+
+    result = find_question_by_id(game_data.questions, next_q_id)
+    if result is None:
+        # Branch target missing — treat as scenario complete
+        branch_path = await get_branch_path(game_pin)
+        await sio.emit(
+            "scenario_complete",
+            {"branch_path": branch_path, "winning_answer": winning_answer, "error": "branch_target_not_found"},
+            room=game_pin,
+        )
+        return
+
+    target_index, _target_question = result
+    game_data.current_question = target_index
+    game_data.current_question_id = next_q_id
+    game_data.question_show = True
+    await game_data.save(game_pin)
+    await redis.set(f"game:{game_pin}:current_time", datetime.now().isoformat(), ex=7200)
+
+    await append_branch_path(game_pin, next_q_id)
+    await sio.emit(
+        "branch_resolved",
+        {"winning_answer": winning_answer, "next_question_id": next_q_id},
+        room=game_pin,
+    )
+    await emit_current_question(game_pin, game_data)
+
+
+@sio.event
+async def get_tabletop_state(sid: str, _data: dict):
+    """Admin requests current tabletop state (roles, branch path, etc.)."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    roles = await get_all_player_roles(game_pin)
+    branch_path = await get_branch_path(game_pin)
+    overrides = await get_facilitator_overrides(game_pin)
+
+    await sio.emit(
+        "tabletop_state",
+        {
+            "roles": roles,
+            "branch_path": branch_path,
+            "facilitator_overrides": overrides,
+        },
+        room=sid,
+    )
+
+
+# ============================================================
+# Inject system: push injects to players
+# ============================================================
+
+
+class _PushInjectInput(BaseModel):
+    inject_id: str | None = None  # ID of a pre-defined inject
+    title: str | None = None  # For ad-hoc injects
+    content: str | None = None
+    image: str | None = None
+    severity: str = "info"
+
+
+@sio.event
+async def push_inject(sid: str, data: dict):
+    """Admin pushes an inject to all players (pre-defined by ID or ad-hoc)."""
+    try:
+        data = _PushInjectInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    game_data = await PlayGame.get_from_redis(game_pin)
+
+    inject = None
+    if data.inject_id and game_data.injects:
+        # Find pre-defined inject by ID
+        for inj in game_data.injects:
+            if inj.id == data.inject_id:
+                inject = inj
+                break
+    if inject is None:
+        # Ad-hoc inject
+        import uuid as _uuid
+        inject = Inject(
+            id=data.inject_id or str(_uuid.uuid4()),
+            title=data.title or "Inject",
+            content=data.content or "",
+            image=data.image,
+            severity=data.severity,
+        )
+
+    await log_inject(game_pin, inject, triggered_by="facilitator")
+    await sio.emit("inject_received", inject.model_dump(), room=game_pin)
+
+
+class _DismissInjectInput(BaseModel):
+    inject_id: str
+
+
+@sio.event
+async def dismiss_inject(sid: str, data: dict):
+    """Player acknowledges/dismisses an inject."""
+    # No-op on server — purely client-side state management
+    pass
+
+
+# ============================================================
+# Situation Room: shared incident status board
+# ============================================================
+
+
+class _UpdateSituationInput(BaseModel):
+    severity: str | None = None  # green | amber | red | critical
+    phase: str | None = None  # e.g. "Detection", "Containment", "Eradication", "Recovery"
+    affected_systems: list[str] | None = None
+    summary: str | None = None
+
+
+@sio.event
+async def update_situation(sid: str, data: dict):
+    """Admin updates the situation room status board."""
+    try:
+        data = _UpdateSituationInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+
+    status = {
+        "severity": data.severity,
+        "phase": data.phase,
+        "affected_systems": data.affected_systems,
+        "summary": data.summary,
+    }
+    await set_situation_status(game_pin, status)
+    await log_situation_change(game_pin, status)
+    await sio.emit("situation_updated", status, room=game_pin)
+
+
+@sio.event
+async def get_situation(sid: str, _data: dict):
+    """Any participant requests the current situation status."""
+    session = await get_session(sid, sio)
+    game_pin = session.get("game_pin")
+    if not game_pin:
+        return
+
+    status = await get_situation_status(game_pin)
+    await sio.emit("situation_updated", status or {}, room=sid)

@@ -157,6 +157,24 @@ SPDX-License-Identifier: MPL-2.0
 						answer.color = default_colors[index];
 					})}
 				/>
+				{#if data.scenario_type === 'tabletop'}
+					<select
+						class="ml-1 rounded-lg border border-gray-400 p-1 text-xs dark:bg-gray-600 outline-hidden max-w-[120px]"
+						value={answer.next_question_id ?? ''}
+						onchange={(e) => {
+							answer.next_question_id = e.currentTarget.value || undefined;
+							data = data;
+						}}
+						title="Branch to question"
+					>
+						<option value="">No branch</option>
+						{#each data.questions as q, qi}
+							{#if qi !== selected_question}
+								<option value={q.id ?? ''}>{qi + 1}. {q.question?.replace(/<[^>]*>/g, '').slice(0, 25) || 'Q' + (qi + 1)}</option>
+							{/if}
+						{/each}
+					</select>
+				{/if}
 			</div>
 		{/each}
 	{/if}
