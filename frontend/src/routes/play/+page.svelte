@@ -180,6 +180,9 @@ SPDX-License-Identifier: MPL-2.0
 		if (data.started) {
 			gameMeta.started = true;
 		}
+		if (data.scenario_type) {
+			scenario_type = data.scenario_type;
+		}
 	};
 
 	const onGameNotFound = () => {
@@ -551,7 +554,7 @@ SPDX-License-Identifier: MPL-2.0
 		}}
 	/>
 	<!-- Situation Room Pop-out -->
-	{#if scenario_type === 'tabletop' && gameMeta.started}
+	{#if scenario_type === 'tabletop' && gameData !== undefined}
 		<SituationRoom
 			bind:open={situation_room_open}
 			{situation_status}

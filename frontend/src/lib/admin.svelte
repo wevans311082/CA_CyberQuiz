@@ -14,6 +14,7 @@ SPDX-License-Identifier: MPL-2.0
 	import Spinner from '$lib/Spinner.svelte';
 	import Controls from '$lib/play/admin/controls.svelte';
 	import Question from '$lib/play/admin/question.svelte';
+	import BranchMap from '$lib/play/admin/BranchMap.svelte';
 
 	const { t } = getLocalization();
 	const default_colors = ['#D6EDC9', '#B07156', '#7F7057', '#4E6E58'];
@@ -164,6 +165,9 @@ SPDX-License-Identifier: MPL-2.0
 		{facilitator_notes}
 		bind:situation_status
 	/>
+{/if}
+{#if quiz_data.scenario_type === 'tabletop' && quiz_data.questions?.length}
+	<BranchMap questions={quiz_data.questions} {selected_question} />
 {/if}
 {#if timer_res !== '0' && selected_question >= 0}
 	<span
