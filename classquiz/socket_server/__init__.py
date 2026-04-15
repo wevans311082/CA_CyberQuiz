@@ -513,7 +513,7 @@ async def start_game(sid: str, _data: dict):
     # Emit roles to all players for tabletop mode
     if is_tabletop(game_data):
         roles = await get_all_player_roles(session["game_pin"])
-        await sio.emit("roles_updated", {"roles": roles}, room=session["game_pin"])
+        await sio.emit("roles_updated", {"player_roles": roles}, room=session["game_pin"])
 
     await sio.emit("start_game", room=session["game_pin"])
 
@@ -1191,7 +1191,7 @@ async def advance_tabletop(sid: str, _data: dict):
         ]
         await sio.emit(
             "tie_detected",
-            {"tied_answers": tied_answers, "vote_tally": dict(vote_tally)},
+            {"tied_answers": tied_answers, "votes": dict(vote_tally)},
             room=f"admin:{game_pin}",
         )
         return

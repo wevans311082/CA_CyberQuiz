@@ -31,15 +31,6 @@ SPDX-License-Identifier: MPL-2.0
 
 	let { avatar_params = $bindable(), onconfirm, confirmed = $bindable() }: Props = $props();
 
-	// -- Category definitions --
-	type Category = {
-		key: string;
-		label: string;
-		icon: string;
-		options: { value: number; label: string; preview?: string }[];
-		paramKey: keyof AvatarParams;
-	};
-
 	const skinTones: { value: number; label: string; color: string }[] = [
 		{ value: 0, label: 'Dark', color: '#614335' },
 		{ value: 1, label: 'Tanned', color: '#D08B5B' },
