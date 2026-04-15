@@ -766,12 +766,12 @@ async def submit_answer(sid: str, data: dict):
     else:
         eligible_count = await redis.scard(f"game_session:{session['game_pin']}:players")
 
-    await sio.emit("player_answer", {})
+    await sio.emit("player_answer", {}, room=session["game_pin"])
     if len(answers) >= eligible_count:
         game_data = await PlayGame.get_from_redis(session["game_pin"])
         game_data.question_show = False
         await game_data.save(session["game_pin"])
-        await sio.emit("everyone_answered", {})
+        await sio.emit("everyone_answered", {}, room=session["game_pin"])
 
 
 @sio.event
@@ -1199,30 +1199,35 @@ async def resolve_tie(sid: str, data: dict):
 
     # Resolve the next question based on the admin-chosen answer
     next_q_id = resolve_next_question_id(current_q, data.answer_text)
+    q_index = game_data.current_question
 
     if next_q_id is None:
-        # Scenario complete — no further questions
-        branch_path = await get_branch_path(game_pin)
-        await sio.emit(
-            "scenario_complete",
-            {"branch_path": branch_path, "winning_answer": data.answer_text},
-            room=game_pin,
-        )
-        return
-
-    result = find_question_by_id(game_data.questions, next_q_id)
-    if result is None:
-        await sio.emit("error", {"message": "branch_target_not_found"}, room=sid)
-        return
-
-    target_index, _target_question = result
+        # No branch configured — try sequential advancement before giving up
+        next_seq_idx = q_index + 1
+        if next_seq_idx < len(game_data.questions):
+            target_index = next_seq_idx
+            next_q_id = game_data.questions[next_seq_idx].id
+        else:
+            branch_path = await get_branch_path(game_pin)
+            await sio.emit(
+                "scenario_complete",
+                {"branch_path": branch_path, "winning_answer": data.answer_text},
+                room=game_pin,
+            )
+            return
+    else:
+        result = find_question_by_id(game_data.questions, next_q_id)
+        if result is None:
+            await sio.emit("error", {"message": "branch_target_not_found"}, room=sid)
+            return
+        target_index, _target_question = result
     game_data.current_question = target_index
     game_data.current_question_id = next_q_id
     game_data.question_show = True
     await game_data.save(game_pin)
     await redis.set(f"game:{game_pin}:current_time", datetime.now().isoformat(), ex=7200)
 
-    await append_branch_path(game_pin, next_q_id)
+    await append_branch_path(game_pin, next_q_id or str(target_index))
     await sio.emit(
         "branch_resolved",
         {"winning_answer": data.answer_text, "next_question_id": next_q_id},
@@ -1274,34 +1279,39 @@ async def advance_tabletop(sid: str, _data: dict):
     next_q_id = resolve_next_question_id(current_q, winning_answer)
 
     if next_q_id is None:
-        # Scenario complete
-        branch_path = await get_branch_path(game_pin)
-        await sio.emit(
-            "scenario_complete",
-            {"branch_path": branch_path, "winning_answer": winning_answer},
-            room=game_pin,
-        )
-        return
-
-    result = find_question_by_id(game_data.questions, next_q_id)
-    if result is None:
-        # Branch target missing — treat as scenario complete
-        branch_path = await get_branch_path(game_pin)
-        await sio.emit(
-            "scenario_complete",
-            {"branch_path": branch_path, "winning_answer": winning_answer, "error": "branch_target_not_found"},
-            room=game_pin,
-        )
-        return
-
-    target_index, _target_question = result
+        # No branch or default configured — try sequential advancement before giving up
+        next_seq_idx = q_index + 1
+        if next_seq_idx < len(game_data.questions):
+            target_index = next_seq_idx
+            next_q_id = game_data.questions[next_seq_idx].id  # may be None if question has no ID
+        else:
+            # Truly the last question — scenario complete
+            branch_path = await get_branch_path(game_pin)
+            await sio.emit(
+                "scenario_complete",
+                {"branch_path": branch_path, "winning_answer": winning_answer},
+                room=game_pin,
+            )
+            return
+    else:
+        result = find_question_by_id(game_data.questions, next_q_id)
+        if result is None:
+            # Branch target missing — treat as scenario complete
+            branch_path = await get_branch_path(game_pin)
+            await sio.emit(
+                "scenario_complete",
+                {"branch_path": branch_path, "winning_answer": winning_answer, "error": "branch_target_not_found"},
+                room=game_pin,
+            )
+            return
+        target_index, _target_question = result
     game_data.current_question = target_index
     game_data.current_question_id = next_q_id
     game_data.question_show = True
     await game_data.save(game_pin)
     await redis.set(f"game:{game_pin}:current_time", datetime.now().isoformat(), ex=7200)
 
-    await append_branch_path(game_pin, next_q_id)
+    await append_branch_path(game_pin, next_q_id or str(target_index))
     await sio.emit(
         "branch_resolved",
         {"winning_answer": winning_answer, "next_question_id": next_q_id},
