@@ -370,6 +370,14 @@ SPDX-License-Identifier: MPL-2.0
 						class="w-full rounded border border-gray-400 p-1.5 text-xs dark:bg-gray-700 outline-hidden resize-y min-h-[40px]"
 					></textarea>
 				</div>
+				<div>
+					<span class="text-xs font-semibold">Context / Background</span>
+					<textarea
+						bind:value={(situation_status as any).context_notes}
+						placeholder="Scenario background, asset details, threat actor info..."
+						class="w-full rounded border border-gray-400 p-1.5 text-xs dark:bg-gray-700 outline-hidden resize-y min-h-[48px]"
+					></textarea>
+				</div>
 				<button
 					class="mt-1 w-full rounded bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700"
 					onclick={update_situation}

@@ -8,7 +8,7 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	import { socket } from '$lib/socket';
 	import JoinGame from '$lib/play/join.svelte';
-	import type { Answer, Question as QuestionType, Inject, SituationStatus } from '$lib/quiz_types';
+	import type { Answer, Question as QuestionType, Inject, SituationStatus, TimelineEvent } from '$lib/quiz_types';
 	import { QuizQuestionType } from '$lib/quiz_types';
 	import ShowTitle from '$lib/play/title.svelte';
 	import Question from '$lib/play/question.svelte';
@@ -23,6 +23,7 @@ SPDX-License-Identifier: MPL-2.0
 	import CountdownOverlay from '$lib/play/countdown_overlay.svelte';
 	import { getLocalization } from '$lib/i18n';
 	import { onDestroy, onMount } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import Cookies from 'js-cookie';
 	const { t } = getLocalization();
 
@@ -103,6 +104,12 @@ SPDX-License-Identifier: MPL-2.0
 	let injects_log = $state<Array<{ inject: Inject; triggered_by: string; timestamp: string }>>([]);
 	let situation_room_open = $state(false);
 	let answer_summary = $state<{ total: number; answers: Record<string, number> } | null>(null);
+	let event_log = $state<TimelineEvent[]>([]);
+
+	let _evt_counter = 0;
+	const add_event = (ev: Omit<TimelineEvent, 'id' | 'timestamp'>) => {
+		event_log = [...event_log, { ...ev, id: String(++_evt_counter), timestamp: new Date().toISOString() }];
+	};
 
 	let preventReload = true;
 
@@ -210,10 +217,13 @@ SPDX-License-Identifier: MPL-2.0
 		// Capture tabletop metadata from question payload
 		current_allowed_roles = data.question?.allowed_roles ?? undefined;
 		current_decision_mode = data.question?.decision_mode ?? undefined;
+		const q_text = data.question?.question?.replace(/<[^>]*>/g, '').trim() ?? `Question ${data.question_index}`;
+		add_event({ type: 'question_asked', title: `Q${Number(data.question_index) + 1}: ${q_text.slice(0, 60)}${q_text.length > 60 ? '…' : ''}` });
 	};
 
 	const onStartGame = () => {
 		gameMeta.started = true;
+		add_event({ type: 'game_started', title: 'Game started' });
 		setTimeout(() => {
 			if (!countdown_event_received && !countdown_active && question_index === '') {
 				startCountdownFromServer({ server_timestamp: new Date().toISOString(), duration_seconds: 5 });
@@ -256,6 +266,10 @@ SPDX-License-Identifier: MPL-2.0
 	const onQuestionResults = (data: Array<Answer>) => {
 		restart();
 		answer_results = data;
+		if (data) {
+			const correct = Array.isArray(data) ? data.filter((a: any) => a?.is_right).length : 0;
+			add_event({ type: 'answer_results', title: 'Results revealed', detail: `${correct} player${correct !== 1 ? 's' : ''} answered correctly` });
+		}
 	};
 
 	const onUsernameAlreadyExists = () => {
@@ -321,7 +335,11 @@ SPDX-License-Identifier: MPL-2.0
 		if (data?.player_roles) {
 			player_roles = data.player_roles;
 			if (username && data.player_roles[username]) {
-				my_role = data.player_roles[username];
+				const new_role = data.player_roles[username];
+				if (new_role !== my_role) {
+					my_role = new_role;
+					add_event({ type: 'role_assigned', title: `Role assigned: ${new_role}`, detail: `You are now the ${new_role}` });
+				}
 			}
 		}
 	};
@@ -330,14 +348,38 @@ SPDX-License-Identifier: MPL-2.0
 		// Answer rejected server-side — no action needed, button should already be disabled
 	};
 
+	// Role proposal (admin proposes, player accepts/declines)
+	let pending_role_proposal = $state<{ role: string } | null>(null);
+
+	const onRoleProposed = (data: { username: string; role: string }) => {
+		// Only show the modal if this proposal is for me
+		if (data?.username === username) {
+			pending_role_proposal = { role: data.role };
+		}
+	};
+
+	const accept_role = () => {
+		if (pending_role_proposal) {
+			socket.emit('respond_to_role', { role: pending_role_proposal.role, accepted: true });
+			pending_role_proposal = null;
+		}
+	};
+	const decline_role = () => {
+		if (pending_role_proposal) {
+			socket.emit('respond_to_role', { role: pending_role_proposal.role, accepted: false });
+			pending_role_proposal = null;
+		}
+	};
+
 	const onBranchResolved = (data: { question_id?: string; branch_path?: string[] }) => {
 		if (data?.branch_path) {
 			branch_path = data.branch_path;
 		}
+		add_event({ type: 'branch_resolved', title: 'Decision made', detail: 'Team voted and a path was chosen' });
 	};
 
 	const onScenarioComplete = () => {
-		// Scenario finished, final results will follow
+		add_event({ type: 'scenario_complete', title: 'Scenario complete', detail: 'The tabletop exercise has concluded' });
 	};
 
 	const onTieDetected = (_data: { votes?: Record<string, number> }) => {
@@ -349,12 +391,14 @@ SPDX-License-Identifier: MPL-2.0
 			active_injects = [...active_injects, data];
 			// Also record in inject history for situation room
 			injects_log = [...injects_log, { inject: data, triggered_by: 'facilitator', timestamp: new Date().toISOString() }];
+			add_event({ type: 'inject', title: data.title ?? 'Inject received', detail: data.content?.slice(0, 80), data: { severity: data.severity } as Record<string, unknown> });
 		}
 	};
 
 	const onSituationUpdated = (data: SituationStatus) => {
 		if (data) {
 			situation_status = data;
+			add_event({ type: 'situation_update', title: `Situation update: ${data.severity ?? ''} / ${data.phase ?? ''}`, detail: data.summary?.slice(0, 80) });
 		}
 	};
 
@@ -400,6 +444,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('lobby_state', onLobbyState);
 		socket.on('roles_updated', onRolesUpdated);
 		socket.on('role_not_allowed', onRoleNotAllowed);
+		socket.on('role_proposed', onRoleProposed);
 		socket.on('branch_resolved', onBranchResolved);
 		socket.on('scenario_complete', onScenarioComplete);
 		socket.on('tie_detected', onTieDetected);
@@ -431,6 +476,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('lobby_state', onLobbyState);
 		socket.off('roles_updated', onRolesUpdated);
 		socket.off('role_not_allowed', onRoleNotAllowed);
+		socket.off('role_proposed', onRoleProposed);
 		socket.off('branch_resolved', onBranchResolved);
 		socket.off('scenario_complete', onScenarioComplete);
 		socket.off('tie_detected', onTieDetected);
@@ -559,6 +605,7 @@ SPDX-License-Identifier: MPL-2.0
 			bind:open={situation_room_open}
 			{situation_status}
 			{injects_log}
+			{event_log}
 			{socket}
 		/>
 	{/if}
@@ -615,3 +662,31 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 	{/if}
 </div>
+
+<!-- Role proposal modal -->
+{#if pending_role_proposal}
+	<div class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50" transition:fade={{ duration: 150 }}>
+		<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-2xl p-6 max-w-sm w-full mx-4">
+			<div class="flex items-center gap-3 mb-4">
+				<span class="text-3xl">👤</span>
+				<div>
+					<h2 class="text-lg font-bold text-gray-900 dark:text-white">Role Assignment</h2>
+					<p class="text-sm text-gray-500 dark:text-gray-400">The facilitator has proposed a role for you</p>
+				</div>
+			</div>
+			<div class="rounded-xl bg-teal-50 dark:bg-teal-900/40 border border-teal-300 dark:border-teal-700 px-4 py-3 mb-5 text-center">
+				<span class="text-xl font-bold text-teal-700 dark:text-teal-300">{pending_role_proposal.role}</span>
+			</div>
+			<div class="flex gap-3">
+				<button
+					class="flex-1 rounded-xl bg-teal-600 px-4 py-2.5 font-semibold text-white hover:bg-teal-700 transition"
+					onclick={accept_role}
+				>Accept</button>
+				<button
+					class="flex-1 rounded-xl bg-gray-200 dark:bg-gray-700 px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+					onclick={decline_role}
+				>Decline</button>
+			</div>
+		</div>
+	</div>
+{/if}

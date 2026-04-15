@@ -1055,6 +1055,80 @@ async def bulk_assign_roles(sid: str, data: dict):
     await sio.emit("roles_updated", {"player_roles": roles}, room=game_pin)
 
 
+class _RoleProposalInput(BaseModel):
+    username: str
+    role: str
+
+
+@sio.event
+async def propose_role(sid: str, data: dict):
+    """Admin proposes a role to a player; they must accept before it's assigned."""
+    try:
+        data = _RoleProposalInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    player = await get_player_record(game_pin, data.username)
+    if player is None:
+        await sio.emit("error", {"message": "player_not_found"}, room=sid)
+        return
+
+    # Find the player's SID by scanning session keys
+    player_sid = await redis.get(f"game_session:{game_pin}:players:{data.username}")
+    if not player_sid:
+        # Fallback: broadcast to whole room (player handles if it's them)
+        await sio.emit(
+            "role_proposed",
+            {"username": data.username, "role": data.role, "from_admin": True},
+            room=game_pin,
+        )
+    else:
+        await sio.emit(
+            "role_proposed",
+            {"username": data.username, "role": data.role, "from_admin": True},
+            room=player_sid.decode() if isinstance(player_sid, bytes) else player_sid,
+        )
+    # Notify admin the proposal was sent
+    await sio.emit("role_proposal_sent", {"username": data.username, "role": data.role}, room=sid)
+
+
+class _RoleResponseInput(BaseModel):
+    role: str
+    accepted: bool
+
+
+@sio.event
+async def respond_to_role(sid: str, data: dict):
+    """Player accepts or declines a proposed role."""
+    try:
+        data = _RoleResponseInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    username = session.get("username")
+    game_pin = session.get("game_pin")
+    if not username or not game_pin:
+        return
+
+    if data.accepted:
+        await set_player_role(game_pin, username, data.role)
+        roles = await get_all_player_roles(game_pin)
+        await sio.emit("roles_updated", {"player_roles": roles}, room=game_pin)
+        await sio.emit("role_accepted_ack", {"username": username, "role": data.role}, room=game_pin)
+    else:
+        await sio.emit("role_declined", {"username": username, "role": data.role}, room=game_pin)
+
+
 class _ForceNextQuestionInput(BaseModel):
     question_id: str
 
@@ -1332,6 +1406,7 @@ class _UpdateSituationInput(BaseModel):
     phase: str | None = None  # e.g. "Detection", "Containment", "Eradication", "Recovery"
     affected_systems: list[str] | None = None
     summary: str | None = None
+    context_notes: str | None = None
 
 
 @sio.event
@@ -1355,6 +1430,7 @@ async def update_situation(sid: str, data: dict):
         "phase": data.phase,
         "affected_systems": data.affected_systems,
         "summary": data.summary,
+        "context_notes": data.context_notes,
     }
     await set_situation_status(game_pin, status)
     await log_situation_change(game_pin, status)

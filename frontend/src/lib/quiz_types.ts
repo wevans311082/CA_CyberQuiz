@@ -44,6 +44,27 @@ export interface SituationStatus {
 	phase: string;
 	affected_systems: string[];
 	summary: string;
+	context_notes?: string;
+}
+
+export type TimelineEventType =
+	| 'game_started'
+	| 'question_asked'
+	| 'answer_results'
+	| 'inject'
+	| 'situation_update'
+	| 'role_assigned'
+	| 'branch_resolved'
+	| 'decision_made'
+	| 'scenario_complete';
+
+export interface TimelineEvent {
+	id: string;
+	type: TimelineEventType;
+	timestamp: string;
+	title: string;
+	detail?: string;
+	data?: Record<string, unknown>;
 }
 
 export enum QuizQuestionType {

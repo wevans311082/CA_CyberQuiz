@@ -1,4 +1,4 @@
-<!--
+﻿<!--
 SPDX-FileCopyrightText: 2025
 
 SPDX-License-Identifier: MPL-2.0
@@ -6,7 +6,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <script lang="ts">
 	import type { Question, Answer } from '$lib/quiz_types';
-	import { fly } from 'svelte/transition';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		questions: Question[];
@@ -17,184 +17,178 @@ SPDX-License-Identifier: MPL-2.0
 
 	let panel_open = $state(false);
 
-	// Build a map of id -> index for quick lookup
-	const id_to_index = $derived(
-		new Map(questions.map((q, i) => [q.id, i]))
-	);
+	// â”€â”€ Persisted geometry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	const STORAGE_KEY = 'branchmap_geometry';
+	interface Geometry { x: number; y: number; w: number; h: number }
 
-	// Truncate question text to a short label
-	const truncate = (text: string, max: number = 28) => {
+	const load_geometry = (): Geometry => {
+		if (typeof localStorage === 'undefined') return { x: 40, y: 80, w: 420, h: 540 };
+		try {
+			const v = localStorage.getItem(STORAGE_KEY);
+			if (v) return JSON.parse(v);
+		} catch { /* ignore */ }
+		return { x: 40, y: 80, w: 420, h: 540 };
+	};
+	const save_geometry = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(geo));
+
+	let geo = $state<Geometry>(load_geometry());
+
+	onMount(() => {
+		// Clamp initial geometry inside viewport
+		const W = window.innerWidth;
+		const H = window.innerHeight;
+		geo.w = Math.min(geo.w, W - 16);
+		geo.h = Math.min(geo.h, H - 40);
+		geo.x = Math.max(0, Math.min(geo.x, W - geo.w - 4));
+		geo.y = Math.max(0, Math.min(geo.y, H - 60));
+	});
+
+	// â”€â”€ Dragging (header) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	let drag_off = { ox: 0, oy: 0 };
+
+	function drag_start(e: MouseEvent) {
+		if ((e.target as HTMLElement).closest('button')) return;
+		e.preventDefault();
+		drag_off = { ox: e.clientX - geo.x, oy: e.clientY - geo.y };
+		window.addEventListener('mousemove', drag_move);
+		window.addEventListener('mouseup', drag_end, { once: true });
+	}
+	function drag_move(e: MouseEvent) {
+		const W = window.innerWidth;
+		const H = window.innerHeight;
+		geo.x = Math.max(0, Math.min(e.clientX - drag_off.ox, W - geo.w - 4));
+		geo.y = Math.max(0, Math.min(e.clientY - drag_off.oy, H - 40));
+	}
+	function drag_end() {
+		save_geometry();
+		window.removeEventListener('mousemove', drag_move);
+	}
+
+	// â”€â”€ Resizing (SE corner handle) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	let rs = { mx: 0, my: 0, w: 0, h: 0 };
+
+	function resize_start(e: MouseEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		rs = { mx: e.clientX, my: e.clientY, w: geo.w, h: geo.h };
+		window.addEventListener('mousemove', resize_move);
+		window.addEventListener('mouseup', resize_end, { once: true });
+	}
+	function resize_move(e: MouseEvent) {
+		geo.w = Math.max(280, rs.w + (e.clientX - rs.mx));
+		geo.h = Math.max(200, rs.h + (e.clientY - rs.my));
+	}
+	function resize_end() {
+		save_geometry();
+		window.removeEventListener('mousemove', resize_move);
+	}
+
+	// â”€â”€ Graph data model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	const id_to_index = $derived(new Map(questions.map((q, i) => [q.id, i])));
+
+	const truncate = (text: string, max = 28) => {
 		const clean = text.replace(/<[^>]*>/g, '').trim();
-		return clean.length > max ? clean.slice(0, max) + '…' : clean;
+		return clean.length > max ? clean.slice(0, max) + 'â€¦' : clean;
 	};
 
-	interface MapNode {
-		index: number;
-		id: string | undefined;
-		label: string;
-		x: number;
-		y: number;
-	}
+	interface MapNode { index: number; label: string; x: number; y: number }
+	interface MapEdge { from: number; to: number; label: string; color: string; dashed: boolean }
 
-	interface MapEdge {
-		from_index: number;
-		to_index: number;
-		label: string;
-		color: string;
-		is_default: boolean;
-	}
+	const NODE_W = 200;
+	const NODE_H = 50;
+	const GAP_Y = 30;
+	const GAP_X = 70;
 
-	// Layout: compute nodes and edges
-	const NODE_W = 180;
-	const NODE_H = 48;
-	const GAP_X = 60;
-	const GAP_Y = 28;
+	const COLORS = ['#0d9488','#6366f1','#e11d48','#f59e0b','#8b5cf6','#06b6d4','#22c55e','#f43f5e'];
 
-	// Compute graph layout. Questions placed top-to-bottom with branching
-	// targets shown as edges. Layout uses a simple column-based approach.
 	const layout = $derived.by(() => {
-		const nodes: MapNode[] = [];
-		const edges: MapEdge[] = [];
-		const edge_colors = ['#0d9488', '#6366f1', '#e11d48', '#f59e0b', '#8b5cf6', '#06b6d4', '#22c55e', '#f43f5e'];
+		if (!questions.length) return { nodes: [], edges: [], cols: 0 };
 
-		// Assign column per question (try to keep branching targets right)
-		// Simple layout: sequential column 0, targets that branch reuse index
-		const col = new Map<number, number>();
-		const row = new Map<number, number>();
-		let max_col = 0;
+		// col[i] = layout column (0 = main, 1 = branch lane etc.)
+		const col = new Array(questions.length).fill(0);
 
-		// First pass: sequential placement
-		for (let i = 0; i < questions.length; i++) {
-			col.set(i, 0);
-			row.set(i, i);
-		}
-
-		// Second pass: move branch targets into offset columns if they break sequence
 		for (let i = 0; i < questions.length; i++) {
 			const q = questions[i];
 			const answers = Array.isArray(q.answers) ? q.answers as Answer[] : [];
 			for (const a of answers) {
 				if (a.next_question_id) {
 					const ti = id_to_index.get(a.next_question_id);
-					if (ti !== undefined && ti !== i + 1) {
-						// Non-sequential branch — put branch source in col 0
-						// If target is backwards (loop), keep it at col 0
-						if (ti > i && col.get(ti) === 0) {
-							col.set(ti, 1);
-							max_col = Math.max(max_col, 1);
-						}
-					}
+					if (ti !== undefined && ti > i + 1 && col[ti] === 0) col[ti] = 1;
 				}
 			}
 			if (q.default_next_question_id) {
 				const ti = id_to_index.get(q.default_next_question_id);
-				if (ti !== undefined && ti !== i + 1) {
-					if (ti > i && col.get(ti) === 0) {
-						col.set(ti, 1);
-						max_col = Math.max(max_col, 1);
-					}
-				}
+				if (ti !== undefined && ti > i + 1 && col[ti] === 0) col[ti] = 1;
 			}
 		}
 
-		// Build map nodes
-		for (let i = 0; i < questions.length; i++) {
-			const c = col.get(i) ?? 0;
-			const r = row.get(i) ?? i;
-			nodes.push({
-				index: i,
-				id: questions[i].id,
-				label: truncate(questions[i].question),
-				x: 20 + c * (NODE_W + GAP_X),
-				y: 20 + r * (NODE_H + GAP_Y)
-			});
-		}
+		const max_col = Math.max(...col);
+		const nodes: MapNode[] = questions.map((q, i) => ({
+			index: i,
+			label: truncate(q.question),
+			x: 20 + col[i] * (NODE_W + GAP_X),
+			y: 20 + i * (NODE_H + GAP_Y)
+		}));
 
-		// Build edges
+		const edges: MapEdge[] = [];
 		for (let i = 0; i < questions.length; i++) {
 			const q = questions[i];
 			const answers = Array.isArray(q.answers) ? q.answers as Answer[] : [];
-			let has_branch = false;
+			let has_explicit = false;
 
-			for (let ai = 0; ai < answers.length; ai++) {
-				const a = answers[ai];
+			answers.forEach((a, ai) => {
 				if (a.next_question_id) {
 					const ti = id_to_index.get(a.next_question_id);
 					if (ti !== undefined) {
-						edges.push({
-							from_index: i,
-							to_index: ti,
-							label: truncate(a.answer, 18),
-							color: edge_colors[ai % edge_colors.length],
-							is_default: false
-						});
-						has_branch = true;
+						edges.push({ from: i, to: ti, label: truncate(a.answer, 16), color: COLORS[ai % COLORS.length], dashed: false });
+						has_explicit = true;
 					}
 				}
-			}
+			});
 
 			if (q.default_next_question_id) {
 				const ti = id_to_index.get(q.default_next_question_id);
 				if (ti !== undefined) {
-					edges.push({
-						from_index: i,
-						to_index: ti,
-						label: 'default',
-						color: '#6b7280',
-						is_default: true
-					});
-					has_branch = true;
+					edges.push({ from: i, to: ti, label: 'default', color: '#6b7280', dashed: false });
+					has_explicit = true;
 				}
 			}
 
-			// Implicit sequential link (no branch = goes to next question)
-			if (!has_branch && i < questions.length - 1) {
-				edges.push({
-					from_index: i,
-					to_index: i + 1,
-					label: '',
-					color: '#d1d5db',
-					is_default: true
-				});
+			if (!has_explicit && i < questions.length - 1) {
+				edges.push({ from: i, to: i + 1, label: '', color: '#d1d5db', dashed: true });
 			}
 		}
 
-		return { nodes, edges, max_col };
+		return { nodes, edges, cols: max_col };
 	});
 
-	const svg_width = $derived(20 + (layout.max_col + 1) * (NODE_W + GAP_X) + 40);
-	const svg_height = $derived(20 + questions.length * (NODE_H + GAP_Y) + 20);
+	const SVG_W = $derived(20 + (layout.cols + 1) * (NODE_W + GAP_X) + 30);
+	const SVG_H = $derived(20 + questions.length * (NODE_H + GAP_Y) + 20);
 
-	// Edge path from node bottom-center to target node top-center
-	const edgePath = (fromNode: MapNode, toNode: MapNode) => {
-		const x1 = fromNode.x + NODE_W / 2;
-		const y1 = fromNode.y + NODE_H;
-		const x2 = toNode.x + NODE_W / 2;
-		const y2 = toNode.y;
-
-		// Backwards link (loop) — curve to the left
-		if (toNode.index <= fromNode.index) {
-			const leftX = Math.min(fromNode.x, toNode.x) - 40;
-			return `M ${x1} ${y1} C ${leftX} ${y1 + 30}, ${leftX} ${y2 - 30}, ${x2} ${y2}`;
+	function edge_path(from: MapNode, to: MapNode) {
+		const x1 = from.x + NODE_W / 2;
+		const y1 = from.y + NODE_H;
+		const x2 = to.x + NODE_W / 2;
+		const y2 = to.y;
+		if (to.index <= from.index) {
+			const lx = Math.min(from.x, to.x) - 40;
+			return `M ${x1} ${y1} C ${lx} ${y1 + 30}, ${lx} ${y2 - 30}, ${x2} ${y2}`;
 		}
+		const my = (y1 + y2) / 2;
+		return `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`;
+	}
 
-		// Forward link — gentle S-curve
-		const midY = (y1 + y2) / 2;
-		return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
-	};
-
-	// Arrow marker placement: point at which the path ends
-	const edgeLabelPos = (fromNode: MapNode, toNode: MapNode) => {
+	function label_pos(from: MapNode, to: MapNode) {
 		return {
-			x: (fromNode.x + NODE_W / 2 + toNode.x + NODE_W / 2) / 2,
-			y: (fromNode.y + NODE_H + toNode.y) / 2
+			x: (from.x + NODE_W / 2 + to.x + NODE_W / 2) / 2,
+			y: (from.y + NODE_H + to.y) / 2
 		};
-	};
+	}
 </script>
 
-<!-- Toggle button -->
+<!-- â”€â”€ Toggle button (fixed bottom-right) â”€â”€ -->
 <button
-	class="fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-indigo-700 transition"
+	class="fixed right-4 bottom-4 z-50 flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-indigo-700 transition select-none"
 	onclick={() => { panel_open = !panel_open; }}
 	title="Toggle branch map"
 >
@@ -205,138 +199,123 @@ SPDX-License-Identifier: MPL-2.0
 </button>
 
 {#if panel_open}
+	<!-- â”€â”€ Floating window â”€â”€ -->
 	<div
-		class="fixed right-0 top-0 z-40 h-full w-80 bg-white shadow-2xl dark:bg-gray-900 flex flex-col border-l border-gray-200 dark:border-gray-700"
-		transition:fly={{ x: 320, duration: 200 }}
+		class="fixed z-[60] flex flex-col rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-2xl overflow-hidden select-none"
+		style="left:{geo.x}px; top:{geo.y}px; width:{geo.w}px; height:{geo.h}px"
 	>
-		<!-- Header -->
-		<div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-indigo-600 text-white">
-			<h2 class="text-sm font-bold uppercase tracking-wider">Branch Map</h2>
-			<button
-				onclick={() => { panel_open = false; }}
-				class="text-white/80 hover:text-white text-xl leading-none"
-			>&times;</button>
+		<!-- Header (drag handle) -->
+		<div
+			class="flex items-center justify-between px-4 py-2.5 bg-indigo-600 text-white cursor-move shrink-0"
+			role="toolbar"
+			tabindex="-1"
+			onmousedown={drag_start}
+		>
+			<span class="text-sm font-bold uppercase tracking-wide pointer-events-none">Branch Map</span>
+			<div class="flex items-center gap-2">
+				<span class="text-[10px] text-white/60 pointer-events-none">{questions.length} questions</span>
+				<button
+					class="text-white/80 hover:text-white text-xl leading-none cursor-pointer"
+					onclick={() => { panel_open = false; }}
+				>&times;</button>
+			</div>
 		</div>
 
 		<!-- Legend -->
-		<div class="px-4 py-2 border-b border-gray-100 dark:border-gray-800 text-[10px] flex flex-wrap gap-3 text-gray-500 dark:text-gray-400">
+		<div class="flex flex-wrap gap-x-4 gap-y-1 px-4 py-1.5 border-b border-gray-100 dark:border-gray-700 text-[10px] text-gray-500 dark:text-gray-400 shrink-0">
 			<span class="flex items-center gap-1">
-				<span class="inline-block w-3 h-3 rounded bg-teal-100 border-2 border-teal-600"></span> Current
+				<span class="inline-block w-3 h-3 rounded bg-teal-100 border-2 border-teal-600"></span>Current
 			</span>
 			<span class="flex items-center gap-1">
-				<span class="inline-block w-3 h-3 rounded bg-gray-100 border border-gray-400"></span> Question
+				<span class="inline-block w-3 h-3 rounded bg-gray-100 dark:bg-gray-700 border border-gray-400"></span>Question
 			</span>
 			<span class="flex items-center gap-1">
-				<span class="inline-block w-2 h-0.5 bg-teal-500"></span> Branch
+				<span class="inline-block w-4 h-0.5 bg-teal-500"></span>Branch
 			</span>
 			<span class="flex items-center gap-1">
-				<span class="inline-block w-2 h-0.5 bg-gray-300"></span> Sequential
+				<span class="inline-block w-4 h-px border-t border-dashed border-gray-400"></span>Sequential
 			</span>
 		</div>
 
-		<!-- Scrollable SVG -->
-		<div class="flex-1 overflow-auto p-2">
-			<svg width={svg_width} height={svg_height} class="min-w-full">
+		<!-- Scrollable SVG area -->
+		<div class="flex-1 overflow-auto p-1">
+			<svg width={SVG_W} height={SVG_H}>
 				<defs>
-					<marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-						<polygon points="0 0, 8 3, 0 6" fill="#9ca3af" />
+					<marker id="bm-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+						<polygon points="0 0,7 2.5,0 5" fill="#9ca3af" />
 					</marker>
-					<marker id="arrowhead-branch" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-						<polygon points="0 0, 8 3, 0 6" fill="#0d9488" />
+					<marker id="bm-arr-b" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+						<polygon points="0 0,7 2.5,0 5" fill="#0d9488" />
 					</marker>
 				</defs>
 
 				<!-- Edges -->
 				{#each layout.edges as edge}
-					{@const fromNode = layout.nodes[edge.from_index]}
-					{@const toNode = layout.nodes[edge.to_index]}
+					{@const fn = layout.nodes[edge.from]}
+					{@const tn = layout.nodes[edge.to]}
 					<path
-						d={edgePath(fromNode, toNode)}
+						d={edge_path(fn, tn)}
 						fill="none"
 						stroke={edge.color}
-						stroke-width={edge.is_default ? 1.5 : 2.5}
-						stroke-dasharray={edge.is_default && !edge.label ? '4 3' : 'none'}
-						marker-end={edge.is_default ? 'url(#arrowhead)' : 'url(#arrowhead-branch)'}
-						opacity={0.7}
+						stroke-width={edge.dashed ? 1.5 : 2}
+						stroke-dasharray={edge.dashed ? '5 3' : 'none'}
+						marker-end={edge.dashed ? 'url(#bm-arr)' : 'url(#bm-arr-b)'}
+						opacity="0.75"
 					/>
 					{#if edge.label}
-						{@const lp = edgeLabelPos(fromNode, toNode)}
-						<rect
-							x={lp.x - 30}
-							y={lp.y - 7}
-							width="60"
-							height="14"
-							rx="3"
-							fill="white"
-							stroke={edge.color}
-							stroke-width="0.5"
-							opacity="0.95"
+						{@const lp = label_pos(fn, tn)}
+						<rect x={lp.x - 32} y={lp.y - 7} width="64" height="14" rx="3"
+							fill="white" stroke={edge.color} stroke-width="0.5" opacity="0.95"
 						/>
-						<text
-							x={lp.x}
-							y={lp.y + 3}
-							text-anchor="middle"
-							font-size="8"
-							fill={edge.color}
-							font-weight="600"
-						>{edge.label}</text>
+						<text x={lp.x} y={lp.y + 4} text-anchor="middle" font-size="8"
+							fill={edge.color} font-weight="600">{edge.label}</text>
 					{/if}
 				{/each}
 
 				<!-- Nodes -->
 				{#each layout.nodes as node}
-					{@const is_current = node.index === selected_question}
+					{@const is_curr = node.index === selected_question}
 					{@const is_past = node.index < selected_question}
-					<g>
-						<rect
-							x={node.x}
-							y={node.y}
-							width={NODE_W}
-							height={NODE_H}
-							rx="8"
-							fill={is_current ? '#ccfbf1' : is_past ? '#f3f4f6' : 'white'}
-							stroke={is_current ? '#0d9488' : is_past ? '#9ca3af' : '#d1d5db'}
-							stroke-width={is_current ? 2.5 : 1}
-						/>
-						<!-- Question number badge -->
-						<circle
-							cx={node.x + 16}
-							cy={node.y + NODE_H / 2}
-							r="10"
-							fill={is_current ? '#0d9488' : is_past ? '#9ca3af' : '#e5e7eb'}
-						/>
-						<text
-							x={node.x + 16}
-							y={node.y + NODE_H / 2 + 3.5}
-							text-anchor="middle"
-							font-size="10"
-							font-weight="bold"
-							fill={is_current || is_past ? 'white' : '#374151'}
-						>{node.index + 1}</text>
-
-						<!-- Question label -->
-						<text
-							x={node.x + 34}
-							y={node.y + NODE_H / 2 + 4}
-							font-size="10"
-							fill={is_past ? '#9ca3af' : '#1f2937'}
-							font-weight={is_current ? '600' : '400'}
-						>{node.label}</text>
-
-						<!-- Current indicator -->
-						{#if is_current}
-							<circle
-								cx={node.x + NODE_W - 12}
-								cy={node.y + NODE_H / 2}
-								r="4"
-								fill="#0d9488"
-							>
-								<animate attributeName="r" values="4;6;4" dur="1.5s" repeatCount="indefinite" />
-								<animate attributeName="opacity" values="1;0.5;1" dur="1.5s" repeatCount="indefinite" />
-							</circle>
-						{/if}
-					</g>
+					<rect x={node.x} y={node.y} width={NODE_W} height={NODE_H} rx="8"
+						fill={is_curr ? '#ccfbf1' : is_past ? '#f3f4f6' : 'white'}
+						stroke={is_curr ? '#0d9488' : is_past ? '#9ca3af' : '#d1d5db'}
+						stroke-width={is_curr ? 2.5 : 1}
+					/>
+					<!-- Badge -->
+					<circle cx={node.x + 18} cy={node.y + NODE_H / 2} r="11"
+						fill={is_curr ? '#0d9488' : is_past ? '#9ca3af' : '#e5e7eb'}
+					/>
+					<text x={node.x + 18} y={node.y + NODE_H / 2 + 4}
+						text-anchor="middle" font-size="10" font-weight="bold"
+						fill={is_curr || is_past ? 'white' : '#374151'}
+					>{node.index + 1}</text>
+					<!-- Label -->
+					<text x={node.x + 36} y={node.y + NODE_H / 2 + 4}
+						font-size="10" fill={is_past ? '#9ca3af' : '#1f2937'}
+						font-weight={is_curr ? '600' : '400'}
+					>{node.label}</text>
+					<!-- Pulse on current -->
+					{#if is_curr}
+						<circle cx={node.x + NODE_W - 12} cy={node.y + NODE_H / 2} r="4" fill="#0d9488">
+							<animate attributeName="r" values="4;7;4" dur="1.6s" repeatCount="indefinite"/>
+							<animate attributeName="opacity" values="1;0.4;1" dur="1.6s" repeatCount="indefinite"/>
+						</circle>
+					{/if}
 				{/each}
+			</svg>
+		</div>
+
+		<!-- SE resize handle -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<div
+			class="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize"
+			role="separator"
+			tabindex="-1"
+			onmousedown={resize_start}
+		>
+			<svg viewBox="0 0 12 12" class="w-full h-full text-gray-400 dark:text-gray-500">
+				<path d="M10 2 L10 10 L2 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+				<path d="M6 6 L10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
 			</svg>
 		</div>
 	</div>

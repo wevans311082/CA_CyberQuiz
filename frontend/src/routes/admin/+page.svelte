@@ -314,6 +314,7 @@ SPDX-License-Identifier: MPL-2.0
 			{chat_messages}
 			chat_block_reason={chat_block_reason}
 			cqc_code={page.url.searchParams.get('cqc_code')}
+			quiz_data={quiz_data}
 		/>
 	{:else}
 		<SomeAdminScreen
