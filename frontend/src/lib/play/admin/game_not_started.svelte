@@ -50,6 +50,30 @@ SPDX-License-Identifier: MPL-2.0
 	let accepted_roles = $state<Record<string, string>>({});     // username -> confirmed role
 	let declined_set = $state<Set<string>>(new Set());
 
+	const propose_role = (username: string, role: string) => {
+		socket.emit('propose_role', { username, role });
+		pending_proposals = { ...pending_proposals, [username]: role };
+	};
+
+	const is_tabletop = $derived(quiz_data?.scenario_type === 'tabletop' && (quiz_data?.roles?.length ?? 0) > 0);
+
+	// Hands up state
+	let raised_hands = $state<string[]>([]);
+	socket.on('hands_updated', (data: { hands: string[] }) => {
+		raised_hands = data?.hands ?? [];
+	});
+
+	const dismiss_hand = (username: string) => socket.emit('dismiss_hand', { username });
+	const dismiss_all_hands = () => socket.emit('dismiss_all_hands', {});
+
+	// Role readiness check
+	const roles_ready = $derived(
+		!is_tabletop ||
+		(quiz_data?.roles ?? []).every(role =>
+			Object.values(accepted_roles).includes(role)
+		)
+	);
+
 	socket.on('role_accepted_ack', (data: { username: string; role: string }) => {
 		if (data?.username) {
 			accepted_roles = { ...accepted_roles, [data.username]: data.role };
@@ -69,13 +93,6 @@ SPDX-License-Identifier: MPL-2.0
 			}, 4000);
 		}
 	});
-
-	const propose_role = (username: string, role: string) => {
-		socket.emit('propose_role', { username, role });
-		pending_proposals = { ...pending_proposals, [username]: role };
-	};
-
-	const is_tabletop = $derived(quiz_data?.scenario_type === 'tabletop' && (quiz_data?.roles?.length ?? 0) > 0);
 
 	// Drag handlers
 	function on_dragstart(e: DragEvent, username: string) {
@@ -198,16 +215,17 @@ SPDX-License-Identifier: MPL-2.0
 	<p class="text-3xl text-center">
 		{$t('words.pin')}: <span class="select-all">{game_pin}</span>
 	</p>
-	<div class="flex justify-center w-full mt-4">
-		<div>
-			<GrayButton
-				disabled={players.length < 1}
-				onclick={() => {
-					socket.emit('start_game', '');
-				}}
-				>{$t('admin_page.start_game')}
-			</GrayButton>
-		</div>
+	<div class="flex flex-col justify-center items-center w-full mt-4 gap-2">
+		{#if !roles_ready}
+			<p class="text-xs text-amber-600 dark:text-amber-400 font-medium">⚠ Not all roles have been accepted yet. You can still start, but some roles remain unassigned.</p>
+		{/if}
+		<GrayButton
+			disabled={players.length < 1}
+			onclick={() => {
+				socket.emit('start_game', '');
+			}}
+			>{$t('admin_page.start_game')}
+		</GrayButton>
 	</div>
 	<div class="flex flex-row w-full mt-4 px-10 flex-wrap">
 		{#if players.length > 0}
@@ -223,6 +241,24 @@ SPDX-License-Identifier: MPL-2.0
 			{/each}
 		{/if}
 	</div>
+
+	<!-- Hands Up Panel -->
+	{#if raised_hands.length > 0}
+		<div class="mx-auto mt-4 w-full max-w-5xl rounded-2xl border border-amber-300 bg-amber-50/80 p-4 dark:border-amber-700 dark:bg-amber-900/20">
+			<div class="flex items-center justify-between mb-2">
+				<h2 class="text-sm font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">✋ Hands Raised ({raised_hands.length})</h2>
+				<button type="button" onclick={dismiss_all_hands} class="text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 underline">Dismiss All</button>
+			</div>
+			<div class="flex flex-wrap gap-2">
+				{#each raised_hands as username}
+					<div class="inline-flex items-center gap-1.5 rounded-full bg-amber-200 dark:bg-amber-800 px-3 py-1 text-sm font-medium text-amber-900 dark:text-amber-100">
+						<span>✋ {username}</span>
+						<button type="button" onclick={() => dismiss_hand(username)} class="text-amber-700 hover:text-red-600 dark:text-amber-300 dark:hover:text-red-400 font-bold leading-none" title="Dismiss">×</button>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	<!-- Tabletop Role Assignment -->
 	{#if is_tabletop}
@@ -284,7 +320,10 @@ SPDX-License-Identifier: MPL-2.0
 								ondragleave={on_dragleave}
 								ondrop={(e) => on_drop(e, role)}
 							>
-								<span class="text-gray-700 dark:text-gray-200">{role}</span>
+								<span class="text-gray-700 dark:text-gray-200 font-semibold">{role}</span>
+						{#if quiz_data?.role_descriptions?.[role]}
+							<p class="text-[10px] text-gray-500 dark:text-gray-400 leading-snug mt-0.5 font-normal">{quiz_data.role_descriptions[role]}</p>
+						{/if}
 								<div class="flex flex-wrap gap-1 mt-1">
 									{#each assigned_players as un}
 										<span class="rounded-full bg-teal-600 text-white text-[10px] px-1.5 py-0.5 font-semibold">{un} ✓</span>

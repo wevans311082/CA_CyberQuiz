@@ -515,6 +515,9 @@ async def start_game(sid: str, _data: dict):
         roles = await get_all_player_roles(session["game_pin"])
         await sio.emit("roles_updated", {"player_roles": roles}, room=session["game_pin"])
 
+    # Clear any raised hands when game starts
+    await redis.delete(f"game:{session['game_pin']}:hands")
+
     await sio.emit("start_game", room=session["game_pin"])
 
     countdown_start = datetime.now().isoformat()
@@ -1461,3 +1464,197 @@ async def get_situation(sid: str, _data: dict):
         "status": status or {},
         "injects_log": injects_log or [],
     }, room=sid)
+
+
+# ============================================================
+# Hands-up system — players raise hand to get facilitator attention
+# ============================================================
+
+@sio.event
+async def raise_hand(sid: str, _data: dict):
+    """Player (or admin) raises their hand to signal the facilitator."""
+    session = await get_session(sid, sio)
+    username = session.get("username")
+    game_pin = session.get("game_pin")
+    if not username or not game_pin:
+        return
+    await redis.sadd(f"game:{game_pin}:hands", username)
+    await redis.expire(f"game:{game_pin}:hands", 7200)
+    hands = [u.decode() if isinstance(u, bytes) else u
+             for u in await redis.smembers(f"game:{game_pin}:hands")]
+    await sio.emit("hands_updated", {"hands": hands}, room=f"admin:{game_pin}")
+    # Confirm to the player their hand is raised
+    await sio.emit("hand_raised", {}, room=sid)
+
+
+@sio.event
+async def lower_hand(sid: str, _data: dict):
+    """Player lowers their own hand."""
+    session = await get_session(sid, sio)
+    username = session.get("username")
+    game_pin = session.get("game_pin")
+    if not username or not game_pin:
+        return
+    await redis.srem(f"game:{game_pin}:hands", username)
+    hands = [u.decode() if isinstance(u, bytes) else u
+             for u in await redis.smembers(f"game:{game_pin}:hands")]
+    await sio.emit("hands_updated", {"hands": hands}, room=f"admin:{game_pin}")
+    await sio.emit("hand_lowered", {}, room=sid)
+
+
+@sio.event
+async def dismiss_hand(sid: str, data: dict):
+    """Admin dismisses a specific player's raised hand."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    game_pin = session["game_pin"]
+    username = data.get("username")
+    if not username:
+        return
+    await redis.srem(f"game:{game_pin}:hands", username)
+    hands = [u.decode() if isinstance(u, bytes) else u
+             for u in await redis.smembers(f"game:{game_pin}:hands")]
+    await sio.emit("hands_updated", {"hands": hands}, room=f"admin:{game_pin}")
+    # Notify the player their hand was acknowledged/lowered by admin
+    player_sid = await redis.get(f"game_session:{game_pin}:players:{username}")
+    if player_sid:
+        sid_str = player_sid.decode() if isinstance(player_sid, bytes) else player_sid
+        await sio.emit("hand_dismissed", {}, room=sid_str)
+
+
+@sio.event
+async def dismiss_all_hands(sid: str, _data: dict):
+    """Admin dismisses all raised hands at once."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    game_pin = session["game_pin"]
+    await redis.delete(f"game:{game_pin}:hands")
+    await sio.emit("hands_updated", {"hands": []}, room=f"admin:{game_pin}")
+    await sio.emit("hand_dismissed", {}, room=game_pin)
+
+
+# ============================================================
+# Discussion timer — admin controlled countdown per question
+# ============================================================
+
+class _DiscussionTimerInput(BaseModel):
+    duration: int  # seconds
+    question_index: int | None = None
+
+
+@sio.event
+async def start_discussion_timer(sid: str, data: dict):
+    """Admin starts (or restarts) the discussion countdown for the current question.
+
+    Broadcasts 'discussion_timer_started' to all players with server timestamp so
+    clients can compute their own countdown without polling.
+    """
+    try:
+        data = _DiscussionTimerInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    duration = max(1, min(data.duration, 7200))  # clamp 1..7200 s
+
+    state = {
+        "running": True,
+        "duration": duration,
+        "started_at": datetime.now().isoformat(),
+        "paused_remaining": None,
+    }
+    await redis.set(f"game:{game_pin}:discussion_timer", json.dumps(state), ex=7200)
+
+    await sio.emit(
+        "discussion_timer_started",
+        {"duration": duration, "server_timestamp": state["started_at"]},
+        room=game_pin,
+    )
+
+
+@sio.event
+async def pause_discussion_timer(sid: str, _data: dict):
+    """Admin pauses a running discussion timer.
+
+    Calculates remaining seconds server-side and broadcasts the paused state.
+    """
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    raw = await redis.get(f"game:{game_pin}:discussion_timer")
+    if raw is None:
+        return
+
+    state = json.loads(raw)
+    if not state.get("running"):
+        return  # already paused / stopped
+
+    started_at = datetime.fromisoformat(state["started_at"])
+    elapsed = (datetime.now() - started_at).total_seconds()
+    remaining = max(0, state["duration"] - elapsed)
+
+    state["running"] = False
+    state["paused_remaining"] = remaining
+    await redis.set(f"game:{game_pin}:discussion_timer", json.dumps(state), ex=7200)
+
+    await sio.emit(
+        "discussion_timer_paused",
+        {"remaining": remaining},
+        room=game_pin,
+    )
+
+
+@sio.event
+async def resume_discussion_timer(sid: str, _data: dict):
+    """Admin resumes a paused discussion timer."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    raw = await redis.get(f"game:{game_pin}:discussion_timer")
+    if raw is None:
+        return
+
+    state = json.loads(raw)
+    if state.get("running"):
+        return  # already running
+
+    remaining = state.get("paused_remaining", 0)
+    if remaining <= 0:
+        return
+
+    state["running"] = True
+    state["duration"] = remaining
+    state["started_at"] = datetime.now().isoformat()
+    state["paused_remaining"] = None
+    await redis.set(f"game:{game_pin}:discussion_timer", json.dumps(state), ex=7200)
+
+    await sio.emit(
+        "discussion_timer_started",
+        {"duration": remaining, "server_timestamp": state["started_at"]},
+        room=game_pin,
+    )
+
+
+@sio.event
+async def stop_discussion_timer(sid: str, _data: dict):
+    """Admin stops and clears the discussion timer."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    await redis.delete(f"game:{game_pin}:discussion_timer")
+    await sio.emit("discussion_timer_stopped", {}, room=game_pin)
+

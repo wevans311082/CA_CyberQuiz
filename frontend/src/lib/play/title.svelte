@@ -7,6 +7,7 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	import MediaComponent from '$lib/editor/MediaComponent.svelte';
 	import PlayerAvatarChip from '$lib/play/player_avatar_chip.svelte';
+	import RolesPanel from '$lib/play/RolesPanel.svelte';
 
 	interface AvatarParams {
 		skin_color?: number;
@@ -47,6 +48,9 @@ SPDX-License-Identifier: MPL-2.0
 		my_role?: string;
 		player_roles?: Record<string, string>;
 		scenario_type?: string;
+		role_descriptions?: Record<string, string>;
+		roles?: string[];
+		hand_raised?: boolean;
 	}
 
 	let {
@@ -61,9 +65,29 @@ SPDX-License-Identifier: MPL-2.0
 		chat_block_reason = null,
 		my_role = undefined,
 		player_roles = {},
-		scenario_type = undefined
+		scenario_type = undefined,
+		role_descriptions = {},
+		roles = [],
+		hand_raised = $bindable(false)
 	}: Props = $props();
 	let chat_input = $state('');
+	let roles_panel_open = $state(false);
+
+	const toggle_hand = () => {
+		if (!socket) return;
+		if (hand_raised) {
+			socket.emit('lower_hand', {});
+			hand_raised = false;
+		} else {
+			socket.emit('raise_hand', {});
+			hand_raised = true;
+		}
+	};
+
+	// Admin can dismiss our hand
+	if (socket) {
+		socket.on('hand_dismissed', () => { hand_raised = false; });
+	}
 
 	const friendlyChatBlockReason = (reason: string | null) => {
 		if (!reason) {
@@ -125,17 +149,53 @@ SPDX-License-Identifier: MPL-2.0
 				<p class="mt-4 text-base leading-7 text-slate-600 dark:text-slate-400">{@html description}</p>
 			{/if}
 			{#if scenario_type === 'tabletop' && my_role}
-				<div class="mt-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-900 dark:text-cyan-100">
-					<span class="h-2 w-2 rounded-full bg-cyan-500"></span>
-					Your Role: {my_role}
+				<div class="mt-6 flex flex-wrap items-start gap-3">
+					<div class="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-900 dark:text-cyan-100">
+						<span class="h-2 w-2 rounded-full bg-cyan-500"></span>
+						Your Role: <strong>{my_role}</strong>
+					</div>
+					{#if roles.length > 0}
+						<button type="button" onclick={() => roles_panel_open = true} class="inline-flex items-center gap-1.5 rounded-full border border-teal-400/30 bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-800 dark:text-teal-200 hover:bg-teal-500/20 transition">
+							🎭 View All Roles
+						</button>
+					{/if}
+				</div>
+				{#if role_descriptions[my_role]}
+					<p class="mt-2 text-sm text-slate-600 dark:text-slate-300 italic max-w-lg">{role_descriptions[my_role]}</p>
+				{/if}
+			{:else if scenario_type === 'tabletop' && !my_role}
+				<div class="mt-6 inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-900 dark:text-amber-100">
+					<span class="h-2 w-2 animate-pulse rounded-full bg-amber-500"></span>
+					Awaiting role assignment from the facilitator…
 				</div>
 			{/if}
-			<div class="mt-8 inline-flex items-center gap-3 rounded-full border border-teal-700/20 bg-teal-600/10 px-5 py-3 text-sm font-medium text-teal-900 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-100">
-				<span class="h-2.5 w-2.5 rounded-full bg-teal-600 dark:bg-cyan-300"></span>
-				{#if started}
-					Waiting for the first question
-				{:else}
-					Waiting for the quiz to start
+			<div class="mt-8 flex flex-wrap gap-3 items-center">
+				<div class="inline-flex items-center gap-3 rounded-full border border-teal-700/20 bg-teal-600/10 px-5 py-3 text-sm font-medium text-teal-900 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-100">
+					<span class="h-2.5 w-2.5 rounded-full bg-teal-600 dark:bg-cyan-300"></span>
+					{#if started}
+						Waiting for the first question
+					{:else}
+						Waiting for the quiz to start
+					{/if}
+				</div>
+				<!-- Hands Up button (shown in tabletop during lobby) -->
+				{#if socket && scenario_type === 'tabletop'}
+					<button
+						type="button"
+						onclick={toggle_hand}
+						class="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition shadow-sm"
+						class:bg-amber-400={hand_raised}
+						class:text-amber-900={hand_raised}
+						class:hover:bg-amber-500={hand_raised}
+						class:bg-slate-200={!hand_raised}
+						class:dark:bg-slate-700={!hand_raised}
+						class:text-slate-800={!hand_raised}
+						class:dark:text-slate-100={!hand_raised}
+						class:hover:bg-slate-300={!hand_raised}
+						title={hand_raised ? 'Lower your hand' : 'Raise your hand to get the facilitator\'s attention'}
+					>
+						{hand_raised ? '✋ Hand Raised' : '🖐️ Raise Hand'}
+					</button>
 				{/if}
 			</div>
 			{#if cover_image}
@@ -209,6 +269,8 @@ SPDX-License-Identifier: MPL-2.0
 		</aside>
 	</div>
 </div>
+
+<RolesPanel bind:open={roles_panel_open} {roles} {role_descriptions} {player_roles} />
 
 <style>
 	.lobby-orb {

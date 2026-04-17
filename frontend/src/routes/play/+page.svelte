@@ -54,6 +54,7 @@ SPDX-License-Identifier: MPL-2.0
 		game_id?: string;
 		scenario_type?: string;
 		roles?: string[];
+		role_descriptions?: Record<string, string>;
 	}
 
 	let game_mode = $state();
@@ -96,11 +97,51 @@ SPDX-License-Identifier: MPL-2.0
 	let current_allowed_roles = $state<string[] | undefined>(undefined);
 	let current_decision_mode = $state<string | undefined>(undefined);
 	let branch_path = $state<string[]>([]);
+	let hand_raised = $state(false);
 
 	// Inject & situation state
 	let active_injects = $state<Inject[]>([]);
 	let situation_status = $state<SituationStatus | null>(null);
 	let discussion_time = $state<number | null>(null);
+	let disc_running = $state(false);
+	let disc_remaining = $state(0);
+	let disc_total = $state(0);
+	let disc_interval: ReturnType<typeof setInterval> | null = null;
+
+	const disc_fmt = (s: number) => {
+		const m = Math.floor(s / 60);
+		const sec = Math.floor(s % 60);
+		return `${m}:${sec.toString().padStart(2, '0')}`;
+	};
+
+	const onDiscussionTimerStarted = (data: { duration: number; server_timestamp: string }) => {
+		disc_running = true;
+		disc_total = data.duration;
+		const serverStart = new Date(data.server_timestamp).getTime();
+		if (disc_interval) clearInterval(disc_interval);
+		disc_interval = setInterval(() => {
+			const elapsed = (Date.now() - serverStart) / 1000;
+			const rem = Math.max(0, data.duration - elapsed);
+			disc_remaining = rem;
+			if (rem <= 0) {
+				disc_running = false;
+				if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
+			}
+		}, 250);
+	};
+
+	const onDiscussionTimerPaused = (data: { remaining: number }) => {
+		disc_running = false;
+		disc_remaining = data.remaining;
+		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
+	};
+
+	const onDiscussionTimerStopped = () => {
+		disc_running = false;
+		disc_remaining = 0;
+		disc_total = 0;
+		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
+	};
 	let injects_log = $state<Array<{ inject: Inject; triggered_by: string; timestamp: string }>>([]);
 	let situation_room_open = $state(false);
 	let answer_summary = $state<{ total: number; answers: Record<string, number> } | null>(null);
@@ -208,6 +249,11 @@ SPDX-License-Identifier: MPL-2.0
 			clearInterval(countdown_timer);
 			countdown_timer = null;
 		}
+		// Reset discussion timer when a new question loads
+		disc_running = false;
+		disc_remaining = 0;
+		disc_total = 0;
+		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
 		solution = undefined;
 		restart();
 		question = data.question;
@@ -452,6 +498,9 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('situation_updated', onSituationUpdated);
 		socket.on('situation_room_data', onSituationRoomData);
 		socket.on('answer_summary', onAnswerSummary);
+		socket.on('discussion_timer_started', onDiscussionTimerStarted);
+		socket.on('discussion_timer_paused', onDiscussionTimerPaused);
+		socket.on('discussion_timer_stopped', onDiscussionTimerStopped);
 	});
 
 	onDestroy(() => {
@@ -484,6 +533,10 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('situation_updated', onSituationUpdated);
 		socket.off('situation_room_data', onSituationRoomData);
 		socket.off('answer_summary', onAnswerSummary);
+		socket.off('discussion_timer_started', onDiscussionTimerStarted);
+		socket.off('discussion_timer_paused', onDiscussionTimerPaused);
+		socket.off('discussion_timer_stopped', onDiscussionTimerStopped);
+		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
 		if (countdown_timer) {
 			clearInterval(countdown_timer);
 			countdown_timer = null;
@@ -555,6 +608,9 @@ SPDX-License-Identifier: MPL-2.0
 				{my_role}
 				{player_roles}
 				{scenario_type}
+				role_descriptions={gameData.role_descriptions ?? {}}
+				roles={gameData.roles ?? []}
+				bind:hand_raised
 			/>
 		{:else if gameMeta.started && gameData !== undefined && question_index !== '' && answer_results === undefined}
 			{#key unique}
@@ -627,6 +683,21 @@ SPDX-License-Identifier: MPL-2.0
 			{#if situation_status.summary}
 				<span>|</span>
 				<span class="truncate max-w-xs">{situation_status.summary}</span>
+			{/if}
+		</div>
+	{/if}
+	<!-- Discussion Timer (visible to all players when running) -->
+	{#if scenario_type === 'tabletop' && disc_total > 0}
+		<div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full px-5 py-2 shadow-xl"
+			class:bg-green-700={disc_running && disc_remaining > 60}
+			class:bg-yellow-600={disc_running && disc_remaining <= 60 && disc_remaining > 15}
+			class:bg-red-700={disc_running && disc_remaining <= 15}
+			class:bg-gray-600={!disc_running}
+		>
+			<span class="text-white text-xs font-semibold uppercase tracking-wide">Discussion</span>
+			<span class="text-white font-mono text-xl font-bold tabular-nums">{disc_fmt(disc_remaining)}</span>
+			{#if !disc_running}
+				<span class="text-white/70 text-xs">Paused</span>
 			{/if}
 		</div>
 	{/if}

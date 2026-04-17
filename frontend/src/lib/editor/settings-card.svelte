@@ -24,6 +24,21 @@ SPDX-License-Identifier: MPL-2.0
 
 	let custom_bg_color = $state(Boolean(data.background_color));
 	let new_role_input = $state('');
+	let new_role_desc_input = $state('');
+	let expanded_role_desc: string | null = $state(null);
+
+	const ROLE_TEMPLATES: Array<{ name: string; description: string }> = [
+		{ name: 'CISO', description: 'Chief Information Security Officer — owns cybersecurity strategy and makes final security decisions.' },
+		{ name: 'Incident Commander', description: 'Leads the incident response effort and coordinates all team activities.' },
+		{ name: 'SOC Analyst', description: 'Monitors security events and performs initial triage and analysis.' },
+		{ name: 'Network Engineer', description: 'Manages network infrastructure and implements firewall and routing changes.' },
+		{ name: 'Legal Representative', description: 'Advises on legal obligations including breach notification and regulatory requirements.' },
+		{ name: 'PR / Communications', description: 'Manages internal and external messaging and media relations during the incident.' },
+		{ name: 'IT Manager', description: 'Oversees IT systems operations and coordinates technical remediation efforts.' },
+		{ name: 'Digital Forensics', description: 'Conducts evidence collection, forensic investigation and root-cause analysis.' },
+		{ name: 'Business Continuity', description: 'Ensures critical business functions remain operational during the incident.' },
+		{ name: 'Executive / CEO', description: 'Makes final escalation and go/no-go decisions on major response actions.' },
+	];
 	const tippy = createTippy({
 		arrow: true,
 		animation: 'perspective-subtle'
@@ -233,23 +248,78 @@ SPDX-License-Identifier: MPL-2.0
 				<div class="flex justify-center pt-6">
 					<h3>Roles</h3>
 				</div>
-				<div class="pt-2 w-full flex justify-center">
-					<div class="flex flex-col items-center gap-2 w-1/2">
-						<div class="flex flex-wrap gap-2 justify-center">
-							{#each data.roles ?? [] as role, i}
-								<span class="inline-flex items-center gap-1 rounded-full bg-teal-600 px-3 py-1 text-sm text-white">
-									{role}
-									<button type="button" class="ml-1 hover:text-red-200" onclick={() => {
-										data.roles = (data.roles ?? []).filter((_, idx) => idx !== i);
-									}}>&times;</button>
-								</span>
-							{/each}
-						</div>
-						<div class="flex gap-2 w-full max-w-xs">
+				<!-- Predefined templates -->
+				<div class="pt-2 w-full flex flex-col items-center gap-2">
+					<p class="text-xs text-gray-500 dark:text-gray-400">Quick-add from templates:</p>
+					<div class="flex flex-wrap gap-1.5 justify-center max-w-lg">
+						{#each ROLE_TEMPLATES as tpl}
+							{@const already = (data.roles ?? []).includes(tpl.name)}
+							<button
+								type="button"
+								disabled={already}
+								onclick={() => {
+									if (!already) {
+										data.roles = [...(data.roles ?? []), tpl.name];
+										data.role_descriptions = { ...(data.role_descriptions ?? {}), [tpl.name]: tpl.description };
+									}
+								}}
+								class="rounded-full px-2.5 py-1 text-xs border transition"
+								class:bg-teal-600={already}
+								class:text-white={already}
+								class:border-teal-600={already}
+								class:opacity-50={already}
+								class:cursor-not-allowed={already}
+								class:border-gray-400={!already}
+								class:hover:bg-teal-50={!already}
+								title={tpl.description}
+							>
+								{tpl.name}
+							</button>
+						{/each}
+					</div>
+				</div>
+				<!-- Current roles list with description expand -->
+				<div class="pt-4 w-full flex justify-center">
+					<div class="flex flex-col items-center gap-2 w-full max-w-lg">
+						{#each data.roles ?? [] as role, i}
+							<div class="w-full rounded-lg border border-gray-300 dark:border-gray-600 p-2 flex flex-col gap-1">
+								<div class="flex items-center gap-2">
+									<span class="flex-1 px-2 py-0.5 rounded-full bg-teal-600 text-white text-sm">{role}</span>
+									<button
+										type="button"
+										class="text-xs text-gray-500 hover:text-teal-600 px-1"
+										onclick={() => { expanded_role_desc = expanded_role_desc === role ? null : role; }}
+									>{expanded_role_desc === role ? '▲ desc' : '▼ desc'}</button>
+									<button
+										type="button"
+										class="text-red-400 hover:text-red-600 text-base leading-none"
+										onclick={() => {
+											data.roles = (data.roles ?? []).filter((_, idx) => idx !== i);
+											const descs = { ...(data.role_descriptions ?? {}) };
+											delete descs[role];
+											data.role_descriptions = descs;
+										}}
+									>&times;</button>
+								</div>
+								{#if expanded_role_desc === role}
+									<textarea
+										rows="2"
+										placeholder="Role description (shown to participants)"
+										value={(data.role_descriptions ?? {})[role] ?? ''}
+										oninput={(e) => {
+											data.role_descriptions = { ...(data.role_descriptions ?? {}), [role]: e.currentTarget.value };
+										}}
+										class="w-full rounded border border-gray-300 dark:border-gray-600 p-1.5 text-xs dark:bg-gray-700 outline-none resize-y"
+									></textarea>
+								{/if}
+							</div>
+						{/each}
+						<!-- Add custom role -->
+						<div class="flex gap-2 w-full mt-1">
 							<input
 								type="text"
 								bind:value={new_role_input}
-								placeholder="Add role (e.g. CISO)"
+								placeholder="Custom role name"
 								class="flex-1 rounded-lg border border-gray-400 p-1.5 text-sm dark:bg-gray-600 outline-hidden"
 								onkeydown={(e) => {
 									if (e.key === 'Enter') {
@@ -257,10 +327,21 @@ SPDX-License-Identifier: MPL-2.0
 										const v = new_role_input.trim();
 										if (v && !(data.roles ?? []).includes(v)) {
 											data.roles = [...(data.roles ?? []), v];
+											if (new_role_desc_input.trim()) {
+												data.role_descriptions = { ...(data.role_descriptions ?? {}), [v]: new_role_desc_input.trim() };
+												new_role_desc_input = '';
+											}
 											new_role_input = '';
+											expanded_role_desc = v;
 										}
 									}
 								}}
+							/>
+							<input
+								type="text"
+								bind:value={new_role_desc_input}
+								placeholder="Optional description"
+								class="flex-1 rounded-lg border border-gray-400 p-1.5 text-sm dark:bg-gray-600 outline-hidden"
 							/>
 							<button
 								type="button"
@@ -269,7 +350,12 @@ SPDX-License-Identifier: MPL-2.0
 									const v = new_role_input.trim();
 									if (v && !(data.roles ?? []).includes(v)) {
 										data.roles = [...(data.roles ?? []), v];
+										if (new_role_desc_input.trim()) {
+											data.role_descriptions = { ...(data.role_descriptions ?? {}), [v]: new_role_desc_input.trim() };
+											new_role_desc_input = '';
+										}
 										new_role_input = '';
+										expanded_role_desc = v;
 									}
 								}}
 							>Add</button>

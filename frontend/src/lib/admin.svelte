@@ -33,6 +33,11 @@ SPDX-License-Identifier: MPL-2.0
 	let admin_player_roles = $state<Record<string, string>>({});
 	let role_assign_username = $state('');
 	let role_assign_role = $state('');
+	let raised_hands = $state<string[]>([]);
+
+	socket.on('hands_updated', (data: { hands: string[] }) => {
+		raised_hands = data?.hands ?? [];
+	});
 
 	// Facilitator notes & inject/situation state
 	let facilitator_notes = $state<string | null>(null);
@@ -164,6 +169,8 @@ SPDX-License-Identifier: MPL-2.0
 		{tie_votes}
 		{facilitator_notes}
 		bind:situation_status
+		{raised_hands}
+		player_roles={admin_player_roles}
 	/>
 {/if}
 {#if quiz_data.scenario_type === 'tabletop' && quiz_data.questions?.length}

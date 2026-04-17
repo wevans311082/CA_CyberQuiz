@@ -9,6 +9,7 @@ SPDX-License-Identifier: MPL-2.0
 	import type { QuizData, Inject, SituationStatus } from '$lib/quiz_types';
 	import type { Socket } from 'socket.io-client';
 	import { getLocalization } from '$lib/i18n';
+	import RolesPanel from '$lib/play/RolesPanel.svelte';
 
 	interface Props {
 		bg_color: string;
@@ -27,6 +28,8 @@ SPDX-License-Identifier: MPL-2.0
 		tie_votes?: Record<string, number>;
 		facilitator_notes?: string | null;
 		situation_status?: SituationStatus;
+		raised_hands?: string[];
+		player_roles?: Record<string, string>;
 	}
 
 	let {
@@ -45,15 +48,82 @@ SPDX-License-Identifier: MPL-2.0
 		tie_pending = false,
 		tie_votes = {},
 		facilitator_notes = null,
-		situation_status = $bindable({ severity: 'low', phase: 'Detection', affected_systems: [], summary: '' })
+		situation_status = $bindable({ severity: 'low', phase: 'Detection', affected_systems: [], summary: '' }),
+		raised_hands = [],
+		player_roles = {}
 	}: Props = $props();
 
 	let is_tabletop = $derived(scenario_type === 'tabletop');
 	let override_question_id = $state('');
 	let inject_panel_open = $state(false);
 	let situation_panel_open = $state(false);
+	let roles_panel_open = $state(false);
+	let hands_panel_open = $state(false);
 	let adhoc_inject_title = $state('');
-	let adhoc_inject_content = $state('');
+
+	// Discussion timer admin state
+	let disc_running = $state(false);
+	let disc_remaining = $state(0);
+	let disc_total = $state(0);
+	let disc_custom_seconds = $state<number | null>(null); // override duration input
+	let disc_interval: ReturnType<typeof setInterval> | null = null;
+
+	const disc_effective_duration = $derived(
+		disc_custom_seconds != null && disc_custom_seconds > 0
+			? disc_custom_seconds
+			: (selected_question >= 0 && quiz_data?.questions?.[selected_question]?.discussion_time) || 300
+	);
+
+	const disc_start = () => {
+		const duration = disc_effective_duration;
+		socket.emit('start_discussion_timer', { duration });
+	};
+
+	const disc_pause = () => {
+		socket.emit('pause_discussion_timer', {});
+	};
+
+	const disc_resume = () => {
+		socket.emit('resume_discussion_timer', {});
+	};
+
+	const disc_stop = () => {
+		socket.emit('stop_discussion_timer', {});
+	};
+
+	const disc_fmt = (s: number) => {
+		const m = Math.floor(s / 60);
+		const sec = Math.floor(s % 60);
+		return `${m}:${sec.toString().padStart(2, '0')}`;
+	};
+
+	// Listen to discussion timer events (admin is also in game room)
+	socket.on('discussion_timer_started', (data: { duration: number; server_timestamp: string }) => {
+		disc_running = true;
+		disc_total = data.duration;
+		const serverStart = new Date(data.server_timestamp).getTime();
+		if (disc_interval) clearInterval(disc_interval);
+		disc_interval = setInterval(() => {
+			const elapsed = (Date.now() - serverStart) / 1000;
+			const rem = Math.max(0, data.duration - elapsed);
+			disc_remaining = rem;
+			if (rem <= 0) {
+				disc_running = false;
+				if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
+			}
+		}, 250);
+	});
+	socket.on('discussion_timer_paused', (data: { remaining: number }) => {
+		disc_running = false;
+		disc_remaining = data.remaining;
+		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
+	});
+	socket.on('discussion_timer_stopped', () => {
+		disc_running = false;
+		disc_remaining = 0;
+		disc_total = 0;
+		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
+	});	let adhoc_inject_content = $state('');
 	let adhoc_inject_severity = $state<'info' | 'warning' | 'critical'>('info');
 	let new_affected_system = $state('');
 
@@ -219,10 +289,55 @@ SPDX-License-Identifier: MPL-2.0
 			{/each}
 		{/if}
 		<div class="ml-auto flex gap-2">
+			<!-- Discussion Timer -->
+			<div class="flex items-center gap-1 border-r border-white/30 pr-2 mr-1">
+				{#if disc_total > 0 && (disc_running || disc_remaining > 0)}
+					<span class="font-mono text-xs font-bold tabular-nums"
+						class:text-green-300={disc_running && disc_remaining > 60}
+						class:text-yellow-300={disc_running && disc_remaining <= 60}
+						class:text-red-400={disc_running && disc_remaining <= 15}
+						class:text-gray-300={!disc_running}
+					>{disc_fmt(disc_remaining)}</span>
+					{#if disc_running}
+						<button onclick={disc_pause} class="admin-button text-xs bg-yellow-600" title="Pause timer">⏸</button>
+					{:else}
+						<button onclick={disc_resume} class="admin-button text-xs bg-green-700" title="Resume timer">▶</button>
+					{/if}
+					<button onclick={disc_stop} class="admin-button text-xs bg-red-700" title="Stop timer">■</button>
+				{:else}
+					<span class="text-xs text-white/60">Discussion:</span>
+					<input
+						type="number"
+						min="10"
+						max="7200"
+						step="30"
+						placeholder="{disc_effective_duration}"
+						class="w-16 rounded border border-white/30 bg-white/10 px-1 py-0.5 text-xs text-white placeholder:text-white/40 outline-hidden"
+						onchange={(e) => { disc_custom_seconds = parseInt(e.currentTarget.value) || null; }}
+						title="Override duration in seconds (blank = use question default)"
+					/>
+					<span class="text-xs text-white/60">s</span>
+					<button onclick={disc_start} class="admin-button text-xs bg-green-700" title="Start discussion timer">▶ Start</button>
+				{/if}
+			</div>
+			<!-- Inject & Situation buttons -->
 			<button onclick={() => inject_panel_open = !inject_panel_open} class="admin-button text-xs"
 				class:bg-orange-600={inject_panel_open}>Injects</button>
 			<button onclick={() => situation_panel_open = !situation_panel_open} class="admin-button text-xs"
 				class:bg-purple-600={situation_panel_open}>Situation Room</button>
+			{#if is_tabletop}
+				<button onclick={() => roles_panel_open = !roles_panel_open} class="admin-button text-xs relative"
+					class:bg-teal-600={roles_panel_open}>
+					🎭 Roles
+				</button>
+				<button onclick={() => hands_panel_open = !hands_panel_open} class="admin-button text-xs relative"
+					class:bg-amber-600={hands_panel_open}>
+					✋ Hands
+					{#if raised_hands.length > 0}
+						<span class="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">{raised_hands.length}</span>
+					{/if}
+				</button>
+			{/if}
 		</div>
 	</div>
 	<!-- Facilitator Notes -->
@@ -385,4 +500,40 @@ SPDX-License-Identifier: MPL-2.0
 			</div>
 		</div>
 	{/if}
+	<!-- Hands Up Panel -->
+	{#if hands_panel_open && is_tabletop}
+		<div class="fixed top-[4.5rem] right-[44rem] z-30 w-72 max-h-[60vh] overflow-auto rounded-lg border border-amber-400 bg-white/95 p-4 shadow-xl dark:bg-gray-800/95 dark:border-amber-600">
+			<div class="flex items-center justify-between mb-3">
+				<h3 class="text-sm font-bold text-amber-700 dark:text-amber-300">✋ Raised Hands ({raised_hands.length})</h3>
+				{#if raised_hands.length > 0}
+					<button
+						class="text-xs text-amber-600 hover:underline dark:text-amber-400"
+						onclick={() => socket.emit('dismiss_all_hands', {})}
+					>Dismiss All</button>
+				{/if}
+			</div>
+			{#if raised_hands.length === 0}
+				<p class="text-xs text-gray-400 italic">No hands raised.</p>
+			{:else}
+				<div class="flex flex-col gap-2">
+					{#each raised_hands as username}
+						<div class="flex items-center justify-between rounded-lg bg-amber-50 dark:bg-amber-900/30 px-3 py-2">
+							<span class="text-sm font-medium text-amber-900 dark:text-amber-100">✋ {username}</span>
+							<button
+								class="text-xs rounded bg-amber-600 text-white px-2 py-0.5 hover:bg-amber-700"
+								onclick={() => socket.emit('dismiss_hand', { username })}
+							>Dismiss</button>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	{/if}
 {/if}
+
+<RolesPanel
+	bind:open={roles_panel_open}
+	roles={quiz_data.roles ?? []}
+	role_descriptions={quiz_data.role_descriptions ?? {}}
+	{player_roles}
+/>

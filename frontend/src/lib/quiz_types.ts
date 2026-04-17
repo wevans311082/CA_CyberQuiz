@@ -27,6 +27,7 @@ export interface QuizData {
 	views: number;
 	scenario_type?: string;
 	roles?: string[];
+	role_descriptions?: Record<string, string>;
 	injects?: Inject[];
 }
 
@@ -141,6 +142,7 @@ export interface EditorData {
 	background_image?: string;
 	scenario_type?: string;
 	roles?: string[];
+	role_descriptions?: Record<string, string>;
 	injects?: Inject[];
 }
 

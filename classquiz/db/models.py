@@ -278,6 +278,7 @@ class PlayGame(BaseModel):
     current_question_id: str | None = None
     injects: list[Inject] | None = None
     situation_status: dict | None = None  # {severity, phase, affected_systems, summary}
+    role_descriptions: dict[str, str] | None = None  # {role_name: description}
 
     @classmethod
     async def get_from_redis(self, game_pin: str) -> Self:
