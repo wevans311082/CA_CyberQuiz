@@ -25,7 +25,7 @@ SPDX-License-Identifier: MPL-2.0
 	let uploading_index = $state<number | null>(null);
 	let upload_error = $state<string | null>(null);
 
-	const upload_file_for_attachment = async (index: number, file: File) => {
+	const upload_file_for_attachment = async (index: number, file: File, question_id?: string) => {
 		uploading_index = index;
 		upload_error = null;
 		try {
@@ -37,12 +37,31 @@ SPDX-License-Identifier: MPL-2.0
 				throw new Error(detail);
 			}
 			const item = await res.json();
-			update_attachment(index, {
+			
+			// Find question by ID to handle case where selected_question changes during upload
+			let target_question = data.questions[selected_question];
+			if (question_id && question_id !== target_question?.id) {
+				target_question = data.questions.find(q => q.id === question_id);
+			}
+			
+			if (!target_question) {
+				throw new Error('Question not found');
+			}
+			
+			// Ensure attachments array exists
+			if (!target_question.file_attachments) {
+				target_question.file_attachments = [];
+			}
+			
+			// Update the specific attachment
+			target_question.file_attachments[index] = {
+				...(target_question.file_attachments[index] ?? {}),
 				url: `/api/v1/storage/download/${item.id}`,
 				filename: file.name,
 				mime_type: file.type || 'application/octet-stream',
 				id: item.id,
-			});
+			};
+			data = data; // Trigger reactivity
 		} catch (err) {
 			upload_error = String(err);
 		} finally {
@@ -125,7 +144,10 @@ SPDX-License-Identifier: MPL-2.0
 						disabled={uploading_index !== null}
 						onchange={(e) => {
 							const file = e.currentTarget.files?.[0];
-							if (file) upload_file_for_attachment(i, file);
+							if (file) {
+								const question_id = data.questions[selected_question]?.id;
+								upload_file_for_attachment(i, file, question_id);
+							}
 							e.currentTarget.value = '';
 						}}
 					/>

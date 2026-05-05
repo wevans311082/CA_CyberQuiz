@@ -132,11 +132,28 @@ SPDX-License-Identifier: MPL-2.0
 	let qtimer_custom_seconds = $state<number | null>(null);
 	let qtimer_interval: ReturnType<typeof setInterval> | null = null;
 
-	const qtimer_effective_duration = $derived(
-		qtimer_custom_seconds != null && qtimer_custom_seconds > 0
-			? qtimer_custom_seconds
-			: Number(quiz_data?.questions?.[selected_question]?.timer?.duration_seconds ?? quiz_data?.questions?.[selected_question]?.time ?? 60)
-	);
+	const qtimer_effective_duration = $derived(() => {
+		if (qtimer_custom_seconds != null && qtimer_custom_seconds > 0) {
+			return qtimer_custom_seconds;
+		}
+		
+		const question = quiz_data?.questions?.[selected_question];
+		if (!question) return 60;
+		
+		// Try timer.duration_seconds first (Phase 4 field)
+		const dur_secs = question.timer?.duration_seconds;
+		if (dur_secs != null && dur_secs > 0) return dur_secs;
+		
+		// Fall back to legacy time field, but validate it's a reasonable number
+		const time_str = question.time;
+		if (time_str) {
+			const parsed = parseInt(time_str, 10);
+			if (!isNaN(parsed) && parsed > 0 && parsed <= 7200) return parsed;
+		}
+		
+		// Safe default: 60 seconds
+		return 60;
+	})();
 
 	const qtimer_start = () => {
 		socket.emit('start_question_timer', { duration: qtimer_effective_duration });

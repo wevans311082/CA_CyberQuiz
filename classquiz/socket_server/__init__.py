@@ -1548,6 +1548,11 @@ class _DiscussionTimerInput(BaseModel):
     question_index: int | None = None
 
 
+class _QuestionTimerInput(BaseModel):
+    """Input model for per-slide question/answer timer events"""
+    duration: int  # seconds
+
+
 @sio.event
 async def start_discussion_timer(sid: str, data: dict):
     """Admin starts (or restarts) the discussion countdown for the current question.
@@ -1676,7 +1681,7 @@ async def start_question_timer(sid: str, data: dict):
     clients can compute their own countdown without polling.
     """
     try:
-        payload = _DiscussionTimerInput(**data)
+        payload = _QuestionTimerInput(**data)
     except ValidationError as e:
         await sio.emit("error", room=sid)
         print(e)
