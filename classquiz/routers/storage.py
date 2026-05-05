@@ -4,6 +4,9 @@
 from base64 import b64encode
 from datetime import datetime, timedelta
 from tempfile import SpooledTemporaryFile
+from urllib.parse import urlparse
+
+import aiohttp
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Request, Response
 from fastapi.responses import StreamingResponse, RedirectResponse
@@ -267,3 +270,67 @@ async def get_storage_limit(user: User = Depends(get_current_user)) -> ReturnGet
         return ReturnGetStorageLimit(limit=settings.free_storage_limit, limit_reached=True, used=user.storage_used)
     else:
         return ReturnGetStorageLimit(limit=settings.free_storage_limit, limit_reached=False, used=user.storage_used)
+
+
+class ImportRemoteImageRequest(BaseModel):
+    url: str
+
+
+@router.post("/import-url")
+async def import_image_from_url(data: ImportRemoteImageRequest, user: User = Depends(get_current_user)) -> PublicStorageItem:
+    if user.storage_used > settings.free_storage_limit:
+        raise HTTPException(status_code=409, detail="Storage limit reached")
+
+    parsed = urlparse(data.url)
+    if parsed.scheme != "https":
+        raise HTTPException(status_code=400, detail="Only https URLs are allowed")
+
+    allowed_hosts = {
+        "thesvg.org",
+        "www.thesvg.org",
+        "cdn.jsdelivr.net",
+    }
+    if not parsed.hostname or parsed.hostname.lower() not in allowed_hosts:
+        raise HTTPException(status_code=400, detail="URL host is not allowed")
+
+    max_bytes = 3 * 1024 * 1024
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(data.url, timeout=15) as resp:
+            if resp.status != 200:
+                raise HTTPException(status_code=400, detail="Failed to download remote file")
+            content_type = (resp.headers.get("Content-Type") or "image/svg+xml").split(";")[0].strip().lower()
+            if content_type not in ALLOWED_MIME_TYPES and content_type != "image/svg+xml":
+                raise HTTPException(status_code=422, detail="Unsupported remote file type")
+            payload = await resp.read()
+
+    if len(payload) == 0:
+        raise HTTPException(status_code=400, detail="Remote file is empty")
+    if len(payload) > max_bytes:
+        raise HTTPException(status_code=413, detail="Remote file too large")
+
+    file_id = uuid4()
+    data_file = SpooledTemporaryFile(max_size=max_bytes)
+    data_file.write(payload)
+    data_file.seek(0)
+
+    file_obj = StorageItem(
+        id=file_id,
+        uploaded_at=datetime.now(),
+        mime_type=content_type,
+        hash=None,
+        user=user,
+        size=0,
+        deleted_at=None,
+        alt_text=None,
+    )
+
+    await storage.upload(
+        file_name=file_id.hex,
+        # skipcq: PYL-W0212
+        file_data=data_file._file,
+        mime_type=content_type,
+    )
+    await file_obj.save()
+    await arq.enqueue_job("calculate_hash", file_id.hex)
+    return PublicStorageItem.from_db_model(file_obj)

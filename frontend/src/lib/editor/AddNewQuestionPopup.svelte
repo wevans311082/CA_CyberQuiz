@@ -40,36 +40,42 @@ SPDX-License-Identifier: MPL-2.0
 		description: string;
 		answers: Answers;
 		type: QuizQuestionType;
+		category: 'INTERACTIVE' | 'CONTENT' | 'EVIDENCE';
 	}[] = [
 		{
 			name: $t('words.multiple_choice'),
 			description: $t('editor.abcd_description'),
 			answers: [],
-			type: QuizQuestionType.ABCD
+			type: QuizQuestionType.ABCD,
+			category: 'INTERACTIVE'
 		},
 		{
 			name: $t('words.voting'),
 			description: $t('editor.voting_description'),
 			answers: [],
-			type: QuizQuestionType.VOTING
+			type: QuizQuestionType.VOTING,
+			category: 'INTERACTIVE'
 		},
 		{
 			name: $t('words.check_choice'),
 			description: $t('editor.check_choice_description'),
 			answers: [],
-			type: QuizQuestionType.CHECK
+			type: QuizQuestionType.CHECK,
+			category: 'INTERACTIVE'
 		},
 		{
 			name: $t('words.order'),
 			description: $t('editor.order_description'),
 			answers: [],
-			type: QuizQuestionType.ORDER
+			type: QuizQuestionType.ORDER,
+			category: 'INTERACTIVE'
 		},
 		{
 			name: $t('words.text'),
 			description: $t('editor.text_description'),
 			answers: [],
-			type: QuizQuestionType.TEXT
+			type: QuizQuestionType.TEXT,
+			category: 'INTERACTIVE'
 		},
 		{
 			name: $t('words.range'),
@@ -80,9 +86,31 @@ SPDX-License-Identifier: MPL-2.0
 				max_correct: 7,
 				min_correct: 3
 			},
-			type: QuizQuestionType.RANGE
+			type: QuizQuestionType.RANGE,
+			category: 'INTERACTIVE'
+		},
+		{
+			name: 'Information Screen',
+			description: 'Present context, briefing notes, and instructions without collecting answers.',
+			answers: '',
+			type: QuizQuestionType.INFORMATION,
+			category: 'CONTENT'
+		},
+		{
+			name: 'File Screen',
+			description: 'Present downloadable evidence files such as PDF, image, and logs.',
+			answers: '',
+			type: QuizQuestionType.FILE,
+			category: 'EVIDENCE'
 		}
 	];
+
+	const section_order: Array<'INTERACTIVE' | 'CONTENT' | 'EVIDENCE'> = ['INTERACTIVE', 'CONTENT', 'EVIDENCE'];
+	const section_titles: Record<'INTERACTIVE' | 'CONTENT' | 'EVIDENCE', string> = {
+		INTERACTIVE: 'Interactive Questions',
+		CONTENT: 'Content Screens',
+		EVIDENCE: 'Evidence Screens'
+	};
 
 	const add_question = (index: number) => {
 		const empty_question: Question = {
@@ -91,7 +119,9 @@ SPDX-License-Identifier: MPL-2.0
 			time: '20',
 			question: '',
 			image: undefined,
-			answers: question_types[index].answers
+			answers: question_types[index].answers,
+			category: question_types[index].category,
+			timer: { enabled: false }
 		};
 		questions = [...questions, { ...empty_question }];
 		selected_question = questions.length - 1;
@@ -108,17 +138,29 @@ SPDX-License-Identifier: MPL-2.0
 		class="m-auto w-2/3 h-5/6 rounded-sm shadow-2xl bg-white dark:bg-gray-600 p-6 flex flex-col"
 	>
 		<h1 class="text-center text-3xl mb-6">{$t('quiztivity.editor.select_page_type')}</h1>
-		<div class="grid grid-cols-4 gap-4 overflow-y-scroll">
-			{#each question_types as qt, i}
-				<div class="rounded-sm p-6 border-[#B07156] border">
-					<button
-						class="text-xl text-black dark:text-white"
-						onclick={() => {
-							add_question(i);
-						}}>{qt.name}</button
-					>
-					<p class="text-sm">{qt.description}</p>
-				</div>
+		<div class="overflow-y-scroll flex flex-col gap-4">
+			{#each section_order as section}
+				{@const items = question_types
+					.map((qt, idx) => ({ qt, idx }))
+					.filter((item) => item.qt.category === section)}
+				{#if items.length}
+					<div class="space-y-2">
+						<h2 class="text-lg font-semibold text-black dark:text-white">{section_titles[section]}</h2>
+						<div class="grid grid-cols-3 gap-3">
+							{#each items as item}
+								<div class="rounded-sm p-4 border-[#B07156] border">
+									<button
+										class="text-lg text-black dark:text-white text-left"
+										onclick={() => {
+											add_question(item.idx);
+										}}>{item.qt.name}</button
+									>
+									<p class="text-sm">{item.qt.description}</p>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
 			{/each}
 		</div>
 

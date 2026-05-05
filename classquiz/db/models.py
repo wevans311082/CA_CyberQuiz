@@ -134,9 +134,17 @@ class QuizQuestionType(str, Enum):
     RANGE = "RANGE"
     VOTING = "VOTING"
     SLIDE = "SLIDE"
+    INFORMATION = "INFORMATION"
+    FILE = "FILE"
     TEXT = "TEXT"
     ORDER = "ORDER"
     CHECK = "CHECK"
+
+
+class QuestionCategory(str, Enum):
+    INTERACTIVE = "INTERACTIVE"
+    CONTENT = "CONTENT"
+    EVIDENCE = "EVIDENCE"
 
 
 class TextQuizAnswer(BaseModel):
@@ -154,6 +162,27 @@ class Inject(BaseModel):
     trigger_after_question_id: str | None = None  # auto-push after this question
 
 
+class FileAttachment(BaseModel):
+    id: str | None = None
+    filename: str
+    mime_type: str
+    url: str
+    description: str | None = None
+
+
+class QuestionTimer(BaseModel):
+    enabled: bool = False
+    duration_seconds: int | None = None
+
+
+class SlideThemeOverride(BaseModel):
+    enabled: bool = False
+    background_color: str | None = None
+    text_color: str | None = None
+    accent_color: str | None = None
+    background_image: str | None = None
+
+
 class QuizQuestion(BaseModel):
     id: str | None = None
     question: str
@@ -167,6 +196,11 @@ class QuizQuestion(BaseModel):
     decision_mode: str | None = None
     facilitator_notes: str | None = None  # markdown, admin-only
     discussion_time: int | None = None  # seconds, separate from answer timer
+    category: QuestionCategory | None = None
+    information_body: str | None = None
+    file_attachments: list[FileAttachment] | None = None
+    timer: QuestionTimer | None = None
+    theme_override: SlideThemeOverride | None = None
 
     @field_validator("answers")
     def answers_not_none_if_abcd_type(cls, v, info: ValidationInfo):
@@ -182,6 +216,10 @@ class QuizQuestion(BaseModel):
             raise ValueError("Answer must be from type VotingQuizAnswer if type is ORDER")
         if info.data["type"] == QuizQuestionType.SLIDE and not isinstance(v, str):
             raise ValueError("Answer must be from type SlideElement if type is SLIDE")
+        if info.data["type"] == QuizQuestionType.INFORMATION and not isinstance(v, str):
+            raise ValueError("Answer must be from type str if type is INFORMATION")
+        if info.data["type"] == QuizQuestionType.FILE and not isinstance(v, str):
+            raise ValueError("Answer must be from type str if type is FILE")
         if info.data["type"] == QuizQuestionType.CHECK and not isinstance(v[0], ABCDQuizAnswer):
             raise ValueError("Answers can't be none if type is CHECK")
         return v

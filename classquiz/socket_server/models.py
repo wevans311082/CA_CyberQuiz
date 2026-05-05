@@ -74,7 +74,7 @@ class RangeQuizAnswerWithoutSolution(BaseModel):
 
 
 class ReturnQuestion(QuizQuestion):
-    answers: list[ABCDQuizAnswerWithoutSolution] | RangeQuizAnswerWithoutSolution | list[VotingQuizAnswer]
+    answers: list[ABCDQuizAnswerWithoutSolution] | RangeQuizAnswerWithoutSolution | list[VotingQuizAnswer] | str
     type: QuizQuestionType = QuizQuestionType.ABCD
 
     @field_validator("answers")
@@ -86,6 +86,12 @@ class ReturnQuestion(QuizQuestion):
         # skipcq: PTC-W0047
         if info.data["type"] == QuizQuestionType.VOTING and type(v[0]) is not VotingQuizAnswer:
             pass
+        if info.data["type"] == QuizQuestionType.SLIDE and type(v) is not str:
+            raise ValueError("Answer must be from type str if type is SLIDE")
+        if info.data["type"] == QuizQuestionType.INFORMATION and type(v) is not str:
+            raise ValueError("Answer must be from type str if type is INFORMATION")
+        if info.data["type"] == QuizQuestionType.FILE and type(v) is not str:
+            raise ValueError("Answer must be from type str if type is FILE")
         return v
 
 

@@ -273,7 +273,7 @@ async def emit_current_question(room: str, game_data: PlayGame):
     temp_return = game_data.model_dump(include={"questions"})["questions"][game_data.current_question]
     game_pin = game_data.game_pin
 
-    if current_q.type == QuizQuestionType.SLIDE:
+    if current_q.type in [QuizQuestionType.SLIDE, QuizQuestionType.INFORMATION, QuizQuestionType.FILE]:
         payload = {
             "question_index": game_data.current_question,
             "question": {
@@ -670,7 +670,11 @@ async def set_question_number(sid: str, data: str):
     await game_data.save(session["game_pin"])
     await redis.set(f"game:{session['game_pin']}:current_time", datetime.now().isoformat(), ex=7200)
     temp_return = game_data.model_dump(include={"questions"})["questions"][int(float(data))]
-    if game_data.questions[int(float(data))].type == QuizQuestionType.SLIDE:
+    if game_data.questions[int(float(data))].type in [
+        QuizQuestionType.SLIDE,
+        QuizQuestionType.INFORMATION,
+        QuizQuestionType.FILE,
+    ]:
         await sio.emit(
             "set_question_number",
             {

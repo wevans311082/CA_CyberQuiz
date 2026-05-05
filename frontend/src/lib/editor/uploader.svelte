@@ -24,6 +24,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { onMount } from 'svelte';
 	import Library from '$lib/editor/uploader/Library.svelte';
 	import Pixabay from '$lib/editor/uploader/Pixabay.svelte';
+	import TheSVG from '$lib/editor/uploader/TheSVG.svelte';
 
 	const { t } = getLocalization();
 	let {
@@ -54,7 +55,9 @@ SPDX-License-Identifier: MPL-2.0
 		// eslint-disable-next-line no-unused-vars
 		Library,
 		// eslint-disable-next-line no-unused-vars
-		Pixabay
+		Pixabay,
+		// eslint-disable-next-line no-unused-vars
+		TheSVG
 	}
 
 	const uppy = new Uppy()
@@ -185,6 +188,15 @@ SPDX-License-Identifier: MPL-2.0
 							>Pixabay
 						</BrownButton>
 					</div>
+					<div class="w-full">
+						<BrownButton
+							onclick={() => {
+								selected_type = AvailableUploadTypes.TheSVG;
+							}}
+						>
+							theSVG
+						</BrownButton>
+					</div>
 				</div>
 			</div>
 		{:else if selected_type === AvailableUploadTypes.Image}
@@ -216,6 +228,10 @@ SPDX-License-Identifier: MPL-2.0
 		{:else if selected_type === AvailableUploadTypes.Pixabay}
 			<div>
 				<Pixabay bind:data {selected_question} bind:modalOpen />
+			</div>
+		{:else if selected_type === AvailableUploadTypes.TheSVG}
+			<div>
+				<TheSVG bind:data {selected_question} bind:modalOpen />
 			</div>
 		{/if}
 	</div>

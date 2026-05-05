@@ -75,10 +75,15 @@ SPDX-License-Identifier: MPL-2.0
 		clearInterval(timer_interval);
 		question_results = null;
 		shown_question_now = data.question_index;
-		timer_res = quiz_data.questions[data.question_index].time;
+		const current_question = quiz_data.questions[data.question_index];
+		timer_res = is_timer_enabled_for_question(current_question)
+			? (current_question.timer?.duration_seconds?.toString() ?? current_question.time)
+			: '0';
 		selected_question = selected_question + 1;
 		answer_count = 0;
-		timer(timer_res);
+		if (timer_res !== '0') {
+			timer(timer_res);
+		}
 	});
 
 	socket.on('solutions', (_) => {
@@ -149,6 +154,20 @@ SPDX-License-Identifier: MPL-2.0
 			timer_res = seconds.toString();
 		}, 1000);
 	};
+
+	const is_timer_enabled_for_question = (q) => {
+		if (quiz_data?.scenario_type !== 'tabletop') {
+			return true;
+		}
+		if (q?.timer?.enabled !== undefined) {
+			return Boolean(q.timer.enabled);
+		}
+		return false;
+	};
+
+	const is_content_screen = (q) => {
+		return [QuizQuestionType.SLIDE, QuizQuestionType.INFORMATION, QuizQuestionType.FILE].includes(q?.type);
+	};
 </script>
 
 {#if control_visible}
@@ -188,7 +207,7 @@ SPDX-License-Identifier: MPL-2.0
 <div class="w-full h-full" class:pt-28={control_visible} class:pt-12={!control_visible}>
 	{#if timer_res !== undefined && !final_results_clicked && !question_results}
 		<!-- Question is shown -->
-		{#if quiz_data.questions[selected_question].type === QuizQuestionType.SLIDE}
+		{#if is_content_screen(quiz_data.questions[selected_question])}
 			{#await import('$lib/play/admin/slide.svelte')}
 				<Spinner my_20={false} />
 			{:then c}
@@ -199,7 +218,7 @@ SPDX-License-Identifier: MPL-2.0
 		{/if}
 	{/if}
 	<br />
-	{#if timer_res === '0' && JSON.stringify(final_results) === JSON.stringify( [null] ) && quiz_data.questions[selected_question].type !== QuizQuestionType.SLIDE && question_results !== null && quiz_data.questions[selected_question]?.hide_results !== true}
+	{#if timer_res === '0' && JSON.stringify(final_results) === JSON.stringify( [null] ) && !is_content_screen(quiz_data.questions[selected_question]) && question_results !== null && quiz_data.questions[selected_question]?.hide_results !== true}
 		{#if question_results === undefined}
 			{#if !final_results_clicked}
 				<div class="w-full flex justify-center">

@@ -73,9 +73,34 @@ export enum QuizQuestionType {
 	RANGE = 'RANGE', // eslint-disable-line no-unused-vars
 	VOTING = 'VOTING', // eslint-disable-line no-unused-vars
 	SLIDE = 'SLIDE', // eslint-disable-line no-unused-vars
+	INFORMATION = 'INFORMATION', // eslint-disable-line no-unused-vars
+	FILE = 'FILE', // eslint-disable-line no-unused-vars
 	TEXT = 'TEXT', // eslint-disable-line no-unused-vars
 	ORDER = 'ORDER', // eslint-disable-line no-unused-vars
 	CHECK = 'CHECK' // eslint-disable-line no-unused-vars
+}
+
+export type QuestionCategory = 'INTERACTIVE' | 'CONTENT' | 'EVIDENCE';
+
+export interface FileAttachment {
+	id?: string;
+	filename: string;
+	mime_type: string;
+	url: string;
+	description?: string;
+}
+
+export interface QuestionTimer {
+	enabled: boolean;
+	duration_seconds?: number;
+}
+
+export interface SlideThemeOverride {
+	enabled: boolean;
+	background_color?: string;
+	text_color?: string;
+	accent_color?: string;
+	background_image?: string;
 }
 
 export interface RangeQuizAnswer {
@@ -104,11 +129,16 @@ export interface Question {
 	answers: Answers;
 	hide_results?: boolean;
 	id?: string;
+	category?: QuestionCategory;
 	allowed_roles?: string[];
 	default_next_question_id?: string;
 	decision_mode?: string;
 	facilitator_notes?: string;
 	discussion_time?: number;
+	information_body?: string;
+	file_attachments?: FileAttachment[];
+	timer?: QuestionTimer;
+	theme_override?: SlideThemeOverride;
 }
 
 export type Answers =

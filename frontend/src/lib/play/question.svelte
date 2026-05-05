@@ -53,9 +53,19 @@ SPDX-License-Identifier: MPL-2.0
 
 	let timer_res = $state(question.time);
 	let selected_answer: string = $state();
+	let timer_enabled = $derived.by(() => {
+		if (question?.timer?.enabled !== undefined) {
+			return Boolean(question.timer.enabled);
+		}
+		return !is_tabletop;
+	});
 
 	// Stop the timer if the question is answered
 	const timer = (time: string) => {
+		if (!timer_enabled) {
+			timer_res = '0';
+			return;
+		}
 		let seconds = Number(time);
 		let timer_interval = setInterval(() => {
 			if (timer_res === '0') {
@@ -73,6 +83,12 @@ SPDX-License-Identifier: MPL-2.0
 	});
 
 	timer(question.time);
+
+	$effect(() => {
+		if (!timer_enabled) {
+			timer_res = '0';
+		}
+	});
 
 	$effect(() => {
 		if (solution !== undefined) {
@@ -153,6 +169,10 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 	const default_colors = ['#D6EDC9', '#B07156', '#7F7057', '#4E6E58'];
+
+	const is_information_like = $derived(
+		question.type === QuizQuestionType.INFORMATION || question.type === QuizQuestionType.FILE
+	);
 </script>
 
 <div class="h-screen w-screen">
@@ -251,6 +271,38 @@ SPDX-License-Identifier: MPL-2.0
 		{:else if question.type === QuizQuestionType.TEXT}
 			<div>
 				<span
+		{#if is_information_like}
+			<div class="mx-auto max-w-5xl px-4 pb-10">
+				{#if question.information_body || typeof question.answers === 'string'}
+					<div class="rounded-xl border border-gray-300 bg-white/90 p-5 text-gray-900 shadow">
+						<p class="whitespace-pre-wrap">{question.information_body ?? question.answers}</p>
+					</div>
+				{/if}
+				{#if question.type === QuizQuestionType.FILE && question.file_attachments?.length}
+					<div class="mt-4 space-y-2">
+						{#each question.file_attachments as attachment}
+							<div class="flex items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-3">
+								<div>
+									<p class="font-medium text-gray-900">{attachment.filename}</p>
+									<p class="text-xs text-gray-500">{attachment.mime_type}</p>
+									{#if attachment.description}
+										<p class="text-xs text-gray-600">{attachment.description}</p>
+									{/if}
+								</div>
+								<a
+									href={attachment.url}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="rounded-md bg-[#B07156] px-3 py-1.5 text-sm font-semibold text-white"
+								>
+									Open
+								</a>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{:else if timer_res !== '0'}
 					class="fixed top-0 bg-red-500 h-8 transition-all"
 					style="width: {(100 / parseInt(question.time)) * parseInt(timer_res)}vw"
 				></span>
@@ -385,6 +437,10 @@ SPDX-License-Identifier: MPL-2.0
 				</div>
 			{/await}
 		{/if}
+	{:else if !timer_enabled}
+		<div class="mx-auto mt-6 max-w-2xl rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-center text-sm text-yellow-900">
+			Timer is disabled for this slide.
+		</div>
 	{/if}
 	{/if}
 </div>

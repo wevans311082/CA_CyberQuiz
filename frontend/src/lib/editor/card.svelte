@@ -83,6 +83,8 @@ SPDX-License-Identifier: MPL-2.0
 		RANGE: $t('words.range'),
 		ABCD: $t('words.multiple_choice'),
 		VOTING: $t('words.voting'),
+		INFORMATION: 'Information Screen',
+		FILE: 'File Screen',
 		TEXT: $t('words.text'),
 		ORDER: $t('words.order'),
 		CHECK: $t('words.check_choice')
@@ -265,6 +267,18 @@ SPDX-License-Identifier: MPL-2.0
 						{:then c}
 							<c.default bind:data bind:selected_question />
 						{/await}
+					{:else if type === QuizQuestionType.INFORMATION}
+						{#await import('$lib/editor/InformationEditorPart.svelte')}
+							<Spinner my_20={false} />
+						{:then c}
+							<c.default bind:data bind:selected_question />
+						{/await}
+					{:else if type === QuizQuestionType.FILE}
+						{#await import('$lib/editor/FileEditorPart.svelte')}
+							<Spinner my_20={false} />
+						{:then c}
+							<c.default bind:data bind:selected_question />
+						{/await}
 					{/if}
 				</div>
 			</div>
@@ -291,6 +305,43 @@ SPDX-License-Identifier: MPL-2.0
 			{#if data.scenario_type === 'tabletop'}
 				<hr class="border-gray-300 dark:border-gray-600" />
 				<h2 class="text-xl font-semibold text-center">Tabletop Settings</h2>
+				<!-- Per-Slide Answer Timer -->
+				<div class="flex flex-col gap-1">
+					<span class="text-sm font-medium">Per-Slide Answer Timer</span>
+					<label class="inline-flex items-center gap-2 text-sm">
+						<input
+							type="checkbox"
+							checked={data.questions[selected_question].timer?.enabled ?? false}
+							onchange={(e) => {
+								const enabled = e.currentTarget.checked;
+								data.questions[selected_question].timer = {
+									enabled,
+									duration_seconds: data.questions[selected_question].timer?.duration_seconds ?? undefined
+								};
+								data = data;
+							}}
+						/>
+						Enable countdown for this slide
+					</label>
+					<p class="text-xs text-gray-500">Default is off for tabletop slides. Admin can still manually control discussion timer during play.</p>
+					<input
+						type="number"
+						min="1"
+						max="3600"
+						placeholder="Optional override duration in seconds"
+						class="w-full rounded-lg border border-gray-400 p-1.5 text-sm dark:bg-gray-600 outline-hidden"
+						disabled={!(data.questions[selected_question].timer?.enabled ?? false)}
+						value={data.questions[selected_question].timer?.duration_seconds ?? ''}
+						oninput={(e) => {
+							const val = parseInt(e.currentTarget.value);
+							data.questions[selected_question].timer = {
+								enabled: data.questions[selected_question].timer?.enabled ?? false,
+								duration_seconds: isNaN(val) ? undefined : val
+							};
+							data = data;
+						}}
+					/>
+				</div>
 				<!-- Allowed Roles -->
 				<div class="flex flex-col gap-1">
 					<span class="text-sm font-medium">Allowed Roles (who can answer)</span>

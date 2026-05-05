@@ -186,6 +186,63 @@ SPDX-License-Identifier: MPL-2.0
 	const update_situation = () => {
 		socket.emit('update_situation', { ...situation_status });
 	};
+
+	const to_plain_text = (html?: string) => {
+		if (!html) return 'Untitled';
+		return html.replace(/<[^>]*>/g, '').trim() || 'Untitled';
+	};
+
+	const find_question_by_id = (question_id?: string) => {
+		if (!question_id) return null;
+		const idx = quiz_data.questions.findIndex((q) => q.id === question_id);
+		if (idx < 0) return null;
+		return { index: idx, question: quiz_data.questions[idx] };
+	};
+
+	const branch_previews = $derived.by(() => {
+		if (!is_tabletop || selected_question < 0 || !quiz_data.questions?.length) {
+			return [];
+		}
+		const current = quiz_data.questions[selected_question];
+		const previews: Array<{ source: string; target_index: number; target_label: string; fallback?: boolean }> = [];
+
+		if (Array.isArray(current.answers)) {
+			for (const answer of current.answers) {
+				if (!answer?.next_question_id) continue;
+				const target = find_question_by_id(answer.next_question_id);
+				if (!target) continue;
+				previews.push({
+					source: answer.answer ?? 'Branch',
+					target_index: target.index,
+					target_label: to_plain_text(target.question.question)
+				});
+			}
+		}
+
+		if (current.default_next_question_id) {
+			const target = find_question_by_id(current.default_next_question_id);
+			if (target) {
+				previews.push({
+					source: 'Default',
+					target_index: target.index,
+					target_label: to_plain_text(target.question.question),
+					fallback: true
+				});
+			}
+		}
+
+		if (previews.length === 0 && selected_question + 1 < quiz_data.questions.length) {
+			const next = quiz_data.questions[selected_question + 1];
+			previews.push({
+				source: 'Sequential',
+				target_index: selected_question + 1,
+				target_label: to_plain_text(next.question),
+				fallback: true
+			});
+		}
+
+		return previews;
+	});
 </script>
 
 <div
@@ -529,6 +586,27 @@ SPDX-License-Identifier: MPL-2.0
 			{/if}
 		</div>
 	{/if}
+{/if}
+
+{#if is_tabletop && selected_question >= 0}
+	<div class="fixed bottom-0 left-0 right-0 z-20 border-t border-gray-300 bg-white/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] dark:bg-gray-900/95 dark:border-gray-700">
+		<div class="flex items-center gap-3">
+			<span class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">Next Branch Preview</span>
+			<div class="flex-1 overflow-x-auto">
+				<div class="flex gap-2 min-w-max">
+					{#if branch_previews.length === 0}
+						<div class="rounded-md border border-dashed border-gray-400 px-3 py-1.5 text-xs text-gray-500">No branch targets configured</div>
+					{/if}
+					{#each branch_previews as preview}
+						<div class="rounded-md border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs dark:bg-gray-800 dark:border-gray-600">
+							<p class="font-semibold text-gray-700 dark:text-gray-100">{preview.source}{preview.fallback ? ' (fallback)' : ''}</p>
+							<p class="text-gray-600 dark:text-gray-300">→ Q{preview.target_index + 1}: {preview.target_label.slice(0, 72)}</p>
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+	</div>
 {/if}
 
 <RolesPanel

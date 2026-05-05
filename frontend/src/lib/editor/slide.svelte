@@ -36,6 +36,10 @@ SPDX-License-Identifier: MPL-2.0
 	let elements_binds: Array<HTMLElement> | undefined = [];
 	let main_el: undefined | HTMLElement = $state();
 	let settings_menu_open = $state(false);
+	let thesvg_open = $state(false);
+	let thesvg_search = $state('security');
+	let thesvg_icons = $state<any[]>([]);
+	let thesvg_loading = $state(false);
 
 	const set_correct_height = new ResizeObserver((e) => {
 		for (const i of e) {
@@ -92,6 +96,71 @@ SPDX-License-Identifier: MPL-2.0
 			});
 		}
 	};
+
+	const thesvg_icon_url = (icon: any) => {
+		const slug = icon?.slug ?? icon?.id ?? icon?.name;
+		if (!slug) return '';
+		return `https://thesvg.org/icons/${slug}/default.svg`;
+	};
+
+	const load_thesvg_registry = async () => {
+		thesvg_loading = true;
+		try {
+			const res = await fetch('https://thesvg.org/api/registry.json');
+			if (!res.ok) {
+				thesvg_icons = [];
+				return;
+			}
+			const payload = await res.json();
+			thesvg_icons = Array.isArray(payload)
+				? payload
+				: Array.isArray(payload?.icons)
+					? payload.icons
+					: Array.isArray(payload?.data)
+						? payload.data
+						: [];
+		} catch {
+			thesvg_icons = [];
+		} finally {
+			thesvg_loading = false;
+		}
+	};
+
+	const insert_thesvg = async (icon: any) => {
+		const url = thesvg_icon_url(icon);
+		if (!url) return;
+		const res = await fetch('/api/v1/storage/import-url', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ url })
+		});
+		if (!res.ok) {
+			return;
+		}
+		const json = await res.json();
+		const src = `/api/v1/storage/download/${json.id}`;
+		if (canvas?.shapes?.image?.insert) {
+			canvas.shapes.image.insert({
+				x: 60,
+				y: 60,
+				width: 120,
+				height: 120,
+				src
+			});
+		}
+	};
+
+	let filtered_thesvg_icons = $derived.by(() => {
+		if (!thesvg_search.trim()) return thesvg_icons.slice(0, 40);
+		const q = thesvg_search.toLowerCase();
+		return thesvg_icons
+			.filter((icon) => {
+				const title = (icon?.title ?? icon?.name ?? icon?.slug ?? '').toLowerCase();
+				const tags = Array.isArray(icon?.tags) ? icon.tags.join(' ').toLowerCase() : '';
+				return title.includes(q) || tags.includes(q);
+			})
+			.slice(0, 40);
+	});
 
 	run(() => {
 		if (selected_element) {
@@ -209,6 +278,46 @@ SPDX-License-Identifier: MPL-2.0
 			</button>
 			{#if settings_menu_open}
 				<SettingsMenu bind:time={data.time} bind:title={data.question} />
+			{/if}
+			<button
+				class="mt-2 mr-auto rounded border border-gray-500 bg-white/80 px-2 py-1 text-xs dark:bg-gray-700/80"
+				onclick={async () => {
+					thesvg_open = !thesvg_open;
+					if (thesvg_open && thesvg_icons.length === 0) {
+						await load_thesvg_registry();
+					}
+				}}
+				type="button"
+			>
+				SVG Bank
+			</button>
+			{#if thesvg_open}
+				<div class="mt-2 w-64 rounded-lg border border-gray-300 bg-white p-2 shadow-xl dark:bg-gray-700 dark:border-gray-500">
+					<input
+						type="text"
+						placeholder="Search SVGs"
+						bind:value={thesvg_search}
+						class="w-full rounded border border-gray-300 p-1 text-xs dark:bg-gray-600"
+					/>
+					<div class="mt-2 max-h-64 overflow-y-auto space-y-1">
+						{#if thesvg_loading}
+							<p class="text-xs text-gray-500">Loading...</p>
+						{:else}
+							{#each filtered_thesvg_icons as icon}
+								<button
+									type="button"
+									class="w-full rounded border border-gray-200 px-2 py-1 text-left text-xs hover:bg-gray-100 dark:border-gray-500 dark:hover:bg-gray-600"
+									onclick={() => insert_thesvg(icon)}
+								>
+									<div class="flex items-center gap-2">
+										<img src={icon.preview_url ?? thesvg_icon_url(icon)} alt="icon" class="h-6 w-6 object-contain" />
+										<span class="truncate">{icon?.title ?? icon?.name ?? icon?.slug ?? 'Icon'}</span>
+									</div>
+								</button>
+							{/each}
+						{/if}
+					</div>
+				</div>
 			{/if}
 		</div>
 		<div class="col-start-2 col-end-6 transition bg-transparent pt-2">
