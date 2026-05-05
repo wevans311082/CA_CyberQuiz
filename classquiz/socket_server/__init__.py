@@ -2247,6 +2247,50 @@ async def stop_question_timer(sid: str, _data: dict):
 from classquiz.socket_server.branching import log_file_download as _log_file_download
 
 
+class _SendEmojiPromptInput(BaseModel):
+    target_player: str | None  # username or None for broadcast to all
+    emoji: str
+    message: str = ""
+
+
+@sio.event
+async def send_emoji_prompt(sid: str, data: dict):
+    """Admin sends an emoji prompt to a player or all players.
+    
+    data: { target_player: str | None, emoji: str, message: str }
+    target_player=None broadcasts to all players.
+    """
+    try:
+        data = _SendEmojiPromptInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    emoji = data.emoji[:2]  # Ensure it's a single emoji (or pair)
+    message = data.message[:100].strip() if data.message else ""
+
+    payload = {
+        "emoji": emoji,
+        "message": message,
+    }
+
+    if data.target_player is None:
+        # Broadcast to all players
+        await sio.emit("emoji_prompt_received", payload, room=game_pin)
+    else:
+        # Send to specific player
+        player_sid = await redis.get(f"game_session:{game_pin}:players:{data.target_player}")
+        if player_sid:
+            sid_str = player_sid.decode() if isinstance(player_sid, bytes) else player_sid
+            await sio.emit("emoji_prompt_received", payload, room=sid_str)
+
+
 @sio.event
 async def file_downloaded(sid: str, data: dict):
     """Player emits this when they download a file attachment.

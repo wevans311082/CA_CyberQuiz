@@ -11,6 +11,8 @@ SPDX-License-Identifier: MPL-2.0
 	import { getLocalization } from '$lib/i18n';
 	import RolesPanel from '$lib/play/RolesPanel.svelte';
 
+	import EmojiPanel from './EmojiPanel.svelte';
+
 	interface Props {
 		bg_color: string;
 		selected_question: number;
@@ -802,6 +804,11 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 	{/if}
 {/if}
+
+<EmojiPanel
+	{socket}
+	players={Object.keys(player_roles).map(username => ({ username }))}
+/>
 
 {#if is_tabletop && selected_question >= 0}
 	<div class="fixed bottom-0 left-0 right-0 z-20 border-t border-gray-300 bg-white/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] dark:bg-gray-900/95 dark:border-gray-700">

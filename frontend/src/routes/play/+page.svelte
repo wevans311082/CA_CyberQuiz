@@ -26,6 +26,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { fade } from 'svelte/transition';
 	import Cookies from 'js-cookie';
 	const { t } = getLocalization();
+	import EmojiPrompt from '$lib/play/EmojiPrompt.svelte';
 
 	interface Props {
 		// Exports
@@ -97,6 +98,9 @@ SPDX-License-Identifier: MPL-2.0
 	let score_visibility_policy = $state<'hidden' | 'self_only' | 'top_n' | 'full'>('full');
 	let scoreboard_data = $state<{ ranked: [string, number][]; scores: Record<string, number>; team_scores?: Record<string, number>; team_ranked?: [string, number][] } | null>(null);
 	let sla_notifications = $state<Array<{ id: number; description: string; outcome: string; delta: number }>>([]);
+	// Emoji prompt state
+	let current_emoji = $state<{ emoji: string; message: string } | null>(null);
+
 
 	// Tabletop exercise state
 	let scenario_type = $state<string | undefined>(undefined);
@@ -560,6 +564,13 @@ SPDX-License-Identifier: MPL-2.0
 	const dismissInject = (id: string) => {
 		active_injects = active_injects.filter(inj => inj.id !== id);
 		socket.emit('dismiss_inject', { inject_id: id });
+		const onEmojiPromptReceived = (data: { emoji: string; message: string }) => {
+			current_emoji = data;
+			setTimeout(() => {
+				current_emoji = null;
+			}, 5000);
+		};
+
 	};
 
 	onMount(() => {
@@ -604,6 +615,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('question_timer_started', onQuestionTimerStarted);
 		socket.on('question_timer_paused', onQuestionTimerPaused);
 		socket.on('question_timer_stopped', onQuestionTimerStopped);
+			socket.on('emoji_prompt_received', onEmojiPromptReceived);
 	});
 
 	onDestroy(() => {
@@ -648,6 +660,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('question_timer_started', onQuestionTimerStarted);
 		socket.off('question_timer_paused', onQuestionTimerPaused);
 		socket.off('question_timer_stopped', onQuestionTimerStopped);
+				socket.off('emoji_prompt_received', onEmojiPromptReceived);
 		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
 		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
 		if (countdown_timer) {
@@ -898,6 +911,11 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 	{/if}
 	<!-- Inject Notifications -->
+		<!-- Emoji Prompt -->
+		{#if current_emoji}
+			<EmojiPrompt emoji={current_emoji.emoji} message={current_emoji.message} />
+		{/if}
+		<!-- Inject Notifications -->
 	{#if active_injects.length > 0}
 		<div class="fixed top-16 right-4 z-50 flex flex-col gap-2 max-w-sm">
 			{#each active_injects as inject (inject.id)}
