@@ -10,6 +10,7 @@ import os
 import random
 import re
 import asyncio
+from collections import defaultdict
 
 import socketio
 from cryptography.fernet import Fernet
@@ -74,7 +75,6 @@ from classquiz.socket_server.branching import (
     get_situation_status,
     log_situation_change,
     get_situation_log,
-    TABLETOP_FLAT_SCORE,
 )
 
 from classquiz.socket_server.export_helpers import save_quiz_to_storage
@@ -326,6 +326,70 @@ async def generate_final_results(game_data: PlayGame, game_pin: str) -> dict:
         else:
             results[str(i)] = json.loads(redis_res)
     return results
+
+
+def _to_float(value: object, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_int(value: object, default: int = 0) -> int:
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _build_score_review_sheet(game_data: PlayGame, answers_by_question: dict[str, list[dict]]) -> dict:
+    """Create admin-editable score sheet from raw answer data."""
+    player_totals: dict[str, float] = defaultdict(float)
+    rows: list[dict] = []
+
+    for q_index, q in enumerate(game_data.questions):
+        q_answers = answers_by_question.get(str(q_index), [])
+        per_player: dict[str, float] = {}
+        for answer in q_answers:
+            username = answer.get("username")
+            if not username:
+                continue
+            answer_score = _to_float(answer.get("score"), 0.0)
+            per_player[username] = answer_score
+            player_totals[username] += answer_score
+
+        rows.append(
+            {
+                "question_index": q_index,
+                "question_id": q.id,
+                "question_type": q.type,
+                "question_title": (q.question or "").strip(),
+                "scores": per_player,
+            }
+        )
+
+    player_count = max(1, len(player_totals))
+    company_score = round(sum(player_totals.values()) / player_count, 2)
+    benchmark = len(game_data.questions) * 70
+
+    return {
+        "mode": "tabletop_company_single",
+        "company_score": company_score,
+        "company_benchmark": benchmark,
+        "player_totals": dict(player_totals),
+        "rows": rows,
+    }
+
+
+def _recompute_review_totals(sheet: dict) -> dict:
+    player_totals: dict[str, float] = defaultdict(float)
+    for row in sheet.get("rows", []):
+        for username, score in (row.get("scores") or {}).items():
+            player_totals[username] += _to_float(score)
+    player_count = max(1, len(player_totals))
+    sheet["player_totals"] = dict(player_totals)
+    sheet["company_score"] = round(sum(player_totals.values()) / player_count, 2)
+    return sheet
 
 
 def calculate_score(z: float, t: int) -> int:
@@ -717,6 +781,11 @@ async def submit_answer(sid: str, data: dict):
     question_index = int(float(data.question_index))
     game_data = await PlayGame.get_from_redis(session["game_pin"])
 
+    # Prevent out-of-sequence answers.
+    if question_index != game_data.current_question or not game_data.question_show:
+        await sio.emit("answer_rejected", {"reason": "question_not_active"}, room=sid)
+        return
+
     # --- Role-gated answering for tabletop mode ---
     if is_tabletop(game_data):
         current_q = game_data.questions[question_index]
@@ -738,7 +807,17 @@ async def submit_answer(sid: str, data: dict):
 
     # --- Tabletop flat scoring vs speed-based ---
     if is_tabletop(game_data):
-        score = TABLETOP_FLAT_SCORE if answer_right else 0
+        if answer_right:
+            # Tabletop: correctness matters most, speed contributes lightly.
+            q_time = _safe_int(game_data.questions[question_index].time, 0)
+            speed_component = 0
+            if q_time > 0:
+                speed_raw = calculate_score(max(0, abs(diff) - latency), q_time)
+                speed_raw = max(0, min(1000, speed_raw))
+                speed_component = int((speed_raw / 1000) * 20)
+            score = 80 + speed_component
+        else:
+            score = 0
     else:
         score = 0
         if answer_right:
@@ -746,6 +825,8 @@ async def submit_answer(sid: str, data: dict):
                 abs(diff) - latency,
                 int(float(game_data.questions[question_index].time)),
             )
+            if score < 0:
+                score = 0
             if score > 1000:
                 score = 1000
 
@@ -787,15 +868,153 @@ async def get_final_results(sid: str, _data: dict):
     if not session["admin"]:
         return
     game_data = await PlayGame.get_from_redis(session["game_pin"])
-    results = await generate_final_results(game_data, session["game_pin"])
-    avatar_map = await get_avatar_map(session["game_pin"])
+    game_pin = session["game_pin"]
+    results = await generate_final_results(game_data, game_pin)
+    avatar_map = await get_avatar_map(game_pin)
+
+    # Tabletop finalization is a two-step workflow: validate/edit then release.
+    if is_tabletop(game_data):
+        sheet = _build_score_review_sheet(game_data, results)
+        await redis.set(f"game_session:{game_pin}:score_review", json.dumps(sheet), ex=7200)
+
+        await sio.emit(
+            "score_validation_started",
+            {
+                "company_score": sheet.get("company_score", 0),
+                "company_benchmark": sheet.get("company_benchmark", 0),
+            },
+            room=game_pin,
+        )
+        await sio.emit("score_review_sheet", sheet, room=f"admin:{game_pin}")
+        return
+
     await sio.emit(
         "final_results",
         {
             "results": results,
             "avatar_map": avatar_map,
         },
-        room=session["game_pin"],
+        room=game_pin,
+    )
+
+
+class _UpdateReviewScoreInput(BaseModel):
+    question_index: int
+    username: str
+    score: float
+
+
+@sio.event
+async def update_review_score(sid: str, data: dict):
+    """Admin adjusts a player's per-question score during validation."""
+    try:
+        data = _UpdateReviewScoreInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    raw_sheet = await redis.get(f"game_session:{game_pin}:score_review")
+    if raw_sheet is None:
+        await sio.emit("error", {"message": "score_review_not_started"}, room=sid)
+        return
+
+    sheet = json.loads(raw_sheet)
+    rows = sheet.get("rows", [])
+    if data.question_index < 0 or data.question_index >= len(rows):
+        await sio.emit("error", {"message": "question_index_out_of_range"}, room=sid)
+        return
+
+    row_scores = rows[data.question_index].setdefault("scores", {})
+    row_scores[data.username] = max(0.0, float(data.score))
+    sheet = _recompute_review_totals(sheet)
+    await redis.set(f"game_session:{game_pin}:score_review", json.dumps(sheet), ex=7200)
+
+    await sio.emit("score_review_sheet", sheet, room=f"admin:{game_pin}")
+    await sio.emit(
+        "provisional_company_score",
+        {
+            "company_score": sheet.get("company_score", 0),
+            "company_benchmark": sheet.get("company_benchmark", 0),
+        },
+        room=game_pin,
+    )
+
+    player_sid = await redis.get(f"game_session:{game_pin}:players:{data.username}")
+    if player_sid:
+        sid_str = player_sid.decode() if isinstance(player_sid, bytes) else player_sid
+        await sio.emit(
+            "provisional_score_update",
+            {
+                "username": data.username,
+                "score": sheet.get("player_totals", {}).get(data.username, 0),
+            },
+            room=sid_str,
+        )
+
+
+@sio.event
+async def release_final_scores(sid: str, _data: dict):
+    """Admin releases validated scores to all players and final screen."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    raw_sheet = await redis.get(f"game_session:{game_pin}:score_review")
+    game_data = await PlayGame.get_from_redis(game_pin)
+    results = await generate_final_results(game_data, game_pin)
+    avatar_map = await get_avatar_map(game_pin)
+
+    if raw_sheet is None:
+        await sio.emit("error", {"message": "score_review_not_started"}, room=sid)
+        return
+
+    sheet = json.loads(raw_sheet)
+    player_totals = sheet.get("player_totals", {})
+
+    # Persist edited per-question scores back into answer rows.
+    for row in sheet.get("rows", []):
+        q_index = row.get("question_index")
+        if q_index is None:
+            continue
+        q_key = str(q_index)
+        question_answers = results.get(q_key, [])
+        row_scores = row.get("scores", {})
+        for answer in question_answers:
+            username = answer.get("username")
+            if username in row_scores:
+                answer["score"] = _to_float(row_scores[username], 0.0)
+        await redis.set(f"game_session:{game_pin}:{q_index}", json.dumps(question_answers), ex=7200)
+
+    await redis.delete(f"game_session:{game_pin}:player_scores")
+    for username, total in player_totals.items():
+        await redis.hset(f"game_session:{game_pin}:player_scores", username, total)
+    await redis.expire(f"game_session:{game_pin}:player_scores", 7200)
+
+    await sio.emit(
+        "score_validation_completed",
+        {
+            "company_score": sheet.get("company_score", 0),
+            "company_benchmark": sheet.get("company_benchmark", 0),
+        },
+        room=game_pin,
+    )
+    await sio.emit(
+        "final_results",
+        {
+            "results": results,
+            "avatar_map": avatar_map,
+            "player_scores": player_totals,
+            "company_score": sheet.get("company_score", 0),
+            "company_benchmark": sheet.get("company_benchmark", 0),
+        },
+        room=game_pin,
     )
 
 

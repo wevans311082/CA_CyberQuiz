@@ -149,6 +149,12 @@ SPDX-License-Identifier: MPL-2.0
 		}, 350);
 	});
 
+	socket.on('final_results', (data) => {
+		if (data && typeof data === 'object' && 'player_scores' in data && data.player_scores) {
+			player_scores = data.player_scores;
+		}
+	});
+
 	socket.on('countdown_start', (data) => {
 		startCountdownFromServer(data);
 	});

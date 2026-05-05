@@ -59,6 +59,8 @@ SPDX-License-Identifier: MPL-2.0
 	let situation_panel_open = $state(false);
 	let roles_panel_open = $state(false);
 	let hands_panel_open = $state(false);
+	let score_review_open = $state(false);
+	let score_review_sheet = $state<any | null>(null);
 	let adhoc_inject_title = $state('');
 
 	// Discussion timer admin state
@@ -224,6 +226,18 @@ SPDX-License-Identifier: MPL-2.0
 		socket.emit('get_final_results', {});
 	};
 
+	const release_final_scores = () => {
+		socket.emit('release_final_scores', {});
+	};
+
+	const update_review_score = (question_index: number, username: string, score: string) => {
+		const parsed = parseFloat(score);
+		if (isNaN(parsed)) {
+			return;
+		}
+		socket.emit('update_review_score', { question_index, username, score: parsed });
+	};
+
 	const advance_tabletop = () => {
 		socket.emit('advance_tabletop', {});
 	};
@@ -315,6 +329,11 @@ SPDX-License-Identifier: MPL-2.0
 
 		return previews;
 	});
+
+	socket.on('score_review_sheet', (sheet) => {
+		score_review_sheet = sheet;
+		score_review_open = true;
+	});
 </script>
 
 <div
@@ -335,7 +354,7 @@ SPDX-License-Identifier: MPL-2.0
 		{#if selected_question + 1 === quiz_data.questions.length && ((timer_res === '0' && question_results !== null) || quiz_data?.questions?.[selected_question]?.type === QuizQuestionType.SLIDE)}
 			{#if JSON.stringify(final_results) === JSON.stringify([null])}
 				<button onclick={get_final_results} class="admin-button"
-					>{$t('admin_page.get_final_results')}
+					>Prepare Score Sheet
 				</button>
 			{/if}
 		{:else if timer_res === '0' || selected_question === -1}
@@ -502,6 +521,66 @@ SPDX-License-Identifier: MPL-2.0
 			{/if}
 		</div>
 	</div>
+	{#if score_review_open && score_review_sheet}
+		<div class="fixed inset-0 z-40 bg-black/70 p-4 overflow-auto">
+			<div class="mx-auto w-full max-w-6xl rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 p-6 text-white shadow-[0_30px_80px_rgba(15,23,42,0.6)] backdrop-blur-2xl">
+				<div class="flex items-center justify-between">
+					<div>
+						<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">Score Validation</p>
+						<h3 class="text-2xl font-semibold">Review Before Releasing Final Scores</h3>
+					</div>
+					<button class="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold hover:bg-white/6" onclick={() => (score_review_open = false)}>Close</button>
+				</div>
+				<div class="mt-4 grid gap-3 sm:grid-cols-3">
+					<div class="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+						<p class="text-xs uppercase tracking-[0.25em] text-slate-400/70">Company Score</p>
+						<p class="text-2xl font-semibold">{score_review_sheet.company_score}</p>
+					</div>
+					<div class="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+						<p class="text-xs uppercase tracking-[0.25em] text-slate-400/70">Benchmark</p>
+						<p class="text-2xl font-semibold">{score_review_sheet.company_benchmark}</p>
+					</div>
+					<div class="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+						<p class="text-xs uppercase tracking-[0.25em] text-slate-400/70">Players</p>
+						<p class="text-2xl font-semibold">{Object.keys(score_review_sheet.player_totals ?? {}).length}</p>
+					</div>
+				</div>
+
+				<div class="mt-5 space-y-4">
+					{#each score_review_sheet.rows ?? [] as row}
+						<div class="rounded-2xl border border-white/10 bg-white/4 p-4">
+							<div class="mb-3 flex items-center justify-between">
+								<p class="text-sm font-semibold text-white">Q{row.question_index + 1}: {row.question_title || 'Untitled'}</p>
+								<span class="rounded-full border border-white/15 px-3 py-1 text-xs text-slate-300">{row.question_type}</span>
+							</div>
+							<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+								{#each Object.entries(row.scores ?? {}) as [uname, rawScore]}
+									<div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+										<span class="text-sm text-slate-300">{uname}</span>
+										<input
+											type="number"
+											min="0"
+											step="1"
+											value={rawScore}
+											class="w-20 rounded-lg border border-white/10 bg-[#0f172a]/80 px-2 py-1 text-right text-sm text-white outline-none focus:border-[#B07156]/60"
+											onchange={(e) => update_review_score(row.question_index, uname, e.currentTarget.value)}
+										/>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/each}
+				</div>
+
+				<div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
+					<div class="text-sm text-slate-400">Players are on hold while these scores are validated.</div>
+					<button onclick={release_final_scores} class="rounded-full bg-[#B07156] px-6 py-2.5 text-sm font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors">
+						Release Final Scores
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 	<!-- Facilitator Notes -->
 	{#if facilitator_notes}
 		<div class="fixed top-[4.5rem] left-4 z-30 max-w-sm rounded-lg border border-blue-400 bg-blue-50/95 p-3 shadow-lg dark:bg-blue-900/90 dark:border-blue-700">

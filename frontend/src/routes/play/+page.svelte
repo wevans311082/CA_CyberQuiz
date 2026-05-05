@@ -90,6 +90,10 @@ SPDX-License-Identifier: MPL-2.0
 	let countdown_timer: ReturnType<typeof setInterval> | null = null;
 	let countdown_event_received = $state(false);
 	let socket_diagnostics_enabled = $state(false);
+	let score_validation_pending = $state(false);
+	let provisional_my_score = $state<number | null>(null);
+	let provisional_company_score = $state<number | null>(null);
+	let provisional_company_benchmark = $state<number | null>(null);
 
 	// Tabletop exercise state
 	let scenario_type = $state<string | undefined>(undefined);
@@ -377,11 +381,37 @@ SPDX-License-Identifier: MPL-2.0
 		if (data && typeof data === 'object' && 'results' in data) {
 			final_results = data.results;
 			final_results_avatar_map = data.avatar_map ?? {};
+			if (data.player_scores) {
+				scores = data.player_scores;
+			}
 		} else {
 			final_results = data;
 			final_results_avatar_map = {};
 		}
+		score_validation_pending = false;
 		Cookies.remove('joined_game');
+	};
+
+	const onScoreValidationStarted = (data: { company_score?: number; company_benchmark?: number }) => {
+		score_validation_pending = true;
+		provisional_company_score = data?.company_score ?? null;
+		provisional_company_benchmark = data?.company_benchmark ?? null;
+	};
+
+	const onProvisionalScoreUpdate = (data: { username?: string; score?: number }) => {
+		if (!data || data.username !== username) {
+			return;
+		}
+		provisional_my_score = data.score ?? null;
+	};
+
+	const onProvisionalCompanyScore = (data: { company_score?: number; company_benchmark?: number }) => {
+		provisional_company_score = data?.company_score ?? null;
+		provisional_company_benchmark = data?.company_benchmark ?? null;
+	};
+
+	const onScoreValidationCompleted = (_data: { company_score?: number; company_benchmark?: number }) => {
+		score_validation_pending = false;
 	};
 
 	const onSolutions = (data: QuestionType) => {
@@ -523,6 +553,10 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('username_already_exists', onUsernameAlreadyExists);
 		socket.on('kick', onKick);
 		socket.on('final_results', onFinalResults);
+		socket.on('score_validation_started', onScoreValidationStarted);
+		socket.on('provisional_score_update', onProvisionalScoreUpdate);
+		socket.on('provisional_company_score', onProvisionalCompanyScore);
+		socket.on('score_validation_completed', onScoreValidationCompleted);
 		socket.on('solutions', onSolutions);
 		socket.on('countdown_start', onCountdownStart);
 		socket.on('chat_history', onChatHistory);
@@ -561,6 +595,10 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('username_already_exists', onUsernameAlreadyExists);
 		socket.off('kick', onKick);
 		socket.off('final_results', onFinalResults);
+		socket.off('score_validation_started', onScoreValidationStarted);
+		socket.off('provisional_score_update', onProvisionalScoreUpdate);
+		socket.off('provisional_company_score', onProvisionalCompanyScore);
+		socket.off('score_validation_completed', onScoreValidationCompleted);
 		socket.off('solutions', onSolutions);
 		socket.off('countdown_start', onCountdownStart);
 		socket.off('chat_history', onChatHistory);
@@ -643,6 +681,27 @@ SPDX-License-Identifier: MPL-2.0
 						: Object.fromEntries((gameData?.players ?? []).map((player) => [player.username, player.avatar_params]))
 				}
 			/>
+		{:else if score_validation_pending}
+			<div class="flex min-h-[55vh] items-center justify-center px-4">
+				<div class="w-full max-w-xl rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 p-7 text-center text-white shadow-[0_30px_80px_rgba(15,23,42,0.6)] backdrop-blur-2xl">
+					<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">Score Validation</p>
+					<h2 class="mt-2 text-2xl font-semibold">Scores Are Being Validated By Admin</h2>
+					<p class="mt-2 text-sm text-slate-400">Please wait while the facilitator reviews each question/slide score before release.</p>
+					<div class="mt-5 grid gap-3 sm:grid-cols-2">
+						<div class="rounded-xl border border-white/10 bg-white/5 p-4">
+							<p class="text-xs uppercase tracking-[0.25em] text-slate-400/70">Your Current Score</p>
+							<p class="mt-1 text-2xl font-semibold">{provisional_my_score ?? 'Pending'}</p>
+						</div>
+						<div class="rounded-xl border border-white/10 bg-white/5 p-4">
+							<p class="text-xs uppercase tracking-[0.25em] text-slate-400/70">Company Score</p>
+							<p class="mt-1 text-2xl font-semibold">{provisional_company_score ?? 'Pending'}</p>
+							{#if provisional_company_benchmark !== null}
+								<p class="text-xs text-slate-400 mt-1">Benchmark: {provisional_company_benchmark}</p>
+							{/if}
+						</div>
+					</div>
+				</div>
+			</div>
 		{:else if gameData !== undefined && question_index === ''}
 			<ShowTitle
 				title={gameData.title}

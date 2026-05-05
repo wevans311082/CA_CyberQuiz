@@ -98,6 +98,9 @@ SPDX-License-Identifier: MPL-2.0
 		if (data && typeof data === 'object' && 'results' in data) {
 			final_results = data.results;
 			final_results_avatar_map = data.avatar_map ?? {};
+			if (data.player_scores) {
+				player_scores = data.player_scores;
+			}
 		} else {
 			final_results = data;
 			final_results_avatar_map = {};
