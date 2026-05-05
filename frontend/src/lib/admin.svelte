@@ -211,7 +211,7 @@ SPDX-License-Identifier: MPL-2.0
 			{#await import('$lib/play/admin/slide.svelte')}
 				<Spinner my_20={false} />
 			{:then c}
-				<c.default question={quiz_data.questions[selected_question]} />
+				<c.default question={quiz_data.questions[selected_question]} master_theme={quiz_data.master_theme} />
 			{/await}
 		{:else}
 			<Question {quiz_data} {selected_question} {timer_res} {answer_count} {default_colors} />

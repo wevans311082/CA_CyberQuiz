@@ -1662,3 +1662,146 @@ async def stop_discussion_timer(sid: str, _data: dict):
     await redis.delete(f"game:{game_pin}:discussion_timer")
     await sio.emit("discussion_timer_stopped", {}, room=game_pin)
 
+
+# ============================================================
+# Question answer timer — admin-controlled per-slide countdown
+# (separate from the discussion timer; counts DOWN the answer period)
+# ============================================================
+
+@sio.event
+async def start_question_timer(sid: str, data: dict):
+    """Admin starts (or restarts) the answer countdown for the current slide.
+
+    Broadcasts 'question_timer_started' to all players with server timestamp so
+    clients can compute their own countdown without polling.
+    """
+    try:
+        payload = _DiscussionTimerInput(**data)
+    except ValidationError as e:
+        await sio.emit("error", room=sid)
+        print(e)
+        return
+
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    duration = max(1, min(payload.duration, 7200))
+
+    state = {
+        "running": True,
+        "duration": duration,
+        "started_at": datetime.now().isoformat(),
+        "paused_remaining": None,
+    }
+    await redis.set(f"game:{game_pin}:question_timer", json.dumps(state), ex=7200)
+
+    await sio.emit(
+        "question_timer_started",
+        {"duration": duration, "server_timestamp": state["started_at"]},
+        room=game_pin,
+    )
+
+
+@sio.event
+async def pause_question_timer(sid: str, _data: dict):
+    """Admin pauses a running question timer."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    raw = await redis.get(f"game:{game_pin}:question_timer")
+    if raw is None:
+        return
+
+    state = json.loads(raw)
+    if not state.get("running"):
+        return
+
+    started_at = datetime.fromisoformat(state["started_at"])
+    elapsed = (datetime.now() - started_at).total_seconds()
+    remaining = max(0, state["duration"] - elapsed)
+
+    state["running"] = False
+    state["paused_remaining"] = remaining
+    await redis.set(f"game:{game_pin}:question_timer", json.dumps(state), ex=7200)
+
+    await sio.emit("question_timer_paused", {"remaining": remaining}, room=game_pin)
+
+
+@sio.event
+async def resume_question_timer(sid: str, _data: dict):
+    """Admin resumes a paused question timer."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    raw = await redis.get(f"game:{game_pin}:question_timer")
+    if raw is None:
+        return
+
+    state = json.loads(raw)
+    if state.get("running"):
+        return
+
+    remaining = state.get("paused_remaining", 0)
+    if remaining <= 0:
+        return
+
+    state["running"] = True
+    state["duration"] = remaining
+    state["started_at"] = datetime.now().isoformat()
+    state["paused_remaining"] = None
+    await redis.set(f"game:{game_pin}:question_timer", json.dumps(state), ex=7200)
+
+    await sio.emit(
+        "question_timer_started",
+        {"duration": remaining, "server_timestamp": state["started_at"]},
+        room=game_pin,
+    )
+
+
+@sio.event
+async def stop_question_timer(sid: str, _data: dict):
+    """Admin stops and clears the question timer."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    await redis.delete(f"game:{game_pin}:question_timer")
+    await sio.emit("question_timer_stopped", {}, room=game_pin)
+
+
+# ============================================================
+# File download audit
+# ============================================================
+
+from classquiz.socket_server.branching import log_file_download as _log_file_download
+
+
+@sio.event
+async def file_downloaded(sid: str, data: dict):
+    """Player emits this when they download a file attachment.
+
+    data: {file_id: str | None, filename: str}
+    """
+    session = await get_session(sid, sio)
+    if not session or session.get("admin", False):
+        return
+
+    game_pin = session.get("game_pin")
+    username = session.get("username")
+    if not game_pin or not username:
+        return
+
+    await _log_file_download(
+        game_pin=game_pin,
+        username=username,
+        file_id=data.get("file_id"),
+        filename=data.get("filename", "unknown"),
+    )
+

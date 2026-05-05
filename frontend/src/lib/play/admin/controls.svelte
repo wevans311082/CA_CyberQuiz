@@ -123,7 +123,62 @@ SPDX-License-Identifier: MPL-2.0
 		disc_remaining = 0;
 		disc_total = 0;
 		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
-	});	let adhoc_inject_content = $state('');
+	});
+
+	// Question answer timer (server-synced admin controls)
+	let qtimer_running = $state(false);
+	let qtimer_remaining = $state(0);
+	let qtimer_total = $state(0);
+	let qtimer_custom_seconds = $state<number | null>(null);
+	let qtimer_interval: ReturnType<typeof setInterval> | null = null;
+
+	const qtimer_effective_duration = $derived(
+		qtimer_custom_seconds != null && qtimer_custom_seconds > 0
+			? qtimer_custom_seconds
+			: Number(quiz_data?.questions?.[selected_question]?.timer?.duration_seconds ?? quiz_data?.questions?.[selected_question]?.time ?? 60)
+	);
+
+	const qtimer_start = () => {
+		socket.emit('start_question_timer', { duration: qtimer_effective_duration });
+	};
+	const qtimer_pause = () => { socket.emit('pause_question_timer', {}); };
+	const qtimer_resume = () => { socket.emit('resume_question_timer', {}); };
+	const qtimer_stop = () => { socket.emit('stop_question_timer', {}); };
+
+	const qtimer_fmt = (s: number) => {
+		const m = Math.floor(s / 60);
+		const sec = Math.floor(s % 60);
+		return m > 0 ? `${m}:${sec.toString().padStart(2, '0')}` : `${Math.floor(s)}s`;
+	};
+
+	socket.on('question_timer_started', (data: { duration: number; server_timestamp: string }) => {
+		qtimer_running = true;
+		qtimer_total = data.duration;
+		const serverStart = new Date(data.server_timestamp).getTime();
+		if (qtimer_interval) clearInterval(qtimer_interval);
+		qtimer_interval = setInterval(() => {
+			const elapsed = (Date.now() - serverStart) / 1000;
+			const rem = Math.max(0, data.duration - elapsed);
+			qtimer_remaining = rem;
+			if (rem <= 0) {
+				qtimer_running = false;
+				if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
+			}
+		}, 250);
+	});
+	socket.on('question_timer_paused', (data: { remaining: number }) => {
+		qtimer_running = false;
+		qtimer_remaining = data.remaining;
+		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
+	});
+	socket.on('question_timer_stopped', () => {
+		qtimer_running = false;
+		qtimer_remaining = 0;
+		qtimer_total = 0;
+		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
+	});
+
+	let adhoc_inject_content = $state('');
 	let adhoc_inject_severity = $state<'info' | 'warning' | 'critical'>('info');
 	let new_affected_system = $state('');
 
@@ -346,6 +401,39 @@ SPDX-License-Identifier: MPL-2.0
 			{/each}
 		{/if}
 		<div class="ml-auto flex gap-2">
+			<!-- Question Answer Timer (shown when timer.enabled for current question) -->
+			{#if is_tabletop && selected_question >= 0 && quiz_data?.questions?.[selected_question]?.timer?.enabled}
+				<div class="flex items-center gap-1 border-r border-white/30 pr-2 mr-1">
+					{#if qtimer_total > 0 && (qtimer_running || qtimer_remaining > 0)}
+						<span class="font-mono text-xs font-bold tabular-nums"
+							class:text-green-300={qtimer_running && qtimer_remaining > 30}
+							class:text-yellow-300={qtimer_running && qtimer_remaining <= 30}
+							class:text-red-400={qtimer_running && qtimer_remaining <= 10}
+							class:text-gray-300={!qtimer_running}
+						>{qtimer_fmt(qtimer_remaining)}</span>
+						{#if qtimer_running}
+							<button onclick={qtimer_pause} class="admin-button text-xs bg-yellow-600" title="Pause answer timer">⏸</button>
+						{:else}
+							<button onclick={qtimer_resume} class="admin-button text-xs bg-green-700" title="Resume answer timer">▶</button>
+						{/if}
+						<button onclick={qtimer_stop} class="admin-button text-xs bg-red-700" title="Stop answer timer">■</button>
+					{:else}
+						<span class="text-xs text-white/60">Answer:</span>
+						<input
+							type="number"
+							min="5"
+							max="7200"
+							step="10"
+							placeholder="{qtimer_effective_duration}"
+							class="w-16 rounded border border-white/30 bg-white/10 px-1 py-0.5 text-xs text-white placeholder:text-white/40 outline-hidden"
+							onchange={(e) => { qtimer_custom_seconds = parseInt(e.currentTarget.value) || null; }}
+							title="Override answer timer duration in seconds"
+						/>
+						<span class="text-xs text-white/60">s</span>
+						<button onclick={qtimer_start} class="admin-button text-xs bg-green-700" title="Start answer timer">▶ Start</button>
+					{/if}
+				</div>
+			{/if}
 			<!-- Discussion Timer -->
 			<div class="flex items-center gap-1 border-r border-white/30 pr-2 mr-1">
 				{#if disc_total > 0 && (disc_running || disc_remaining > 0)}

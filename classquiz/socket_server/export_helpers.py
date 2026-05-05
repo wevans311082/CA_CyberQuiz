@@ -17,6 +17,7 @@ from classquiz.socket_server.branching import (
     get_facilitator_overrides,
     get_injects_log,
     get_situation_log,
+    get_file_downloads_log,
 )
 
 
@@ -42,6 +43,7 @@ async def save_quiz_to_storage(game_pin: str):
     facilitator_overrides_data = None
     injects_log_data = None
     situation_log_data = None
+    file_downloads_log_data = None
     scenario_type = game.scenario_type
 
     if is_tabletop(game):
@@ -50,6 +52,7 @@ async def save_quiz_to_storage(game_pin: str):
         facilitator_overrides_data = await get_facilitator_overrides(game_pin)
         injects_log_data = await get_injects_log(game_pin)
         situation_log_data = await get_situation_log(game_pin)
+        file_downloads_log_data = await get_file_downloads_log(game_pin)
 
     data = GameResults(
         id=game.game_id,
@@ -69,5 +72,6 @@ async def save_quiz_to_storage(game_pin: str):
         scenario_type=scenario_type,
         injects_log=json.dumps(injects_log_data) if injects_log_data else None,
         situation_log=json.dumps(situation_log_data) if situation_log_data else None,
+        file_downloads_log=json.dumps(file_downloads_log_data) if file_downloads_log_data else None,
     )
     await data.save()

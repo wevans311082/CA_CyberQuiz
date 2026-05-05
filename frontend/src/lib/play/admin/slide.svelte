@@ -7,18 +7,33 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	import type { Question } from '$lib/quiz_types';
 	import { QuizQuestionType } from '$lib/quiz_types';
+	import type { MasterTheme } from '$lib/quiz_types';
 	import { onMount } from 'svelte';
 	import Pikaso from 'pikaso';
 
 	interface Props {
 		question: Question;
+		master_theme?: MasterTheme;
 	}
 
-	let { question }: Props = $props();
+	let { question, master_theme = undefined }: Props = $props();
 
 	let canvas_el: HTMLDivElement | undefined = $state();
 	let canvas: Pikaso;
 	let img_src = $state('');
+
+	const effective_theme_style = $derived.by(() => {
+		const base = master_theme ?? {};
+		const override = (question.theme_override?.enabled ? question.theme_override : {}) as Record<string, string | undefined>;
+		const bg = override.background_color ?? base.background_color;
+		const fg = override.text_color ?? base.text_color;
+		const font = base.font_family;
+		const parts: string[] = [];
+		if (bg) parts.push(`background-color: ${bg}`);
+		if (fg) parts.push(`color: ${fg}`);
+		if (font) parts.push(`font-family: ${font}`);
+		return parts.join('; ');
+	});
 
 	onMount(() => {
 		if (question.type === QuizQuestionType.INFORMATION || question.type === QuizQuestionType.FILE) {
@@ -39,7 +54,7 @@ SPDX-License-Identifier: MPL-2.0
 	});
 </script>
 
-<div class="w-full h-full">
+<div class="w-full h-full" style={effective_theme_style}>
 	{#if question.type === QuizQuestionType.INFORMATION || question.type === QuizQuestionType.FILE}
 		<div class="mx-auto mt-10 max-w-5xl px-6 space-y-4">
 			<h2 class="text-4xl text-center">{@html question.question}</h2>

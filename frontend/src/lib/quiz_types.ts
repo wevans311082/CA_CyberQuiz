@@ -29,6 +29,7 @@ export interface QuizData {
 	roles?: string[];
 	role_descriptions?: Record<string, string>;
 	injects?: Inject[];
+	master_theme?: MasterTheme;
 }
 
 export interface Inject {
@@ -103,6 +104,14 @@ export interface SlideThemeOverride {
 	background_image?: string;
 }
 
+export interface MasterTheme {
+	background_color?: string;
+	text_color?: string;
+	accent_color?: string;
+	background_image?: string;
+	font_family?: string;
+}
+
 export interface RangeQuizAnswer {
 	min: number;
 	max: number;
@@ -174,6 +183,7 @@ export interface EditorData {
 	roles?: string[];
 	role_descriptions?: Record<string, string>;
 	injects?: Inject[];
+	master_theme?: MasterTheme;
 }
 
 export interface PrivateImageData {

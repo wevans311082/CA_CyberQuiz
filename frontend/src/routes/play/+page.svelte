@@ -55,6 +55,7 @@ SPDX-License-Identifier: MPL-2.0
 		scenario_type?: string;
 		roles?: string[];
 		role_descriptions?: Record<string, string>;
+		master_theme?: import('$lib/quiz_types').MasterTheme;
 	}
 
 	let game_mode = $state();
@@ -108,6 +109,18 @@ SPDX-License-Identifier: MPL-2.0
 	let disc_total = $state(0);
 	let disc_interval: ReturnType<typeof setInterval> | null = null;
 
+	// Question answer timer (server-synced)
+	let qtimer_running = $state(false);
+	let qtimer_remaining = $state(0);
+	let qtimer_total = $state(0);
+	let qtimer_interval: ReturnType<typeof setInterval> | null = null;
+
+	const qtimer_fmt = (s: number) => {
+		const m = Math.floor(s / 60);
+		const sec = Math.floor(s % 60);
+		return m > 0 ? `${m}:${sec.toString().padStart(2, '0')}` : `${Math.floor(s)}s`;
+	};
+
 	const disc_fmt = (s: number) => {
 		const m = Math.floor(s / 60);
 		const sec = Math.floor(s % 60);
@@ -141,6 +154,35 @@ SPDX-License-Identifier: MPL-2.0
 		disc_remaining = 0;
 		disc_total = 0;
 		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
+	};
+
+	const onQuestionTimerStarted = (data: { duration: number; server_timestamp: string }) => {
+		qtimer_running = true;
+		qtimer_total = data.duration;
+		const serverStart = new Date(data.server_timestamp).getTime();
+		if (qtimer_interval) clearInterval(qtimer_interval);
+		qtimer_interval = setInterval(() => {
+			const elapsed = (Date.now() - serverStart) / 1000;
+			const rem = Math.max(0, data.duration - elapsed);
+			qtimer_remaining = rem;
+			if (rem <= 0) {
+				qtimer_running = false;
+				if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
+			}
+		}, 250);
+	};
+
+	const onQuestionTimerPaused = (data: { remaining: number }) => {
+		qtimer_running = false;
+		qtimer_remaining = data.remaining;
+		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
+	};
+
+	const onQuestionTimerStopped = () => {
+		qtimer_running = false;
+		qtimer_remaining = 0;
+		qtimer_total = 0;
+		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
 	};
 	let injects_log = $state<Array<{ inject: Inject; triggered_by: string; timestamp: string }>>([]);
 	let situation_room_open = $state(false);
@@ -501,6 +543,9 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('discussion_timer_started', onDiscussionTimerStarted);
 		socket.on('discussion_timer_paused', onDiscussionTimerPaused);
 		socket.on('discussion_timer_stopped', onDiscussionTimerStopped);
+		socket.on('question_timer_started', onQuestionTimerStarted);
+		socket.on('question_timer_paused', onQuestionTimerPaused);
+		socket.on('question_timer_stopped', onQuestionTimerStopped);
 	});
 
 	onDestroy(() => {
@@ -536,7 +581,11 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('discussion_timer_started', onDiscussionTimerStarted);
 		socket.off('discussion_timer_paused', onDiscussionTimerPaused);
 		socket.off('discussion_timer_stopped', onDiscussionTimerStopped);
+		socket.off('question_timer_started', onQuestionTimerStarted);
+		socket.off('question_timer_paused', onQuestionTimerPaused);
+		socket.off('question_timer_stopped', onQuestionTimerStopped);
 		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
+		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
 		if (countdown_timer) {
 			clearInterval(countdown_timer);
 			countdown_timer = null;
@@ -616,9 +665,9 @@ SPDX-License-Identifier: MPL-2.0
 			{#key unique}
 				<div class="text-black dark:text-black">
 					{#if question?.type === QuizQuestionType.SLIDE}
-						<Slide {question} />
+						<Slide {question} master_theme={gameData?.master_theme} />
 					{:else}
-						<Question bind:game_mode bind:question {question_index} {solution} {my_role} {scenario_type} allowed_roles={current_allowed_roles} />
+						<Question bind:game_mode bind:question {question_index} {solution} {my_role} {scenario_type} allowed_roles={current_allowed_roles} master_theme={gameData?.master_theme} />
 					{/if}
 				</div>
 			{/key}
@@ -640,6 +689,13 @@ SPDX-License-Identifier: MPL-2.0
 			{/if}
 		{/if}
 	</div>
+	<!-- Question timer overlay (server-synced) -->
+	{#if qtimer_running}
+		<div class="fixed top-3 right-3 z-50 flex items-center gap-1.5 rounded-lg bg-black/80 px-3 py-1.5 text-white shadow-xl">
+			<svg class="h-4 w-4 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+			<span class="font-mono text-sm font-bold">{qtimer_fmt(qtimer_remaining)}</span>
+		</div>
+	{/if}
 	<SocketDiagnostics
 		socket={socket}
 		label="player"

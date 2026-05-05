@@ -216,6 +216,29 @@ async def get_situation_log(game_pin: str) -> list[dict]:
     return [json.loads(r) for r in (raw or [])]
 
 
+# ============================================================
+# File download audit helpers
+# ============================================================
+
+async def log_file_download(game_pin: str, username: str, file_id: str | None, filename: str) -> None:
+    """Record a file download event during the session."""
+    from datetime import datetime as _dt
+    entry = json.dumps({
+        "username": username,
+        "file_id": file_id,
+        "filename": filename,
+        "timestamp": _dt.now().isoformat(),
+    })
+    await redis.rpush(f"game_session:{game_pin}:file_downloads", entry)
+    await redis.expire(f"game_session:{game_pin}:file_downloads", 7200)
+
+
+async def get_file_downloads_log(game_pin: str) -> list[dict]:
+    """Get all file download events for this session."""
+    raw = await redis.lrange(f"game_session:{game_pin}:file_downloads", 0, -1)
+    return [json.loads(r) for r in (raw or [])]
+
+
 def ensure_question_ids(questions: list[QuizQuestion]) -> list[QuizQuestion]:
     """Ensure every question has an ID. Assigns UUIDs to any question missing one."""
     import uuid

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	import type { Question } from '$lib/quiz_types';
 	import { QuizQuestionType } from '$lib/quiz_types';
+	import type { MasterTheme } from '$lib/quiz_types';
 	import { socket } from '$lib/socket';
 	import Spinner from '../Spinner.svelte';
 	import { getLocalization } from '$lib/i18n';
@@ -27,6 +28,7 @@ SPDX-License-Identifier: MPL-2.0
 		my_role?: string;
 		scenario_type?: string;
 		allowed_roles?: string[];
+		master_theme?: MasterTheme;
 	}
 
 	let {
@@ -36,7 +38,8 @@ SPDX-License-Identifier: MPL-2.0
 		solution,
 		my_role = undefined,
 		scenario_type = undefined,
-		allowed_roles = undefined
+		allowed_roles = undefined,
+		master_theme = undefined
 	}: Props = $props();
 
 	// In tabletop mode, check if this player's role is allowed to answer
@@ -173,9 +176,24 @@ SPDX-License-Identifier: MPL-2.0
 	const is_information_like = $derived(
 		question.type === QuizQuestionType.INFORMATION || question.type === QuizQuestionType.FILE
 	);
+
+	// Effective theme: quiz master_theme merged with per-slide theme_override
+	const effective_theme_style = $derived.by(() => {
+		const base = master_theme ?? {};
+		const override = (question.theme_override?.enabled ? question.theme_override : {}) as Record<string, string | undefined>;
+		const bg = override.background_color ?? base.background_color;
+		const fg = override.text_color ?? base.text_color;
+		const accent = override.accent_color ?? base.accent_color;
+		const font = base.font_family;
+		const parts: string[] = [];
+		if (bg) parts.push(`background-color: ${bg}`);
+		if (fg) parts.push(`color: ${fg}`);
+		if (font) parts.push(`font-family: ${font}`);
+		return parts.join('; ');
+	});
 </script>
 
-<div class="h-screen w-screen">
+<div class="h-screen w-screen" style={effective_theme_style}>
 	{#if is_tabletop && my_role}
 		<div class="absolute top-2 left-2 z-50 rounded-full bg-teal-600 px-3 py-1 text-xs font-semibold text-white shadow">
 			{my_role}
@@ -294,6 +312,12 @@ SPDX-License-Identifier: MPL-2.0
 									target="_blank"
 									rel="noopener noreferrer"
 									class="rounded-md bg-[#B07156] px-3 py-1.5 text-sm font-semibold text-white"
+									onclick={() => {
+										socket.emit('file_downloaded', {
+											file_id: attachment.id ?? null,
+											filename: attachment.filename
+										});
+									}}
 								>
 									Open
 								</a>
