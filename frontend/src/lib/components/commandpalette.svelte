@@ -226,7 +226,7 @@ This should be okay, right?
 
 {#if open}
 	<div
-		class="fixed top-0 left-0 w-screen h-screen flex bg-black/50 z-50"
+		class="fixed top-0 left-0 w-screen h-screen flex items-start justify-center bg-black/70 z-50 pt-24"
 		onclick={close_on_outside}
 		onkeyup={close_on_outside}
 		role="button"
@@ -234,47 +234,55 @@ This should be okay, right?
 		tabindex="0"
 		transition:fade|global={{ duration: 60 }}
 	>
-		<div class="m-auto w-1/3 h-2/3 rounded-sm bg-black flex flex-col">
-			<div class="grid grid-cols-1 grid-rows-1 border-b border-b-white">
-				<p
-					class="col-start-1 row-start-1 w-full p-4 outline-hidden bg-gray-700 rounded-t text-gray-400"
-				>
-					{bg_text}
-				</p>
+		<div class="w-full max-w-xl mx-4 rounded-[1.75rem] border border-white/15 bg-[#0f172a]/97 backdrop-blur-2xl shadow-[0_30px_100px_rgba(15,23,42,0.8)] flex flex-col overflow-hidden text-white">
+			<!-- Search input area -->
+			<div class="relative border-b border-white/8">
+				<div class="pointer-events-none absolute inset-0 flex items-center px-4">
+					<p class="text-slate-600 text-sm">{bg_text}</p>
+				</div>
 				<input
 					type="text"
-					class="col-start-1 row-start-1 w-full p-4 outline-hidden bg-gray-700 rounded-sm"
+					class="relative w-full px-5 py-4 text-sm bg-transparent outline-none placeholder:text-slate-500"
 					bind:value={input}
 					oninput={() => search(input)}
+					placeholder="Search or type /command…"
 					autofocus
 				/>
 			</div>
-			<div class="flex flex-col p-2 gap-2 overflow-scroll">
+
+			<!-- Results -->
+			<div class="flex flex-col p-2 gap-1 overflow-y-auto max-h-80">
 				{#each visible_items as vi, i}
 					<div
-						transition:fade={{ duration: 60 }}
-						class="p-2 transition rounded-sm"
-						class:bg-[#B07156]={selected === i}
-						class:bg-gray-700={selected !== i}
+						transition:fade={{ duration: 40 }}
+						class="{selected === i ? 'bg-[#B07156]/15 border-[#B07156]/30' : 'border-transparent hover:bg-white/5'} rounded-xl border px-4 py-3 transition-colors cursor-pointer"
 						onmouseenter={() => (selected = i)}
 						onmousedown={execute_action}
 						tabindex="-2"
 						role="button"
 					>
-						<div class="flex">
-							<h3 class="text-lg my-auto">{vi.title}</h3>
-							<p class="font-mono my-auto ml-auto h-fit bg-black/50 rounded-sm p-0.5">
-								/{vi.command}
-								{#if vi.args}
-									{#each vi.args as arg}
-										&lbrace;<span class="text-indigo-400">{arg}</span
-										>&rbrace;{/each}
-								{/if}
-							</p>
+						<div class="flex items-center gap-3">
+							<h3 class="text-sm font-medium flex-1">{vi.title}</h3>
+							{#if vi.command}
+								<p class="font-mono text-xs text-slate-500 bg-white/6 rounded-md px-2 py-0.5">/{vi.command}{#if vi.args}{#each vi.args as arg} &lbrace;<span class="text-[#B07156]">{arg}</span>&rbrace;{/each}{/if}</p>
+							{/if}
 						</div>
-						<p class="text-sm">{vi.description}</p>
+						{#if vi.description}
+							<p class="text-xs text-slate-500 mt-0.5">{vi.description}</p>
+						{/if}
 					</div>
 				{/each}
+				{#if visible_items.length === 0}
+					<p class="text-center text-sm text-slate-500 py-6">No results found</p>
+				{/if}
+			</div>
+
+			<!-- Footer hint -->
+			<div class="border-t border-white/8 px-5 py-2.5 flex gap-4 text-xs text-slate-600">
+				<span><kbd class="font-mono">↑↓</kbd> navigate</span>
+				<span><kbd class="font-mono">↵</kbd> execute</span>
+				<span><kbd class="font-mono">Tab</kbd> autocomplete</span>
+				<span><kbd class="font-mono">Esc</kbd> close</span>
 			</div>
 		</div>
 	</div>

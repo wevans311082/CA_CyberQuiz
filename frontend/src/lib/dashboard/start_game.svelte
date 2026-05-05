@@ -7,7 +7,6 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	// import { alertModal } from '$lib/stores';
 	import { captcha_enabled } from '$lib/config';
-	import StartGameBackground from './start_game_background.svg';
 	import { fade } from 'svelte/transition';
 	import Spinner from '$lib/Spinner.svelte';
 	import { onMount } from 'svelte';
@@ -94,132 +93,110 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <div
-	class="fixed top-0 left-0 flex justify-center w-screen h-screen bg-black/60 z-50 text-black"
+	class="fixed top-0 left-0 flex justify-center items-center w-screen h-screen bg-black/70 z-50"
 	transition:fade|global={{ duration: 100 }}
 	onclick={on_parent_click}
 >
-	<div
-		class="w-5/6 h-5/6 bg-black m-auto rounded-lg shadow-lg p-4 flex flex-col"
-		style="background-image: url({StartGameBackground}); background-color: #DFDBE5;"
-	>
-		<div class="flex justify-center w-full">
-			<label
-				for="large-toggle"
-				class="inline-flex relative items-center cursor-pointer"
-				class:pointer-events-none={!captcha_enabled}
-				class:opacity-50={!captcha_enabled}
-			>
-				<input
-					type="checkbox"
-					bind:checked={captcha_selected}
-					id="large-toggle"
-					class="sr-only peer"
-				/>
-				<span
-					class="w-14 h-7 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
-				></span>
-				<span class="ml-3 text-sm font-medium text-gray-900"
-					>Captcha {captcha_selected ? 'enabled' : 'disabled'}</span
-				>
-			</label>
-		</div>
-		{#if captcha_selected}
-			<div class="flex justify-center mt-2" in:fade|global>
-				<p class="w-1/3">
-					{$t('start_game.captcha_message')}
-				</p>
-				<!-- Todo: Add translation  -->
-			</div>
-		{/if}
+	<div class="relative w-full max-w-2xl mx-4 rounded-[2rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_120px_rgba(15,23,42,0.7)] p-8 flex flex-col gap-6 text-white">
 
-		<div class="grid grid-cols-2 gap-8 my-auto">
-			<div
-				class="rounded-lg bg-white shadow-lg cursor-pointer transition-all p-2"
-				class:opacity-50={selected_game_mode !== 'kahoot'}
-				onclick={() => {
-					selected_game_mode = 'kahoot';
-				}}
-			>
-				<h2 class="text-center text-2xl">{$t('words.normal')}</h2>
-				<p>
-					{$t('start_game.normal_mode_description')}
-				</p>
-			</div>
-			<div
-				class="rounded-lg bg-white shadow-lg cursor-pointer transition-all p-2"
-				class:opacity-50={selected_game_mode !== 'normal'}
-				onclick={() => {
-					selected_game_mode = 'normal';
-				}}
-			>
-				<h2 class="text-center text-2xl">{$t('start_game.old_school_mode')}</h2>
-				<p>
-					{$t('start_game.old_school_mode_description')}
-				</p>
+		<!-- Header -->
+		<div class="text-center">
+			<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80 mb-2">Session Configuration</p>
+			<h2 class="text-3xl font-semibold">{$t('start_game.start_game')}</h2>
+		</div>
+
+		<!-- Game Mode -->
+		<div>
+			<p class="text-xs uppercase tracking-[0.3em] text-slate-400/70 mb-3">Game Mode</p>
+			<div class="grid grid-cols-2 gap-4">
+				<button
+					class="{selected_game_mode === 'kahoot' ? 'border-[#B07156] bg-[#B07156]/10' : 'border-white/10 bg-white/5 opacity-60'} rounded-2xl border p-4 text-left transition-all cursor-pointer hover:opacity-100"
+					onclick={() => { selected_game_mode = 'kahoot'; }}
+				>
+					<h3 class="text-base font-semibold mb-1">{$t('words.normal')}</h3>
+					<p class="text-sm text-slate-400">{$t('start_game.normal_mode_description')}</p>
+				</button>
+				<button
+					class="{selected_game_mode === 'normal' ? 'border-[#B07156] bg-[#B07156]/10' : 'border-white/10 bg-white/5 opacity-60'} rounded-2xl border p-4 text-left transition-all cursor-pointer hover:opacity-100"
+					onclick={() => { selected_game_mode = 'normal'; }}
+				>
+					<h3 class="text-base font-semibold mb-1">{$t('start_game.old_school_mode')}</h3>
+					<p class="text-sm text-slate-400">{$t('start_game.old_school_mode_description')}</p>
+				</button>
 			</div>
 		</div>
-		<div class="flex justify-center items-center my-auto">
-			<label class="mr-4">{$t('result_page.custom_field')}</label>
+
+		<!-- Custom field -->
+		<div>
+			<label class="text-xs uppercase tracking-[0.3em] text-slate-400/70 block mb-2" for="custom-field-input">{$t('result_page.custom_field')}</label>
 			<input
+				id="custom-field-input"
 				bind:value={custom_field}
-				class="rounded-lg p-2 outline-hidden placeholder:italic"
+				class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors"
 				placeholder="Phone Number or Email"
 			/>
 		</div>
-		<div class="flex justify-center w-full my-auto">
-			<label for="cqc-toggle" class="inline-flex relative items-center cursor-pointer">
-				<input
-					type="checkbox"
-					bind:checked={cqcs_enabled}
-					id="cqc-toggle"
-					class="sr-only peer"
-				/>
-				<span
-					class="w-14 h-7 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
-				></span>
-				<span class="ml-3 text-sm font-medium text-gray-900"
-					><a
+
+		<!-- Toggle options -->
+		<div class="flex flex-col gap-3">
+			{#if captcha_enabled}
+				<label class="flex items-center gap-3 cursor-pointer group">
+					<div class="relative">
+						<input type="checkbox" bind:checked={captcha_selected} id="large-toggle" class="sr-only peer" />
+						<div class="w-10 h-5 rounded-full bg-white/10 peer-checked:bg-[#B07156] transition-colors"></div>
+						<div class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></div>
+					</div>
+					<span class="text-sm text-slate-300 group-hover:text-white transition-colors">Captcha {captcha_selected ? 'enabled' : 'disabled'}</span>
+				</label>
+				{#if captcha_selected}
+					<p class="text-xs text-slate-400 pl-13 -mt-1" in:fade|global>{$t('start_game.captcha_message')}</p>
+				{/if}
+			{/if}
+
+			<label class="flex items-center gap-3 cursor-pointer group">
+				<div class="relative">
+					<input type="checkbox" bind:checked={cqcs_enabled} id="cqc-toggle" class="sr-only peer" />
+					<div class="w-10 h-5 rounded-full bg-white/10 peer-checked:bg-[#B07156] transition-colors"></div>
+					<div class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></div>
+				</div>
+				<span class="text-sm text-slate-300 group-hover:text-white transition-colors">
+					<a
 						href="/controller"
 						target="_blank"
-						use:tippy={{
-							content:
-								'ClassQuizControllers are small physical devices to play ClassQuiz. Click to learn more.'
-						}}
-						class="decoration-dashed underline cursor-help">ClassQuizControllers</a
-					>
-					are {cqcs_enabled ? 'enabled' : 'disabled'}</span
-				>
+						use:tippy={{ content: 'ClassQuizControllers are small physical devices to play ClassQuiz. Click to learn more.' }}
+						class="decoration-dashed underline cursor-help"
+					>ClassQuizControllers</a> are {cqcs_enabled ? 'enabled' : 'disabled'}
+				</span>
 			</label>
-		</div>
-		<div class="flex justify-center w-full my-auto">
-			<label
-				for="randomized-answers-toggle"
-				class="inline-flex relative items-center cursor-pointer"
-			>
-				<input
-					type="checkbox"
-					bind:checked={randomized_answers}
-					id="randomized-answers-toggle"
-					class="sr-only peer"
-				/>
-				<span
-					class="w-14 h-7 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
-				></span>
-				<span class="ml-3 text-sm font-medium text-gray-900"> Randomize answers</span>
+
+			<label class="flex items-center gap-3 cursor-pointer group">
+				<div class="relative">
+					<input type="checkbox" bind:checked={randomized_answers} id="randomized-answers-toggle" class="sr-only peer" />
+					<div class="w-10 h-5 rounded-full bg-white/10 peer-checked:bg-[#B07156] transition-colors"></div>
+					<div class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></div>
+				</div>
+				<span class="text-sm text-slate-300 group-hover:text-white transition-colors">Randomize answers</span>
 			</label>
 		</div>
 
-		<button
-			class="mt-auto mx-auto bg-green-500 p-4 rounded-lg shadow-lg hover:bg-green-400 transition-all marck-script text-2xl"
-			onclick={() => {
-				start_game(quiz_id);
-			}}
-		>
-			{#if loading}
-				<Spinner my_20={false} />
-			{:else}
-				{$t('start_game.start_game')}
-			{/if}
-		</button>
+		<!-- Action buttons -->
+		<div class="flex gap-3 pt-2">
+			<button
+				class="flex-1 rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white/90 hover:bg-white/6 transition-colors"
+				onclick={() => { quiz_id = null; }}
+			>
+				Cancel
+			</button>
+			<button
+				class="flex-1 rounded-full bg-[#B07156] px-6 py-3 text-sm font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors flex items-center justify-center gap-2"
+				onclick={() => { start_game(quiz_id); }}
+			>
+				{#if loading}
+					<Spinner my_20={false} />
+				{:else}
+					{$t('start_game.start_game')}
+				{/if}
+			</button>
+		</div>
 	</div>
 </div>

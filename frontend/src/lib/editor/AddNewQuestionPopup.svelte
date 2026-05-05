@@ -130,33 +130,33 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <div
-	class="fixed top-0 left-0 w-screen h-screen flex bg-black/50 z-50"
+	class="fixed top-0 left-0 w-screen h-screen flex items-center justify-center bg-black/70 z-50"
 	onclick={on_parent_click}
 	transition:fade={{ duration: 100 }}
 >
-	<div
-		class="m-auto w-2/3 h-5/6 rounded-sm shadow-2xl bg-white dark:bg-gray-600 p-6 flex flex-col"
-	>
-		<h1 class="text-center text-3xl mb-6">{$t('quiztivity.editor.select_page_type')}</h1>
-		<div class="overflow-y-scroll flex flex-col gap-4">
+	<div class="relative w-full max-w-3xl mx-4 rounded-[2rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_120px_rgba(15,23,42,0.7)] p-8 flex flex-col gap-6 text-white max-h-[90vh]">
+		<div class="text-center">
+			<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80 mb-2">Editor</p>
+			<h1 class="text-2xl font-semibold">{$t('quiztivity.editor.select_page_type')}</h1>
+		</div>
+
+		<div class="overflow-y-auto flex flex-col gap-6 pr-1">
 			{#each section_order as section}
 				{@const items = question_types
 					.map((qt, idx) => ({ qt, idx }))
 					.filter((item) => item.qt.category === section)}
 				{#if items.length}
-					<div class="space-y-2">
-						<h2 class="text-lg font-semibold text-black dark:text-white">{section_titles[section]}</h2>
+					<div class="space-y-3">
+						<h2 class="text-xs uppercase tracking-[0.3em] text-slate-400/70">{section_titles[section]}</h2>
 						<div class="grid grid-cols-3 gap-3">
 							{#each items as item}
-								<div class="rounded-sm p-4 border-[#B07156] border">
-									<button
-										class="text-lg text-black dark:text-white text-left"
-										onclick={() => {
-											add_question(item.idx);
-										}}>{item.qt.name}</button
-									>
-									<p class="text-sm">{item.qt.description}</p>
-								</div>
+								<button
+									class="rounded-2xl border border-white/10 bg-white/5 hover:border-[#B07156]/60 hover:bg-[#B07156]/8 p-4 text-left transition-all group"
+									onclick={() => { add_question(item.idx); }}
+								>
+									<h3 class="text-sm font-semibold text-white mb-1 group-hover:text-[#B07156] transition-colors">{item.qt.name}</h3>
+									<p class="text-xs text-slate-400 leading-5">{item.qt.description}</p>
+								</button>
 							{/each}
 						</div>
 					</div>
@@ -164,16 +164,21 @@ SPDX-License-Identifier: MPL-2.0
 			{/each}
 		</div>
 
-		<div class="mt-auto flex justify-center">
-			<p>
+		<div class="flex items-center justify-between pt-2 border-t border-white/8">
+			<p class="text-xs text-slate-500">
 				{$t('editor.need_more_help')}
 				<a
 					href="/docs/quiz/question-types"
 					target="_blank"
-					class="text-sm font-bold underline text-blue-500 dark:text-blue-400"
-					>{$t('editor.visit_docs')}</a
-				>
+					class="text-[#B07156] underline hover:text-[#c07d62] transition-colors"
+				>{$t('editor.visit_docs')}</a>
 			</p>
+			<button
+				class="rounded-full border border-white/15 px-5 py-2 text-sm font-semibold text-white/90 hover:bg-white/6 transition-colors"
+				onclick={() => { open = false; }}
+			>
+				Cancel
+			</button>
 		</div>
 	</div>
 </div>
