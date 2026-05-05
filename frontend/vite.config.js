@@ -4,6 +4,8 @@
 
 import { sveltekit } from '@sveltejs/kit/vite';
 
+const enableSourceMaps = process.env.VITE_SOURCEMAP === 'true';
+
 /** @type {import("vite").UserConfig} */
 const config = {
 	plugins: [
@@ -30,7 +32,7 @@ const config = {
 		include: ['swiper', 'tippy.js']
 	},
 	build: {
-		sourcemap: true
+		sourcemap: enableSourceMaps
 	}
 
 	/* Trying
