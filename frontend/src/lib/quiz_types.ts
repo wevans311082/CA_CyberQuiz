@@ -30,6 +30,7 @@ export interface QuizData {
 	role_descriptions?: Record<string, string>;
 	injects?: Inject[];
 	master_theme?: MasterTheme;
+	teams?: Record<string, string[]>;
 }
 
 export interface Inject {
@@ -78,7 +79,8 @@ export enum QuizQuestionType {
 	FILE = 'FILE', // eslint-disable-line no-unused-vars
 	TEXT = 'TEXT', // eslint-disable-line no-unused-vars
 	ORDER = 'ORDER', // eslint-disable-line no-unused-vars
-	CHECK = 'CHECK' // eslint-disable-line no-unused-vars
+	CHECK = 'CHECK', // eslint-disable-line no-unused-vars
+	SCOREBOARD = 'SCOREBOARD' // eslint-disable-line no-unused-vars
 }
 
 export type QuestionCategory = 'INTERACTIVE' | 'CONTENT' | 'EVIDENCE';
@@ -148,6 +150,15 @@ export interface Question {
 	file_attachments?: FileAttachment[];
 	timer?: QuestionTimer;
 	theme_override?: SlideThemeOverride;
+	objective?: string; // Detection | Containment | Recovery | Communication
+	sla_checkpoints?: SLACheckpoint[];
+}
+
+export interface SLACheckpoint {
+	deadline_seconds: number;
+	bonus_points: number;
+	penalty_points: number;
+	description: string;
 }
 
 export type Answers =
@@ -184,6 +195,7 @@ export interface EditorData {
 	role_descriptions?: Record<string, string>;
 	injects?: Inject[];
 	master_theme?: MasterTheme;
+	teams?: Record<string, string[]>;
 }
 
 export interface PrivateImageData {

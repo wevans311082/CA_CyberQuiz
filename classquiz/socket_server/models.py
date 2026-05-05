@@ -103,6 +103,7 @@ class SubmitAnswerData(BaseModel):
     question_index: int
     answer: str | int
     complex_answer: list[SubmitAnswerDataOrderType] | None = None
+    confidence: int | None = None  # 1 (low) | 2 (medium) | 3 (high) — tabletop only
 
 
 class KickPlayerInput(BaseModel):

@@ -71,7 +71,7 @@ SPDX-License-Identifier: MPL-2.0
 		// eslint-disable-next-line no-useless-catch
 		try {
 			resp_data.authenticatorSelection.authenticatorAttachment = 'cross-platform';
-			for (let i = 0; i++; i < resp_data.excludeCredentials.length) {
+			for (let i = 0; i < resp_data.excludeCredentials.length; i++) {
 				resp_data.excludeCredentials[i].transports = undefined;
 			}
 			attResp = await startRegistration({ optionsJSON: resp_data });

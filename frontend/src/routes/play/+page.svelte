@@ -94,6 +94,9 @@ SPDX-License-Identifier: MPL-2.0
 	let provisional_my_score = $state<number | null>(null);
 	let provisional_company_score = $state<number | null>(null);
 	let provisional_company_benchmark = $state<number | null>(null);
+	let score_visibility_policy = $state<'hidden' | 'self_only' | 'top_n' | 'full'>('full');
+	let scoreboard_data = $state<{ ranked: [string, number][]; scores: Record<string, number>; team_scores?: Record<string, number>; team_ranked?: [string, number][] } | null>(null);
+	let sla_notifications = $state<Array<{ id: number; description: string; outcome: string; delta: number }>>([]);
 
 	// Tabletop exercise state
 	let scenario_type = $state<string | undefined>(undefined);
@@ -288,7 +291,7 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
-	const onSetQuestionNumber = (data: { question: QuestionType; question_index: string }) => {
+	const onSetQuestionNumber = (data: { question: QuestionType; question_index: string; scoreboard?: { ranked: [string, number][]; scores: Record<string, number> } }) => {
 		countdown_active = false;
 		countdown_event_received = false;
 		if (countdown_timer) {
@@ -309,6 +312,7 @@ SPDX-License-Identifier: MPL-2.0
 		// Capture tabletop metadata from question payload
 		current_allowed_roles = data.question?.allowed_roles ?? undefined;
 		current_decision_mode = data.question?.decision_mode ?? undefined;
+		scoreboard_data = data.scoreboard ?? null;
 		const q_text = data.question?.question?.replace(/<[^>]*>/g, '').trim() ?? `Question ${data.question_index}`;
 		add_event({ type: 'question_asked', title: `Q${Number(data.question_index) + 1}: ${q_text.slice(0, 60)}${q_text.length > 60 ? '…' : ''}` });
 	};
@@ -412,6 +416,24 @@ SPDX-License-Identifier: MPL-2.0
 
 	const onScoreValidationCompleted = (_data: { company_score?: number; company_benchmark?: number }) => {
 		score_validation_pending = false;
+	};
+
+	const onScoreVisibilityChanged = (data: { policy: 'hidden' | 'self_only' | 'top_n' | 'full' }) => {
+		if (data?.policy) {
+			score_visibility_policy = data.policy;
+		}
+	};
+
+	const onSlaCheckpointResult = (data: { question_index: number; description: string; outcome: string; delta: number; deadline_seconds: number }) => {
+		if (!data) return;
+		sla_notifications = [
+			{ ...data, id: Date.now() },
+			...sla_notifications.slice(0, 2),
+		];
+		// Auto-dismiss after 6 seconds
+		setTimeout(() => {
+			sla_notifications = sla_notifications.filter((n) => n.id !== Date.now());
+		}, 6000);
 	};
 
 	const onSolutions = (data: QuestionType) => {
@@ -557,6 +579,8 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('provisional_score_update', onProvisionalScoreUpdate);
 		socket.on('provisional_company_score', onProvisionalCompanyScore);
 		socket.on('score_validation_completed', onScoreValidationCompleted);
+		socket.on('score_visibility_changed', onScoreVisibilityChanged);
+		socket.on('sla_checkpoint_result', onSlaCheckpointResult);
 		socket.on('solutions', onSolutions);
 		socket.on('countdown_start', onCountdownStart);
 		socket.on('chat_history', onChatHistory);
@@ -599,6 +623,8 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('provisional_score_update', onProvisionalScoreUpdate);
 		socket.off('provisional_company_score', onProvisionalCompanyScore);
 		socket.off('score_validation_completed', onScoreValidationCompleted);
+		socket.off('score_visibility_changed', onScoreVisibilityChanged);
+		socket.off('sla_checkpoint_result', onSlaCheckpointResult);
 		socket.off('solutions', onSolutions);
 		socket.off('countdown_start', onCountdownStart);
 		socket.off('chat_history', onChatHistory);
@@ -725,6 +751,45 @@ SPDX-License-Identifier: MPL-2.0
 				<div class="text-black dark:text-black">
 					{#if question?.type === QuizQuestionType.SLIDE}
 						<Slide {question} master_theme={gameData?.master_theme} />
+					{:else if question?.type === QuizQuestionType.SCOREBOARD}
+						<div class="flex min-h-[55vh] items-center justify-center px-4">
+							<div class="w-full max-w-lg rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 p-8 text-center text-white shadow-[0_30px_80px_rgba(15,23,42,0.6)] backdrop-blur-2xl">
+								<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">Scoreboard</p>
+								{#if scoreboard_data && username}
+									{@const my_score = scoreboard_data.scores[username] ?? 0}
+									{@const my_rank = (scoreboard_data.ranked.findIndex(([u]) => u === username) + 1) || scoreboard_data.ranked.length + 1}
+									<h2 class="mt-2 text-3xl font-bold">#{my_rank}</h2>
+									<p class="mt-1 text-slate-300">Your current rank</p>
+									<p class="mt-3 text-5xl font-semibold text-[#B07156]">{my_score}</p>
+									<p class="text-sm text-slate-400 mt-1">points</p>
+									{#if score_visibility_policy !== 'hidden' && score_visibility_policy !== 'self_only'}
+										<div class="mt-6 space-y-2">
+											{#each scoreboard_data.ranked.slice(0, 5) as [player, score], i}
+												<div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-2 {player === username ? 'border-[#B07156]/40 bg-[#B07156]/10' : ''}">
+													<span class="text-sm text-slate-300">#{i + 1} {player}</span>
+													<span class="text-sm font-semibold">{score}</span>
+												</div>
+											{/each}
+										</div>
+										{#if scoreboard_data.team_ranked && scoreboard_data.team_ranked.length > 0}
+											<div class="mt-5">
+												<p class="mb-2 text-xs uppercase tracking-widest text-slate-500">Team Scores</p>
+												<div class="space-y-1.5">
+													{#each scoreboard_data.team_ranked as [team, score], i}
+														<div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-2">
+															<span class="text-sm text-slate-300">#{i + 1} {team}</span>
+															<span class="text-sm font-semibold">{Math.round(score)}</span>
+														</div>
+													{/each}
+												</div>
+											</div>
+										{/if}
+									{/if}
+								{:else}
+									<h2 class="mt-2 text-2xl font-semibold">Scores Loading…</h2>
+								{/if}
+							</div>
+						</div>
 					{:else}
 						<Question bind:game_mode bind:question {question_index} {solution} {my_role} {scenario_type} allowed_roles={current_allowed_roles} master_theme={gameData?.master_theme} />
 					{/if}
@@ -814,6 +879,22 @@ SPDX-License-Identifier: MPL-2.0
 			{#if !disc_running}
 				<span class="text-white/70 text-xs">Paused</span>
 			{/if}
+		</div>
+	{/if}
+	<!-- SLA Checkpoint Notifications -->
+	{#if sla_notifications.length > 0}
+		<div class="fixed top-16 left-4 z-50 flex flex-col gap-2 max-w-xs" transition:fade={{ duration: 200 }}>
+			{#each sla_notifications as notif (notif.id)}
+				<div class="rounded-xl border px-4 py-3 text-sm shadow-xl {notif.outcome === 'met' ? 'border-teal-400/50 bg-teal-900/80 text-teal-100' : 'border-red-400/50 bg-red-900/80 text-red-100'}">
+					<p class="font-semibold text-xs uppercase tracking-wider mb-0.5">
+						{notif.outcome === 'met' ? '✓ SLA Met' : '✗ SLA Missed'}
+					</p>
+					<p class="text-xs">{notif.description}</p>
+					{#if notif.delta !== 0}
+						<p class="text-xs mt-1 font-medium">Company score: {notif.delta > 0 ? '+' : ''}{notif.delta}</p>
+					{/if}
+				</div>
+			{/each}
 		</div>
 	{/if}
 	<!-- Inject Notifications -->

@@ -30,6 +30,7 @@ SPDX-License-Identifier: MPL-2.0
 		situation_status?: SituationStatus;
 		raised_hands?: string[];
 		player_roles?: Record<string, string>;
+		scoreboard_data?: { ranked: [string, number][]; scores: Record<string, number> } | null;
 	}
 
 	let {
@@ -50,7 +51,8 @@ SPDX-License-Identifier: MPL-2.0
 		facilitator_notes = null,
 		situation_status = $bindable({ severity: 'low', phase: 'Detection', affected_systems: [], summary: '' }),
 		raised_hands = [],
-		player_roles = {}
+		player_roles = {},
+		scoreboard_data = null
 	}: Props = $props();
 
 	let is_tabletop = $derived(scenario_type === 'tabletop');
@@ -228,6 +230,10 @@ SPDX-License-Identifier: MPL-2.0
 
 	const release_final_scores = () => {
 		socket.emit('release_final_scores', {});
+	};
+
+	const set_score_visibility = (policy: 'hidden' | 'self_only' | 'top_n' | 'full') => {
+		socket.emit('set_score_visibility', { policy });
 	};
 
 	const update_review_score = (question_index: number, username: string, score: string) => {
@@ -521,6 +527,23 @@ SPDX-License-Identifier: MPL-2.0
 			{/if}
 		</div>
 	</div>
+	{#if quiz_data?.questions?.[selected_question]?.type === QuizQuestionType.SCOREBOARD && scoreboard_data}
+		<div class="fixed inset-0 z-35 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+			<div class="w-full max-w-lg rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 p-8 text-white shadow-[0_30px_80px_rgba(15,23,42,0.6)] backdrop-blur-2xl">
+				<p class="text-center text-xs uppercase tracking-[0.35em] text-slate-400/80">Live Scoreboard</p>
+				<h2 class="mt-1 text-center text-2xl font-bold">Current Rankings</h2>
+				<div class="mt-6 space-y-2">
+					{#each scoreboard_data.ranked.slice(0, 10) as [player, score], i}
+						<div class="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5">
+							<span class="w-6 text-center text-sm font-bold {i === 0 ? 'text-yellow-400' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-amber-600' : 'text-slate-500'}">{i + 1}</span>
+							<span class="flex-1 text-sm text-slate-200">{player}</span>
+							<span class="text-sm font-semibold text-[#B07156]">{score}</span>
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
 	{#if score_review_open && score_review_sheet}
 		<div class="fixed inset-0 z-40 bg-black/70 p-4 overflow-auto">
 			<div class="mx-auto w-full max-w-6xl rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 p-6 text-white shadow-[0_30px_80px_rgba(15,23,42,0.6)] backdrop-blur-2xl">
@@ -574,6 +597,14 @@ SPDX-License-Identifier: MPL-2.0
 
 				<div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
 					<div class="text-sm text-slate-400">Players are on hold while these scores are validated.</div>
+					<div class="flex flex-wrap items-center gap-2">
+						<span class="text-xs text-slate-400">Score visibility:</span>
+						{#each (['hidden', 'self_only', 'top_n', 'full'] as const) as policy}
+							<button onclick={() => set_score_visibility(policy)} class="rounded-full border border-white/15 px-3 py-1 text-xs text-slate-300 hover:bg-white/10 transition-colors capitalize">
+								{policy.replace('_', ' ')}
+							</button>
+						{/each}
+					</div>
 					<button onclick={release_final_scores} class="rounded-full bg-[#B07156] px-6 py-2.5 text-sm font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors">
 						Release Final Scores
 					</button>

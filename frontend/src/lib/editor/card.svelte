@@ -81,7 +81,8 @@ SPDX-License-Identifier: MPL-2.0
 		FILE: 'File Screen',
 		TEXT: $t('words.text'),
 		ORDER: $t('words.order'),
-		CHECK: $t('words.check_choice')
+		CHECK: $t('words.check_choice'),
+		SCOREBOARD: 'Scoreboard Slide'
 	};
 
 	/*
@@ -272,6 +273,12 @@ SPDX-License-Identifier: MPL-2.0
 						{:then c}
 							<c.default bind:data bind:selected_question />
 						{/await}
+					{:else if type === QuizQuestionType.SCOREBOARD}
+						<div class="flex flex-col items-center justify-center gap-3 py-10 text-center text-gray-500 dark:text-gray-400">
+							<svg class="h-12 w-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+							<p class="font-medium">Scoreboard Slide</p>
+							<p class="text-sm">Displays current player rankings and company score during gameplay. No answers are collected.</p>
+						</div>
 					{/if}
 				</div>
 			</div>
@@ -432,6 +439,90 @@ SPDX-License-Identifier: MPL-2.0
 							data = data;
 						}}
 					/>
+				</div>
+				<!-- Objective Category -->
+				<div class="flex flex-col gap-1">
+					<span class="text-sm font-medium">Scoring Objective</span>
+					<p class="text-xs text-gray-500">Applies a score multiplier based on the exercise objective this question targets.</p>
+					<select
+						class="rounded-lg border border-gray-400 p-1.5 text-sm dark:bg-gray-600 outline-hidden"
+						value={data.questions[selected_question].objective ?? ''}
+						onchange={(e) => {
+							data.questions[selected_question].objective = e.currentTarget.value || undefined;
+							data = data;
+						}}
+					>
+						<option value="">None (1.0×)</option>
+						<option value="Detection">Detection (1.0×)</option>
+						<option value="Containment">Containment (1.2×)</option>
+						<option value="Recovery">Recovery (1.1×)</option>
+						<option value="Communication">Communication (0.9×)</option>
+					</select>
+				</div>
+				<!-- SLA Checkpoints -->
+				<div class="flex flex-col gap-2">
+					<div class="flex items-center justify-between">
+						<span class="text-sm font-medium">SLA Checkpoints</span>
+						<button
+							type="button"
+							class="rounded border border-gray-400 px-2 py-0.5 text-xs hover:bg-gray-100 dark:hover:bg-gray-600"
+							onclick={() => {
+								const current = data.questions[selected_question].sla_checkpoints ?? [];
+								data.questions[selected_question].sla_checkpoints = [
+									...current,
+									{ deadline_seconds: 120, bonus_points: 50, penalty_points: 25, description: 'Response deadline' }
+								];
+								data = data;
+							}}
+						>+ Add</button>
+					</div>
+					<p class="text-xs text-gray-500">Bonus awarded if question advances before deadline; penalty if still active after deadline.</p>
+					{#each (data.questions[selected_question].sla_checkpoints ?? []) as cp, ci}
+						<div class="rounded-lg border border-gray-300 dark:border-gray-600 p-2 flex flex-col gap-1.5">
+							<input
+								type="text"
+								placeholder="Description"
+								class="w-full rounded border border-gray-300 dark:border-gray-600 p-1 text-xs dark:bg-gray-700"
+								value={cp.description}
+								oninput={(e) => {
+									data.questions[selected_question].sla_checkpoints![ci].description = e.currentTarget.value;
+									data = data;
+								}}
+							/>
+							<div class="grid grid-cols-3 gap-1">
+								<label class="flex flex-col gap-0.5">
+									<span class="text-[10px] text-gray-500">Deadline (s)</span>
+									<input type="number" min="1" class="rounded border border-gray-300 dark:border-gray-600 p-1 text-xs dark:bg-gray-700"
+										value={cp.deadline_seconds}
+										oninput={(e) => { data.questions[selected_question].sla_checkpoints![ci].deadline_seconds = parseInt(e.currentTarget.value) || 60; data = data; }}
+									/>
+								</label>
+								<label class="flex flex-col gap-0.5">
+									<span class="text-[10px] text-gray-500">Bonus pts</span>
+									<input type="number" min="0" class="rounded border border-gray-300 dark:border-gray-600 p-1 text-xs dark:bg-gray-700"
+										value={cp.bonus_points}
+										oninput={(e) => { data.questions[selected_question].sla_checkpoints![ci].bonus_points = parseInt(e.currentTarget.value) || 0; data = data; }}
+									/>
+								</label>
+								<label class="flex flex-col gap-0.5">
+									<span class="text-[10px] text-gray-500">Penalty pts</span>
+									<input type="number" min="0" class="rounded border border-gray-300 dark:border-gray-600 p-1 text-xs dark:bg-gray-700"
+										value={cp.penalty_points}
+										oninput={(e) => { data.questions[selected_question].sla_checkpoints![ci].penalty_points = parseInt(e.currentTarget.value) || 0; data = data; }}
+									/>
+								</label>
+							</div>
+							<button
+								type="button"
+								class="self-end text-[10px] text-red-500 hover:text-red-700"
+								onclick={() => {
+									const cps = data.questions[selected_question].sla_checkpoints ?? [];
+									data.questions[selected_question].sla_checkpoints = cps.filter((_, j) => j !== ci);
+									data = data;
+								}}
+							>Remove</button>
+						</div>
+					{/each}
 				</div>
 			{/if}
 			<div class="mt-auto w-full">

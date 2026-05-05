@@ -139,6 +139,7 @@ class QuizQuestionType(str, Enum):
     TEXT = "TEXT"
     ORDER = "ORDER"
     CHECK = "CHECK"
+    SCOREBOARD = "SCOREBOARD"
 
 
 class QuestionCategory(str, Enum):
@@ -209,6 +210,8 @@ class QuizQuestion(BaseModel):
     file_attachments: list[FileAttachment] | None = None
     timer: QuestionTimer | None = None
     theme_override: SlideThemeOverride | None = None
+    objective: str | None = None  # Detection | Containment | Recovery | Communication
+    sla_checkpoints: list[dict] | None = None  # [{deadline_seconds, bonus_points, penalty_points, description}]
 
     @field_validator("answers")
     def answers_not_none_if_abcd_type(cls, v, info: ValidationInfo):
@@ -328,6 +331,8 @@ class PlayGame(BaseModel):
     situation_status: dict | None = None  # {severity, phase, affected_systems, summary}
     role_descriptions: dict[str, str] | None = None  # {role_name: description}
     master_theme: dict | None = None
+    roles_config: dict[str, float] | None = None  # {role_name: score_multiplier}
+    teams: dict[str, list[str]] | None = None  # {team_name: [username, ...]}
 
     @classmethod
     async def get_from_redis(self, game_pin: str) -> Self:
@@ -407,7 +412,7 @@ class AnswerDataList(RootModel):
         return iter(self.root)
 
     def __getitem__(self, item):
-        return self.root(item)
+        return self.root[item]
 
     def append(self, item):
         self.root.append(item)
@@ -459,6 +464,9 @@ class GameResults(ormar.Model):
     injects_log: Json[list[dict]] | None = ormar.JSON(nullable=True)
     situation_log: Json[list[dict]] | None = ormar.JSON(nullable=True)
     file_downloads_log: Json[list[dict]] | None = ormar.JSON(nullable=True)
+    company_score: float | None = ormar.Float(nullable=True)
+    company_score_timeline: Json[list[dict]] | None = ormar.JSON(nullable=True)
+    score_visibility_policy: str | None = ormar.Text(nullable=True)
 
     ormar_config = ormar.OrmarConfig(
         tablename="game_results",

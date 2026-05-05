@@ -9,6 +9,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { QuizQuestionType } from '$lib/quiz_types';
 	import type { MasterTheme } from '$lib/quiz_types';
 	import { socket } from '$lib/socket';
+	import { onDestroy } from 'svelte';
 	import Spinner from '../Spinner.svelte';
 	import { getLocalization } from '$lib/i18n';
 	import { kahoot_icons } from './kahoot_mode_assets/kahoot_icons';
@@ -44,6 +45,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	// In tabletop mode, check if this player's role is allowed to answer
 	let is_tabletop = $derived(scenario_type === 'tabletop');
+	let selected_confidence = $state(2); // 1=Low 2=Medium 3=High (tabletop only)
 	let role_blocked = $derived(
 		is_tabletop && allowed_roles != null && allowed_roles.length > 0 && my_role != null && !allowed_roles.includes(my_role)
 	);
@@ -81,8 +83,12 @@ SPDX-License-Identifier: MPL-2.0
 			timer_res = seconds.toString();
 		}, 1000);
 	};
-	socket.on('everyone_answered', (_) => {
+	const onEveryoneAnswered = (_: unknown) => {
 		timer_res = '0';
+	};
+	socket.on('everyone_answered', onEveryoneAnswered);
+	onDestroy(() => {
+		socket.off('everyone_answered', onEveryoneAnswered);
 	});
 
 	timer(question.time);
@@ -103,7 +109,8 @@ SPDX-License-Identifier: MPL-2.0
 		selected_answer = answer;
 		socket.emit('submit_answer', {
 			question_index: question_index,
-			answer: answer
+			answer: answer,
+			...(is_tabletop ? { confidence: selected_confidence } : {})
 		});
 	};
 
@@ -116,7 +123,8 @@ SPDX-License-Identifier: MPL-2.0
 		socket.emit('submit_answer', {
 			question_index: question_index,
 			answer: 'a',
-			complex_answer: new_array
+			complex_answer: new_array,
+			...(is_tabletop ? { confidence: selected_confidence } : {})
 		});
 	};
 
@@ -463,6 +471,17 @@ SPDX-License-Identifier: MPL-2.0
 	{:else if !timer_enabled}
 		<div class="mx-auto mt-6 max-w-2xl rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-center text-sm text-yellow-900">
 			Timer is disabled for this slide.
+		</div>
+	{/if}
+	{#if is_tabletop && !role_blocked && !selected_answer}
+		<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-white/15 bg-[#0f172a]/90 px-4 py-2 backdrop-blur-lg shadow-xl">
+			<span class="text-xs text-slate-400 mr-1">Confidence:</span>
+			{#each [[1, 'Low'], [2, 'Med'], [3, 'High']] as [level, label]}
+				<button
+					onclick={() => { selected_confidence = level as number; }}
+					class="{selected_confidence === level ? 'bg-[#B07156] text-slate-950' : 'text-slate-300 hover:bg-white/10'} rounded-full px-3 py-1 text-xs font-semibold transition-colors"
+				>{label}</button>
+			{/each}
 		</div>
 	{/if}
 	{/if}

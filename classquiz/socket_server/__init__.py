@@ -266,14 +266,55 @@ async def emit_lobby_state(game_pin: str, room: str | None = None):
     )
 
 
-async def emit_current_question(room: str, game_data: PlayGame):
-    if game_data.current_question < 0:
+async def _sla_checkpoint_task(game_pin: str, q_index: int, q_start: datetime, checkpoint: dict):
+    """Background task: after deadline_seconds, check if question is still active and apply SLA outcome."""
+    deadline = int(checkpoint.get("deadline_seconds", 60))
+    bonus = int(checkpoint.get("bonus_points", 0))
+    penalty = int(checkpoint.get("penalty_points", 0))
+    description = checkpoint.get("description", "SLA Checkpoint")
+    await asyncio.sleep(deadline)
+    # Check if the game is still on the same question
+    game_data_raw = await redis.get(f"game:{game_pin}")
+    if not game_data_raw:
         return
+    try:
+        game_data = PlayGame.model_validate_json(game_data_raw)
+    except Exception:
+        return
+    if game_data.current_question != q_index or not game_data.question_show:
+        # Question already advanced — team answered in time; award bonus
+        delta = bonus if bonus else 0
+        outcome = "met"
+    else:
+        # Question still active at deadline — missed the SLA; apply penalty
+        delta = -penalty if penalty else 0
+        outcome = "missed"
+
+    if delta != 0:
+        raw_cs = await redis.get(f"game:{game_pin}:company_score")
+        current_cs = float(raw_cs) if raw_cs else 0.0
+        new_cs = max(0.0, current_cs + delta)
+        await redis.set(f"game:{game_pin}:company_score", str(new_cs), ex=86400)
+
+    await sio.emit(
+        "sla_checkpoint_result",
+        {
+            "question_index": q_index,
+            "description": description,
+            "outcome": outcome,
+            "delta": delta,
+            "deadline_seconds": deadline,
+        },
+        room=game_pin,
+    )
+
+
+async def emit_current_question(room: str, game_data: PlayGame):
     current_q = game_data.questions[game_data.current_question]
     temp_return = game_data.model_dump(include={"questions"})["questions"][game_data.current_question]
     game_pin = game_data.game_pin
 
-    if current_q.type in [QuizQuestionType.SLIDE, QuizQuestionType.INFORMATION, QuizQuestionType.FILE]:
+    if current_q.type in [QuizQuestionType.SLIDE, QuizQuestionType.INFORMATION, QuizQuestionType.FILE, QuizQuestionType.SCOREBOARD]:
         payload = {
             "question_index": game_data.current_question,
             "question": {
@@ -281,6 +322,19 @@ async def emit_current_question(room: str, game_data: PlayGame):
                 "type": current_q.type,
             },
         }
+        if current_q.type == QuizQuestionType.SCOREBOARD:
+            scores_raw = await redis.hgetall(f"game_session:{game_pin}:player_scores")
+            scores = {k: int(v) for k, v in scores_raw.items()}
+            ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+            team_scores_raw = await redis.hgetall(f"game:{game_pin}:team_scores")
+            team_scores = {k: float(v) for k, v in team_scores_raw.items()} if team_scores_raw else {}
+            team_ranked = sorted(team_scores.items(), key=lambda x: x[1], reverse=True) if team_scores else []
+            payload["scoreboard"] = {
+                "ranked": [[u, s] for u, s in ranked],
+                "scores": scores,
+                "team_scores": team_scores,
+                "team_ranked": [[t, s] for t, s in team_ranked],
+            }
         if is_tabletop(game_data):
             payload["allowed_roles"] = current_q.allowed_roles
             payload["decision_mode"] = current_q.decision_mode
@@ -732,24 +786,54 @@ async def set_question_number(sid: str, data: str):
     game_data.current_question = int(float(data))
     game_data.question_show = True
     await game_data.save(session["game_pin"])
-    await redis.set(f"game:{session['game_pin']}:current_time", datetime.now().isoformat(), ex=7200)
+    q_start_time = datetime.now()
+    await redis.set(f"game:{session['game_pin']}:current_time", q_start_time.isoformat(), ex=7200)
+
+    # SLA checkpoint tracking: schedule background tasks for each checkpoint
+    current_q = game_data.questions[int(float(data))]
+    if current_q.sla_checkpoints:
+        for cp in current_q.sla_checkpoints:
+            asyncio.ensure_future(
+                _sla_checkpoint_task(
+                    game_pin=session["game_pin"],
+                    q_index=int(float(data)),
+                    q_start=q_start_time,
+                    checkpoint=cp,
+                )
+            )
+
     temp_return = game_data.model_dump(include={"questions"})["questions"][int(float(data))]
     if game_data.questions[int(float(data))].type in [
         QuizQuestionType.SLIDE,
         QuizQuestionType.INFORMATION,
         QuizQuestionType.FILE,
+        QuizQuestionType.SCOREBOARD,
     ]:
-        await sio.emit(
-            "set_question_number",
-            {
-                "question_index": int(float(data)),
-                "question": {
-                    **temp_return,
-                    "type": game_data.questions[int(float(data))].type,
-                },
+        q_type = game_data.questions[int(float(data))].type
+        scoreboard_data = None
+        if q_type == QuizQuestionType.SCOREBOARD:
+            scores_raw = await redis.hgetall(f"game_session:{game_pin}:player_scores")
+            scores = {k: int(v) for k, v in scores_raw.items()}
+            ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+            team_scores_raw = await redis.hgetall(f"game:{game_pin}:team_scores")
+            team_scores = {k: float(v) for k, v in team_scores_raw.items()} if team_scores_raw else {}
+            team_ranked = sorted(team_scores.items(), key=lambda x: x[1], reverse=True) if team_scores else []
+            scoreboard_data = {
+                "ranked": [[u, s] for u, s in ranked],
+                "scores": scores,
+                "team_scores": team_scores,
+                "team_ranked": [[t, s] for t, s in team_ranked],
+            }
+        evt_payload = {
+            "question_index": int(float(data)),
+            "question": {
+                **temp_return,
+                "type": q_type,
             },
-            room=game_pin,
-        )
+        }
+        if scoreboard_data is not None:
+            evt_payload["scoreboard"] = scoreboard_data
+        await sio.emit("set_question_number", evt_payload, room=game_pin)
         return
     if game_data.questions[int(float(data))].type == QuizQuestionType.VOTING:
         for i in range(len(temp_return["answers"])):
@@ -786,6 +870,16 @@ async def submit_answer(sid: str, data: dict):
         await sio.emit("answer_rejected", {"reason": "question_not_active"}, room=sid)
         return
 
+    # Reject answers for display-only slide types
+    if game_data.questions[question_index].type in [
+        QuizQuestionType.SLIDE,
+        QuizQuestionType.INFORMATION,
+        QuizQuestionType.FILE,
+        QuizQuestionType.SCOREBOARD,
+    ]:
+        await sio.emit("answer_rejected", {"reason": "display_only_slide"}, room=sid)
+        return
+
     # --- Role-gated answering for tabletop mode ---
     if is_tabletop(game_data):
         current_q = game_data.questions[question_index]
@@ -816,6 +910,31 @@ async def submit_answer(sid: str, data: dict):
                 speed_raw = max(0, min(1000, speed_raw))
                 speed_component = int((speed_raw / 1000) * 20)
             score = 80 + speed_component
+
+            # --- Objective-based scoring multiplier ---
+            _objective_weights = {
+                "Detection": 1.0,
+                "Containment": 1.2,
+                "Recovery": 1.1,
+                "Communication": 0.9,
+            }
+            obj = game_data.questions[question_index].objective
+            if obj and obj in _objective_weights:
+                score = int(score * _objective_weights[obj])
+
+            # --- Role-weighted scoring multiplier ---
+            if game_data.roles_config:
+                player_role = await get_player_role(session["game_pin"], session["username"])
+                if player_role and player_role in game_data.roles_config:
+                    score = int(score * game_data.roles_config[player_role])
+
+            # --- Confidence multiplier ---
+            if data.confidence is not None and data.confidence in (1, 2, 3):
+                _conf_mult = {1: 0.5, 2: 1.0, 3: 1.5}
+                score = int(score * _conf_mult[data.confidence])
+
+            # Cap tabletop score at 200 to allow for multiplier headroom
+            score = min(200, max(0, score))
         else:
             score = 0
     else:
@@ -831,6 +950,16 @@ async def submit_answer(sid: str, data: dict):
                 score = 1000
 
     await redis.hincrby(f"game_session:{session['game_pin']}:player_scores", session["username"], score)
+
+    # Team score accumulation: if teams are configured, add this score to the player's team
+    if game_data.teams and score > 0:
+        username = session["username"]
+        for team_name, members in game_data.teams.items():
+            if username in members:
+                await redis.hincrbyfloat(f"game:{session['game_pin']}:team_scores", team_name, score)
+                await redis.expire(f"game:{session['game_pin']}:team_scores", 86400)
+                break
+
     answer_data = AnswerData(
         username=session["username"],
         answer=answer,
@@ -1016,6 +1145,102 @@ async def release_final_scores(sid: str, _data: dict):
         },
         room=game_pin,
     )
+
+
+@sio.event
+async def set_score_visibility(sid: str, data: dict):
+    """Admin sets the score visibility policy for players.
+
+    Accepted policy values: 'hidden', 'self_only', 'top_n', 'full'.
+    """
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    valid_policies = {"hidden", "self_only", "top_n", "full"}
+    policy = data.get("policy", "full")
+    if policy not in valid_policies:
+        await sio.emit("error", {"message": "invalid_score_visibility_policy"}, room=sid)
+        return
+
+    game_pin = session["game_pin"]
+    await redis.set(f"game:{game_pin}:score_visibility", policy, ex=86400)
+    await sio.emit("score_visibility_changed", {"policy": policy}, room=game_pin)
+
+
+@sio.event
+async def trigger_penalty(sid: str, data: dict):
+    """Admin applies a score penalty to a player or the whole company.
+
+    data: { target: str (username or '__company__'), amount: int, reason: str }
+    """
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    target = data.get("target", "")
+    try:
+        amount = int(data.get("amount", 0))
+    except (ValueError, TypeError):
+        await sio.emit("error", {"message": "invalid_penalty_amount"}, room=sid)
+        return
+    reason = str(data.get("reason", ""))[:200]
+
+    if not target or amount <= 0:
+        await sio.emit("error", {"message": "invalid_penalty_data"}, room=sid)
+        return
+
+    if target == "__company__":
+        # Deduct equally from all players
+        players = await redis.smembers(f"game_session:{game_pin}:players")
+        for player in players:
+            current = int(await redis.hget(f"game_session:{game_pin}:player_scores", player) or 0)
+            new_score = max(0, current - amount)
+            await redis.hset(f"game_session:{game_pin}:player_scores", player, new_score)
+    else:
+        current = int(await redis.hget(f"game_session:{game_pin}:player_scores", target) or 0)
+        new_score = max(0, current - amount)
+        await redis.hset(f"game_session:{game_pin}:player_scores", target, new_score)
+
+    penalty_entry = {
+        "target": target,
+        "amount": amount,
+        "reason": reason,
+        "timestamp": datetime.now().isoformat(),
+    }
+    await redis.rpush(f"game:{game_pin}:penalties", json.dumps(penalty_entry))
+    await redis.expire(f"game:{game_pin}:penalties", 86400)
+    await sio.emit("penalty_applied", penalty_entry, room=game_pin)
+
+
+@sio.event
+async def set_teams(sid: str, data: dict):
+    """Admin defines team assignments for team-vs-team mode.
+
+    data: { teams: { team_name: [username, ...], ... } }
+    """
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    game_pin = session["game_pin"]
+    teams = data.get("teams")
+    if not isinstance(teams, dict):
+        await sio.emit("error", {"message": "invalid_teams_data"}, room=sid)
+        return
+    # Sanitize: team names and usernames are strings, max 50 chars each
+    sanitized: dict[str, list[str]] = {
+        str(k)[:50]: [str(u)[:100] for u in v] if isinstance(v, list) else []
+        for k, v in teams.items()
+    }
+    game_data = await PlayGame.get_from_redis(game_pin)
+    game_data.teams = sanitized
+    await game_data.save(game_pin)
+    # Reset team scores in Redis
+    existing_team_keys = await redis.keys(f"game:{game_pin}:team_scores")
+    if existing_team_keys:
+        await redis.delete(*existing_team_keys)
+    await sio.emit("teams_updated", {"teams": sanitized}, room=game_pin)
 
 
 @sio.event
@@ -1468,7 +1693,9 @@ async def advance_tabletop(sid: str, _data: dict):
 
     Called after everyone has answered or after showing solutions.
     Resolves the winning answer, determines the next question, and emits it.
+    Accepts optional 'rationale' string in data for decision audit trail.
     """
+    rationale = _data.get("rationale", "") if isinstance(_data, dict) else ""
     session = await get_session(sid, sio)
     if not session.get("admin", False):
         return
@@ -1538,6 +1765,19 @@ async def advance_tabletop(sid: str, _data: dict):
     await redis.set(f"game:{game_pin}:current_time", datetime.now().isoformat(), ex=7200)
 
     await append_branch_path(game_pin, next_q_id or str(target_index))
+
+    # --- Decision audit trail ---
+    decision_entry = {
+        "question_index": q_index,
+        "question": current_q.question,
+        "winning_answer": winning_answer,
+        "votes": dict(vote_tally),
+        "rationale": rationale,
+        "timestamp": datetime.now().isoformat(),
+    }
+    await redis.rpush(f"game:{game_pin}:decision_log", json.dumps(decision_entry))
+    await redis.expire(f"game:{game_pin}:decision_log", 86400)
+
     await sio.emit(
         "branch_resolved",
         {"winning_answer": winning_answer, "next_question_id": next_q_id},

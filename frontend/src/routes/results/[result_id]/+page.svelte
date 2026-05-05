@@ -76,6 +76,22 @@ SPDX-License-Identifier: MPL-2.0
 			</button>
 		</div>
 	</div>
+	<!-- Export actions -->
+	<div class="flex flex-wrap items-center gap-2 px-2 mb-4">
+		<a
+			href="/results/aar/{data.results.id}"
+			class="rounded-full border border-[#B07156] px-4 py-1.5 text-sm font-semibold text-[#B07156] hover:bg-[#B07156]/10 transition-colors"
+		>
+			View After-Action Report
+		</a>
+		<a
+			href="/api/v1/results/export-csv/{data.results.id}"
+			download
+			class="rounded-full border border-gray-400 px-4 py-1.5 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+		>
+			Download CSV
+		</a>
+	</div>
 	{#if selected_tab === SelectedTab.Overview}
 		<div in:fade|global={{ duration: 150 }}>
 			<GeneralOverview

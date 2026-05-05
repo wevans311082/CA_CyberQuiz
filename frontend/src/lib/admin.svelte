@@ -42,6 +42,7 @@ SPDX-License-Identifier: MPL-2.0
 	// Facilitator notes & inject/situation state
 	let facilitator_notes = $state<string | null>(null);
 	let situation_status = $state<SituationStatus>({ severity: 'low', phase: 'Detection', affected_systems: [], summary: '' });
+	let scoreboard_data = $state<{ ranked: [string, number][]; scores: Record<string, number> } | null>(null);
 
 	interface Props {
 		game_token: string;
@@ -81,6 +82,7 @@ SPDX-License-Identifier: MPL-2.0
 			: '0';
 		selected_question = selected_question + 1;
 		answer_count = 0;
+		scoreboard_data = data.scoreboard ?? null;
 		if (timer_res !== '0') {
 			timer(timer_res);
 		}
@@ -193,6 +195,7 @@ SPDX-License-Identifier: MPL-2.0
 		bind:situation_status
 		{raised_hands}
 		player_roles={admin_player_roles}
+		{scoreboard_data}
 	/>
 {/if}
 {#if quiz_data.scenario_type === 'tabletop' && quiz_data.questions?.length}

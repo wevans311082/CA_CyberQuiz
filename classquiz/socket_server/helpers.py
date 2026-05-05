@@ -28,7 +28,7 @@ async def check_captcha(captcha_data: str) -> bool:
                             "secret": settings.hcaptcha_key,
                         },
                     ) as resp:
-                        resp_data = await resp.model_dump_json()
+                        resp_data = await resp.json()
                         if not resp_data["success"]:
                             return
                 except KeyError:
@@ -42,7 +42,7 @@ async def check_captcha(captcha_data: str) -> bool:
                     },
                 ) as resp:
                     try:
-                        resp_data = await resp.model_dump_json()
+                        resp_data = await resp.json()
                         if not resp_data["success"]:
                             return False
                     except KeyError:
@@ -54,7 +54,10 @@ async def check_captcha(captcha_data: str) -> bool:
 
 
 def check_answer(game_data: PlayGame, data: SubmitAnswerData) -> (bool, str):
-    q_i = int(float(data.question_index))
+    try:
+        q_i = int(float(data.question_index))
+    except (ValueError, TypeError):
+        return (False, data.answer)
     q_type = game_data.questions[q_i].type
     q_answers = game_data.questions[q_i].answers
     q_answer = data.answer
@@ -93,8 +96,11 @@ def check_abcd_question(answer: str, answers: ABCDQuizAnswer) -> bool:
 
 
 def check_range_question(answer: str, answers: RangeQuizAnswer) -> bool:
-    if answers.min_correct <= int(float(answer)) <= answers.max_correct:
-        return answers.min_correct <= int(float(answer)) <= answers.max_correct
+    try:
+        value = int(float(answer))
+    except (ValueError, TypeError):
+        return False
+    return answers.min_correct <= value <= answers.max_correct
 
 
 def check_order_question(

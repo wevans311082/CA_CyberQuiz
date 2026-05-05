@@ -46,6 +46,11 @@ async def save_quiz_to_storage(game_pin: str):
     file_downloads_log_data = None
     scenario_type = game.scenario_type
 
+    # Score persistence fields
+    company_score_val = None
+    company_score_timeline_val = None
+    score_visibility_policy_val = None
+
     if is_tabletop(game):
         player_roles = await get_all_player_roles(game_pin)
         branch_path = await get_branch_path(game_pin)
@@ -53,6 +58,33 @@ async def save_quiz_to_storage(game_pin: str):
         injects_log_data = await get_injects_log(game_pin)
         situation_log_data = await get_situation_log(game_pin)
         file_downloads_log_data = await get_file_downloads_log(game_pin)
+
+        # Read tabletop score metadata from Redis
+        raw_company_score = await redis.get(f"game:{game_pin}:company_score")
+        if raw_company_score is not None:
+            try:
+                company_score_val = float(raw_company_score)
+            except (ValueError, TypeError):
+                pass
+
+        raw_timeline = await redis.get(f"game:{game_pin}:score_timeline")
+        if raw_timeline is not None:
+            try:
+                company_score_timeline_val = json.loads(raw_timeline)
+            except (ValueError, TypeError):
+                pass
+
+        score_visibility_policy_val = await redis.get(f"game:{game_pin}:score_visibility")
+
+        # Persist decision log into facilitator_overrides (append to existing)
+        raw_decision_log = await redis.lrange(f"game:{game_pin}:decision_log", 0, -1)
+        if raw_decision_log:
+            try:
+                decision_log = [json.loads(e) for e in raw_decision_log]
+                existing = facilitator_overrides_data or []
+                facilitator_overrides_data = existing + [{"type": "decision_log", "entries": decision_log}]
+            except (ValueError, TypeError):
+                pass
 
     data = GameResults(
         id=game.game_id,
@@ -73,5 +105,8 @@ async def save_quiz_to_storage(game_pin: str):
         injects_log=json.dumps(injects_log_data) if injects_log_data else None,
         situation_log=json.dumps(situation_log_data) if situation_log_data else None,
         file_downloads_log=json.dumps(file_downloads_log_data) if file_downloads_log_data else None,
+        company_score=company_score_val,
+        company_score_timeline=json.dumps(company_score_timeline_val) if company_score_timeline_val else None,
+        score_visibility_policy=score_visibility_policy_val,
     )
     await data.save()

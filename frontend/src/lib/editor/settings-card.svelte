@@ -1,4 +1,4 @@
-<!--
+﻿<!--
 SPDX-FileCopyrightText: 2023 Marlon W (Mawoka)
 
 SPDX-License-Identifier: MPL-2.0
@@ -28,7 +28,7 @@ SPDX-License-Identifier: MPL-2.0
 	let expanded_role_desc: string | null = $state(null);
 
 	const ROLE_TEMPLATES: Array<{ name: string; description: string }> = [
-		{ name: 'CISO', description: 'Chief Information Security Officer — owns cybersecurity strategy and makes final security decisions.' },
+		{ name: 'CISO', description: 'Chief Information Security Officer â€” owns cybersecurity strategy and makes final security decisions.' },
 		{ name: 'Incident Commander', description: 'Leads the incident response effort and coordinates all team activities.' },
 		{ name: 'SOC Analyst', description: 'Monitors security events and performs initial triage and analysis.' },
 		{ name: 'Network Engineer', description: 'Manages network infrastructure and implements firewall and routing changes.' },
@@ -289,7 +289,7 @@ SPDX-License-Identifier: MPL-2.0
 										type="button"
 										class="text-xs text-gray-500 hover:text-teal-600 px-1"
 										onclick={() => { expanded_role_desc = expanded_role_desc === role ? null : role; }}
-									>{expanded_role_desc === role ? '▲ desc' : '▼ desc'}</button>
+									>{expanded_role_desc === role ? 'â–² desc' : 'â–¼ desc'}</button>
 									<button
 										type="button"
 										class="text-red-400 hover:text-red-600 text-base leading-none"
@@ -436,6 +436,69 @@ SPDX-License-Identifier: MPL-2.0
 					</div>
 				</div>
 			{/if}
-		</div>
+                        <!-- Team vs Team Configuration -->
+                        {#if data.scenario_type === 'tabletop'}
+                        <div class="w-full pt-6 border-t border-gray-200 dark:border-gray-700">
+                                <div class="flex items-center justify-between mb-2">
+                                        <h3 class="font-semibold text-sm">Teams (Optional)</h3>
+                                        <button
+                                                type="button"
+                                                class="rounded-full border border-gray-400 px-3 py-1 text-xs hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                onclick={() => {
+                                                        const teams = { ...(data.teams ?? {}) };
+                                                        const name = `Team ${Object.keys(teams).length + 1}`;
+                                                        teams[name] = [];
+                                                        data.teams = teams;
+                                                        data = data;
+                                                }}
+                                        >+ Add Team</button>
+                                </div>
+                                <p class="text-xs text-gray-500 mb-3">Define teams and assign player usernames. Players earn team scores in addition to individual scores.</p>
+                                {#each Object.entries(data.teams ?? {}) as [teamName, members], ti}
+                                        <div class="mb-3 rounded-lg border border-gray-300 dark:border-gray-600 p-3 flex flex-col gap-2">
+                                                <div class="flex items-center gap-2">
+                                                        <input
+                                                                type="text"
+                                                                class="flex-1 rounded border border-gray-300 dark:border-gray-600 p-1.5 text-sm dark:bg-gray-700"
+                                                                value={teamName}
+                                                                oninput={(e) => {
+                                                                        const old = teamName;
+                                                                        const nw = e.currentTarget.value;
+                                                                        if (nw && nw !== old) {
+                                                                                const teams = { ...(data.teams ?? {}) };
+                                                                                teams[nw] = teams[old] ?? [];
+                                                                                delete teams[old];
+                                                                                data.teams = teams;
+                                                                                data = data;
+                                                                        }
+                                                                }}
+                                                                placeholder="Team name"
+                                                        />
+                                                        <button type="button" class="text-xs text-red-500 hover:text-red-700"
+                                                                onclick={() => {
+                                                                        const teams = { ...(data.teams ?? {}) };
+                                                                        delete teams[teamName];
+                                                                        data.teams = Object.keys(teams).length ? teams : undefined;
+                                                                        data = data;
+                                                                }}
+                                                        >Remove</button>
+                                                </div>
+                                                <textarea
+                                                        class="w-full rounded border border-gray-300 dark:border-gray-600 p-1.5 text-xs dark:bg-gray-700 resize-none"
+                                                        rows="2"
+                                                        placeholder="Usernames, one per line"
+                                                        value={(members ?? []).join('\n')}
+                                                        oninput={(e) => {
+                                                                const teams = { ...(data.teams ?? {}) };
+                                                                teams[teamName] = e.currentTarget.value.split('\n').map(s => s.trim()).filter(Boolean);
+                                                                data.teams = teams;
+                                                                data = data;
+                                                        }}
+                                                ></textarea>
+                                        </div>
+                                {/each}
+                        </div>
+                        {/if}
 	</div>
+</div>
 </div>
