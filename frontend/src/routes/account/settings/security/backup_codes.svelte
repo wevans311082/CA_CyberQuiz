@@ -27,34 +27,27 @@ SPDX-License-Identifier: MPL-2.0
 	};
 </script>
 
-<div class="w-screen h-screen fixed top-0 left-0 p-48 z-30 bg-black/50">
-	<div class="w-full h-full">
-		<button
-			class="bg-gray-200 dark:bg-gray-900 px-2 py-1 rounded-t-lg hover:bg-gray-300 transition"
-			onclick={() => {
-				backup_code = undefined;
-			}}
-			>{$t('words.close')}
-		</button>
-		<div
-			class="bg-white dark:bg-gray-700 rounded-b-lg rounded-tr-lg w-full h-full flex flex-col"
-		>
-			<h2 class="text-3xl m-auto">{$t('security_settings.backup_codes.your_backup_code')}</h2>
-			<p
-				class="select-all font-mono text-xl m-auto"
-				onclick={() => {
-					download_code(false);
-				}}
-			>
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+	<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] text-white w-full max-w-md flex flex-col gap-6 p-8">
+		<div class="flex items-center justify-between">
+			<h2 class="text-xl font-semibold text-white">{$t('security_settings.backup_codes.your_backup_code')}</h2>
+			<button onclick={() => { backup_code = undefined; }} class="rounded-full border border-white/15 px-4 py-1.5 text-xs font-semibold text-white/90 hover:bg-white/6 transition-colors">
+				{$t('words.close')}
+			</button>
+		</div>
+		<div class="border-t border-white/8"></div>
+		<div class="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
+			<p class="select-all font-mono text-lg text-white cursor-pointer" onclick={() => download_code(false)}>
 				{backup_code}
 			</p>
-			<p class="m-auto">{$t('security_settings.backup_codes.save_somewhere_save')}</p>
-			<button
-				onclick={() => {
-					download_code(true);
-				}}
-				class="m-auto p-2 bg-[#B07156] rounded-lg"
-				>{$t('security_settings.backup_codes.download_code')}
+		</div>
+		<p class="text-sm text-slate-400 text-center">{$t('security_settings.backup_codes.save_somewhere_save')}</p>
+		<div class="flex gap-3 justify-center">
+			<button onclick={() => download_code(true)} class="rounded-full bg-[#B07156] px-6 py-2.5 text-sm font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors">
+				{$t('security_settings.backup_codes.download_code')}
+			</button>
+			<button onclick={() => { backup_code = undefined; }} class="rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white/90 hover:bg-white/6 transition-colors">
+				{$t('words.close')}
 			</button>
 		</div>
 	</div>

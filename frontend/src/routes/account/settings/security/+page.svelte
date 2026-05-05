@@ -156,133 +156,90 @@ SPDX-License-Identifier: MPL-2.0
 {#await data}
 	<Spinner my_20={false} />
 {:then _}
-	<div class="grid grid-rows-2 h-screen">
-		<div class="grid grid-cols-2 h-full border-b-2 border-black">
-			<div class="h-full w-full border-r-2 border-black">
-				<h2 class="text-center text-2xl">{$t('security_settings.backup_code')}</h2>
-				<div class="flex h-full w-full justify-center">
-					<div class="m-auto">
-						<BrownButton onclick={get_backup_code}
-							>{$t('security_settings.get_backup_code')}</BrownButton
-						>
-					</div>
-				</div>
-			</div>
-			<div class="h-full w-full">
-				<h2 class="text-center text-2xl">{$t('security_settings.activate_2fa')}</h2>
-				<div
-					class="flex h-full w-full justify-center flex-col"
-					class:pointer-events-none={!totp_activated}
-					class:grayscale={!totp_activated}
-					class:opacity-50={!totp_activated}
-				>
-					<div class="m-auto">
-						{#if user_data.require_password}
-							<div class="flex items-center space-x-2">
-								<button
-									disabled={!totp_activated}
-									onclick={() => {
-										user_data.require_password = !user_data.require_password;
-										save_password_required();
-									}}
-									type="button"
-									role="switch"
-									aria-checked="true"
-									class="relative inline-flex h-5 w-8 shrink-0 cursor-pointer appearance-none rounded-full border-2 border-transparent bg-blue-700 transition focus:outline-hidden focus:ring focus:ring-blue-200"
-								>
-									<span
-										aria-hidden="true"
-										class="pointer-events-none inline-block h-4 w-4 translate-x-3 rounded-full bg-white transition will-change-transform"
-									></span>
-								</button>
-								<span class="text-sm font-medium text-gray-700 dark:text-white"
-									>{$t('security_settings.2fa_activated')}</span
-								>
-							</div>
-						{:else}
-							<div class="flex items-center space-x-2">
-								<button
-									disabled={!totp_activated}
-									type="button"
-									onclick={() => {
-										user_data.require_password = !user_data.require_password;
-										save_password_required();
-									}}
-									role="switch"
-									aria-checked="false"
-									class="relative inline-flex h-5 w-8 shrink-0 cursor-pointer appearance-none rounded-full border-2 border-transparent bg-gray-200 transition focus:outline-hidden focus:ring focus:ring-blue-200"
-								>
-									<span
-										aria-hidden="true"
-										class="pointer-events-none inline-block h-4 w-4 translate-x-0 rounded-full bg-white transition will-change-transform"
-									></span>
-								</button>
-								<span class="text-sm font-medium text-gray-700 dark:text-white"
-									>{$t('security_settings.2fa_deactivated')}</span
-								>
-							</div>
-						{/if}
-					</div>
-				</div>
-			</div>
-		</div>
-		<div class="grid grid-cols-2 h-full">
-			<div class="h-full w-full flex flex-col border-r-2 border-black">
-				<h2 class="text-center text-2xl">{$t('security_settings.webauthn')}</h2>
-				<div class="flex justify-center">
-					{#if security_keys.length > 0}
-						<p>{$t('security_settings.webauthn_available')}</p>
-					{:else}
-						<p>{$t('security_settings.webauthn_unavailable')}</p>
-					{/if}
-				</div>
-				<div class="flex justify-center">
-					<div class="m-auto">
-						<BrownButton onclick={add_security_key}
-							>{$t('security_settings.add_security_key')}</BrownButton
-						>
-					</div>
-				</div>
-				<div class="flex justify-center">
-					<ul class="list-disc block">
-						{#each security_keys as key, i}
-							<li>
-								<button
-									onclick={() => {
-										remove_security_key(key.id);
-									}}
-									class="hover:line-through transition">{i + 1}</button
-								>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			</div>
-			<div class="h-full w-full flex flex-col">
-				<h2 class="text-center text-2xl">{$t('security_settings.totp')}</h2>
-				<div class="flex justify-center">
-					{#if totp_activated}
-						<p>{$t('security_settings.totp_available')}</p>
-					{:else}
-						<p>{$t('security_settings.totp_unavailable')}</p>
-					{/if}
-				</div>
+	<div class="min-h-screen text-white px-4 py-8 max-w-3xl mx-auto flex flex-col gap-6">
 
-				<div class="flex justify-center">
-					<div class="m-auto">
-						{#if totp_activated}
-							<BrownButton onclick={disable_totp}
-								>{$t('security_settings.disable_totp')}</BrownButton
-							>
-						{:else}
-							<BrownButton onclick={enable_totp}
-								>{$t('security_settings.enable_totp')}</BrownButton
-							>
-						{/if}
-					</div>
-				</div>
+		<h1 class="text-2xl font-semibold text-white">{$t('settings_page.security_settings')}</h1>
+
+		<!-- Backup Code card -->
+		<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] p-6 flex flex-col gap-4">
+			<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">{$t('security_settings.backup_code')}</p>
+			<p class="text-sm text-slate-400">Generate a backup code for account recovery if you lose access to your 2FA methods.</p>
+			<div>
+				<button onclick={get_backup_code} class="rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white/90 hover:bg-white/6 transition-colors">
+					{$t('security_settings.get_backup_code')}
+				</button>
 			</div>
 		</div>
+
+		<!-- 2FA / TOTP card -->
+		<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] p-6 flex flex-col gap-5">
+			<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">{$t('security_settings.activate_2fa')}</p>
+
+			<!-- Require password toggle -->
+			<div class="{!totp_activated ? 'opacity-40 pointer-events-none' : ''} flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+				<div>
+					<p class="text-sm font-medium text-white">Require password on 2FA</p>
+					<p class="text-xs text-slate-400 mt-0.5">
+						{user_data?.require_password ? $t('security_settings.2fa_activated') : $t('security_settings.2fa_deactivated')}
+					</p>
+				</div>
+				<button
+					disabled={!totp_activated}
+					onclick={() => { user_data.require_password = !user_data.require_password; save_password_required(); }}
+					type="button"
+					role="switch"
+					aria-checked={user_data?.require_password}
+					class="{user_data?.require_password ? 'bg-[#B07156]' : 'bg-white/15'} relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors"
+				>
+					<span class="{user_data?.require_password ? 'translate-x-5' : 'translate-x-0.5'} pointer-events-none inline-block h-5 w-5 mt-0.5 rounded-full bg-white transition-transform will-change-transform"></span>
+				</button>
+			</div>
+
+			<!-- TOTP section -->
+			<div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+				<div>
+					<p class="text-sm font-medium text-white">{$t('security_settings.totp')}</p>
+					<p class="text-xs text-slate-400 mt-0.5">
+						{totp_activated ? $t('security_settings.totp_available') : $t('security_settings.totp_unavailable')}
+					</p>
+				</div>
+				{#if totp_activated}
+					<button onclick={disable_totp} class="rounded-full border border-red-500/40 px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors">
+						{$t('security_settings.disable_totp')}
+					</button>
+				{:else}
+					<button onclick={enable_totp} class="rounded-full bg-[#B07156] px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors">
+						{$t('security_settings.enable_totp')}
+					</button>
+				{/if}
+			</div>
+		</div>
+
+		<!-- WebAuthn card -->
+		<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] p-6 flex flex-col gap-4">
+			<div class="flex items-center justify-between">
+				<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">{$t('security_settings.webauthn')}</p>
+				<button onclick={add_security_key} class="rounded-full bg-[#B07156] px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors">
+					{$t('security_settings.add_security_key')}
+				</button>
+			</div>
+			{#if security_keys.length > 0}
+				<p class="text-xs text-slate-400">{$t('security_settings.webauthn_available')}</p>
+				<div class="flex flex-col gap-2">
+					{#each security_keys as key, i}
+						<div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+							<span>Security key {i + 1}</span>
+							<button onclick={() => remove_security_key(key.id)} class="rounded-full border border-red-500/40 px-3 py-1 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors">
+								Remove
+							</button>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-sm text-slate-500">{$t('security_settings.webauthn_unavailable')}</p>
+			{/if}
+		</div>
+
 	</div>
 {/await}
 

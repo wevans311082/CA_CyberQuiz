@@ -89,7 +89,7 @@ SPDX-License-Identifier: MPL-2.0
 	{/if}
 
 	<div
-		class="w-full max-w-sm overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/80 shadow-[0_30px_80px_rgba(15,23,42,0.18)] backdrop-blur dark:border-slate-700 dark:bg-slate-900/75"
+		class="w-full max-w-sm overflow-hidden rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 shadow-[0_30px_80px_rgba(15,23,42,0.6)] backdrop-blur-2xl"
 	>
 		{#if step === 0}
 			<!--			<p>StartWindow</p>-->

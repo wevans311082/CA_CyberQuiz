@@ -32,67 +32,56 @@ SPDX-License-Identifier: MPL-2.0
 
 {#if quiz}
 	<div
-		class="fixed w-full h-full top-0 flex bg-black/50 z-50 overflow-scroll"
+		class="fixed inset-0 flex bg-black/70 z-50 overflow-y-auto"
 		onclick={on_parent_click}
 		transition:fade={{ duration: 100 }}
 	>
 		<div
-			class="m-auto bg-white dark:bg-gray-600 rounded-sm shadow-2xl flex p-4 flex-col lg:w-2/3 w-11/12 h-5/6"
+			class="m-auto rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] flex p-8 flex-col lg:w-2/3 w-11/12 max-h-[90vh] overflow-y-auto text-white"
 		>
-			<h1 class="text-center text-5xl">{$t('words.analytics')}</h1>
-			<section class="flex flex-col gap-2 mt-8">
-				<h2 class="mx-auto text-2xl">{$t('words.rating')}</h2>
-				<table class="w-fit mx-auto">
-					<tbody>
-						<tr class="border-b-2 dark:border-gray-500 text-left border-gray-300">
-							<th class="border-r dark:border-gray-500 p-1 mx-auto border-gray-300"
-								>{$t('words.like', { count: 2 })}</th
-							>
-							<th class="p-1 mx-auto">{$t('words.dislike', { count: 2 })}</th>
-						</tr>
-						<tr class="text-left">
-							<td class="border-r dark:border-gray-500 p-1 border-gray-300"
-								>{quiz.likes}</td
-							>
-							<td class="mx-auto p-1">{quiz.dislikes}</td>
-						</tr>
-					</tbody>
-				</table>
+			<h1 class="text-center text-3xl font-semibold text-white">{$t('words.analytics')}</h1>
+			<div class="border-t border-white/8 mt-6"></div>
+
+			<section class="flex flex-col gap-4 mt-6">
+				<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80 text-center">{$t('words.rating')}</p>
+				<div class="grid grid-cols-2 gap-4">
+					<div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+						<p class="text-xs uppercase tracking-[0.25em] text-slate-400/70 mb-1">{$t('words.like', { count: 2 })}</p>
+						<p class="text-2xl font-semibold text-white">{quiz.likes}</p>
+					</div>
+					<div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+						<p class="text-xs uppercase tracking-[0.25em] text-slate-400/70 mb-1">{$t('words.dislike', { count: 2 })}</p>
+						<p class="text-2xl font-semibold text-white">{quiz.dislikes}</p>
+					</div>
+				</div>
 			</section>
-			<section class="flex flex-col gap-2 mt-8">
-				<h2 class="mx-auto text-2xl">{$t('dashboard.views_n_plays')}</h2>
-				<table class="w-fit mx-auto">
-					<thead>
-						<tr class="border-b-2 dark:border-gray-500 text-left border-gray-300">
-							<th class="border-r dark:border-gray-500 p-1 mx-auto border-gray-300"
-								>{$t('words.view', { count: 2 })}</th
-							>
-							<th class="p-1 mx-auto">{$t('words.play', { count: 2 })}</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr class="text-left">
-							<td class="border-r dark:border-gray-500 p-1 border-gray-300"
-								>{quiz.views}</td
-							>
-							<td class="mx-auto p-1">{quiz.plays}</td>
-						</tr>
-					</tbody>
-				</table>
+
+			<section class="flex flex-col gap-4 mt-6">
+				<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80 text-center">{$t('dashboard.views_n_plays')}</p>
+				<div class="grid grid-cols-2 gap-4">
+					<div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+						<p class="text-xs uppercase tracking-[0.25em] text-slate-400/70 mb-1">{$t('words.view', { count: 2 })}</p>
+						<p class="text-2xl font-semibold text-white">{quiz.views}</p>
+					</div>
+					<div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+						<p class="text-xs uppercase tracking-[0.25em] text-slate-400/70 mb-1">{$t('words.play', { count: 2 })}</p>
+						<p class="text-2xl font-semibold text-white">{quiz.plays}</p>
+					</div>
+				</div>
 			</section>
-			<section class="flex flex-col gap-2 mt-8">
-				<h2 class="mx-auto text-2xl">{$t('words.info')}</h2>
-				<p class="mx-auto max-w-[70%] text-center">
+
+			<section class="flex flex-col gap-2 mt-6">
+				<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80 text-center">{$t('words.info')}</p>
+				<p class="text-sm text-slate-400 text-center max-w-lg mx-auto">
 					{$t('dashboard.info_analytics')}
 				</p>
 			</section>
-			<section class="mt-auto">
-				<p class="mt-6 mx-auto max-w-[70%] text-sm dark:text-gray-200 text-center">
-					Since there's still some space left down here, I guess that I take this
-					opportunity to thank You for using ClassQuiz! Have a great day and continue
-					using ClassQuiz ;)
-				</p>
-			</section>
+
+			<div class="mt-auto pt-6 border-t border-white/8">
+				<button onclick={() => (quiz = undefined)} class="mx-auto block rounded-full border border-white/15 px-6 py-2.5 text-sm font-semibold text-white/90 hover:bg-white/6 transition-colors">
+					Close
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}

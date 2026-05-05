@@ -22,50 +22,31 @@ SPDX-License-Identifier: MPL-2.0
 	};
 </script>
 
-<div class="w-screen h-screen fixed top-0 left-0 p-48 z-30 bg-black/50">
-	<div class="w-full h-full">
-		<button
-			class="bg-gray-200 dark:bg-gray-900 px-2 py-1 rounded-t-lg hover:bg-gray-300 transition"
-			onclick={() => {
-				totp_data = undefined;
-			}}
-			>{$t('words.close')}
-		</button>
-		<div class="bg-white dark:bg-gray-700 rounded-b-lg rounded-tr-lg w-full h-full">
-			<div class="grid grid-cols-3 w-full h-full">
-				<div class="flex flex-col justify-center w-full h-5/6">
-					<span class="m-auto"></span>
-					<div class="h-5/6 flex">
-						<p class="my-auto ml-auto">
-							{$t('security_settings.totp_setup.scan_to_set_up')}
-						</p>
-					</div>
-					<div class="flex">
-						<p class="my-auto ml-auto">
-							{$t('security_settings.totp_setup.enter_as_secret_if_no_see_code')}
-						</p>
-					</div>
-				</div>
-				<div class="flex flex-col justify-start w-full h-5/6">
-					<h2 class="text-2xl m-auto">{$t('security_settings.totp_setup.totp_setup')}</h2>
-					{#await get_image_url()}
-						<Spinner my_20={false} />
-					{:then data}
-						<div class="m-auto h-5/6 object-contain w-full">
-							<img
-								src={data}
-								alt="QR-Code for Totp-setup"
-								class="w-full h-full object-contain"
-							/>
-						</div>
-					{/await}
-					<p class="m-auto select-all font-mono">{totp_data.secret}</p>
-				</div>
-				<div class="flex justify-center h-5/6 w-full">
-					<p class="m-auto text-3xl p-4">
-						{$t('security_settings.totp_setup.do_not_forget_backup_code')}
-					</p>
-				</div>
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+	<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] text-white w-full max-w-2xl flex flex-col gap-6 p-8">
+		<div class="flex items-center justify-between">
+			<h2 class="text-xl font-semibold text-white">{$t('security_settings.totp_setup.totp_setup')}</h2>
+			<button onclick={() => { totp_data = undefined; }} class="rounded-full border border-white/15 px-4 py-1.5 text-xs font-semibold text-white/90 hover:bg-white/6 transition-colors">
+				{$t('words.close')}
+			</button>
+		</div>
+		<div class="border-t border-white/8"></div>
+		<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
+			<div class="flex flex-col gap-3 text-sm text-slate-400">
+				<p>{$t('security_settings.totp_setup.scan_to_set_up')}</p>
+				<p class="text-xs text-slate-500">{$t('security_settings.totp_setup.enter_as_secret_if_no_see_code')}</p>
+			</div>
+			<div class="flex flex-col items-center gap-3">
+				{#await get_image_url()}
+					<Spinner my_20={false} />
+				{:then data}
+					<img src={data} alt="QR-Code for TOTP setup" class="w-48 h-48 rounded-xl border border-white/10" />
+				{/await}
+				<p class="select-all font-mono text-xs bg-white/5 rounded-lg px-3 py-1.5 border border-white/10 text-slate-300">{totp_data.secret}</p>
+			</div>
+			<div class="rounded-2xl border border-[#B07156]/40 bg-[#B07156]/8 p-4 text-sm text-[#c07d62]">
+				<p class="font-semibold mb-1">Important</p>
+				<p>{$t('security_settings.totp_setup.do_not_forget_backup_code')}</p>
 			</div>
 		</div>
 	</div>
