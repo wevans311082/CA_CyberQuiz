@@ -15,7 +15,9 @@ SPDX-License-Identifier: MPL-2.0
 	import Spinner from '../Spinner.svelte';
 	import { createTippy } from 'svelte-tippy';
 	import { getLocalization } from '$lib/i18n';
+	import HoverRichTextEditor from '$lib/editor/HoverRichTextEditor.svelte';
 	import MediaComponent from '$lib/editor/MediaComponent.svelte';
+	import MasterThemeEditor from '$lib/editor/MasterThemeEditor.svelte';
 	import { fade } from 'svelte/transition';
 	import BrownButton from '$lib/components/buttons/brown.svelte';
 	// import MediaComponent from "$lib/editor/MediaComponent.svelte";
@@ -43,7 +45,6 @@ SPDX-License-Identifier: MPL-2.0
 	let advanced_options_open = $state(false);
 
 	let uppyOpen = $state(false);
-	let unique = $state({});
 
 	/*eslint no-unused-vars: ["error", { "argsIgnorePattern": "^_" }]*/
 	const correctTimeInput = (_) => {
@@ -58,15 +59,8 @@ SPDX-License-Identifier: MPL-2.0
 				.slice(0, 3);
 		}
 	};
-	const set_unique = () => {
-		unique = {};
-	};
 	run(() => {
 		correctTimeInput(data.questions[selected_question].time);
-	});
-	run(() => {
-		selected_question;
-		set_unique();
 	});
 	let image_url = $state('');
 
@@ -150,21 +144,20 @@ SPDX-License-Identifier: MPL-2.0
 			{@const type = data.questions[selected_question].type}
 			<div class="flex flex-col">
 				<div class="flex justify-center pt-10 w-full">
-					{#key unique}
-						{#await import('$lib/inline-editor.svelte')}
-							<Spinner my_20={false} />
-						{:then c}
-							<div
-								class="rounded-lg placeholder:italic placeholder:font-normal dark:bg-gray-500"
-								class:bg-yellow-500={!reach(
-									dataSchema,
-									'questions[].question'
-								).isValidSync(data.questions[selected_question].question)}
-							>
-								<c.default bind:text={data.questions[selected_question].question} />
-							</div>
-						{/await}
-					{/key}
+					<div
+						class="w-full max-w-4xl rounded-lg placeholder:italic placeholder:font-normal dark:bg-gray-500"
+						class:bg-yellow-500={!reach(
+							dataSchema,
+							'questions[].question'
+						).isValidSync(data.questions[selected_question].question)}
+					>
+						<HoverRichTextEditor
+							bind:text={data.questions[selected_question].question}
+							placeholder="Question title"
+							minHeightClass="min-h-[4rem]"
+							toolbarLabel="Question formatting tools"
+						/>
+					</div>
 				</div>
 				{#if data.questions[selected_question].image}
 					<div class="flex justify-center pt-10 w-full h-72">
@@ -295,6 +288,10 @@ SPDX-License-Identifier: MPL-2.0
 			class="w-1/3 max-h-[70vh] overflow-auto m-auto bg-white dark:bg-gray-700 rounded-lg flex flex-col p-4 gap-3"
 		>
 			<h1 class="text-3xl mx-auto">{$t('editor.advanced_settings')}</h1>
+			<div class="flex flex-col gap-2 rounded-lg border border-gray-300 p-3 dark:border-gray-600">
+				<h2 class="text-xl font-semibold">Master Slide Theme</h2>
+				<MasterThemeEditor bind:master_theme={data.master_theme} />
+			</div>
 			<label class="flex justify-around text-lg">
 				<span class="my-auto">{$t('editor.hide_question_results')}</span>
 				<input

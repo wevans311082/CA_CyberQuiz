@@ -13,6 +13,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { getLocalization } from '$lib/i18n';
 	import { VotingQuestionSchema } from '$lib/yupSchemas';
 	import { get_foreground_color } from '$lib/helpers';
+	import HoverRichTextEditor from '$lib/editor/HoverRichTextEditor.svelte';
 
 	const { t } = getLocalization();
 
@@ -91,14 +92,14 @@ SPDX-License-Identifier: MPL-2.0
 						/>
 					</svg>
 				</button>
-				<input
-					bind:value={answer.answer}
-					type="text"
-					class="border-b-2 border-dotted w-5/6 text-center rounded-lg"
-					style="background-color: {answer.color ??
-						'transparent'}; color: {get_foreground_color(answer.color)}"
-					placeholder={$t('editor.empty')}
-				/>
+				<div class="w-5/6" style="color: {get_foreground_color(answer.color)}">
+					<HoverRichTextEditor
+						bind:text={answer.answer}
+						placeholder={$t('editor.empty')}
+						minHeightClass="min-h-[3rem]"
+						toolbarLabel="Voting answer formatting tools"
+					/>
+				</div>
 				<input
 					class="rounded-lg p-1 border-black border"
 					type="color"

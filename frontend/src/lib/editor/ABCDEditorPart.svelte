@@ -14,6 +14,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { ABCDQuestionSchema } from '$lib/yupSchemas';
 	import { getLocalization } from '$lib/i18n';
 	import { get_foreground_color } from '$lib/helpers';
+	import HoverRichTextEditor from '$lib/editor/HoverRichTextEditor.svelte';
 
 	const { t } = getLocalization();
 
@@ -102,15 +103,14 @@ SPDX-License-Identifier: MPL-2.0
 						/>
 					</svg>
 				</button>
-				<input
-					bind:value={answer.answer}
-					type="text"
-					class="border-b-2 border-dotted w-5/6 text-center rounded-lg bg-transparent outline-hidden focus:shadow-2xl transition-all"
-					style="background-color: {answer.color}; color: {get_foreground_color(
-						answer.color
-					)}"
-					placeholder={$t('editor.enter_answer')}
-				/>
+				<div class="w-5/6" style="color: {get_foreground_color(answer.color)}">
+					<HoverRichTextEditor
+						bind:text={answer.answer}
+						placeholder={$t('editor.enter_answer')}
+						minHeightClass="min-h-[3rem]"
+						toolbarLabel="Answer formatting tools"
+					/>
+				</div>
 				<button
 					type="button"
 					onclick={() => {

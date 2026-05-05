@@ -230,7 +230,7 @@ SPDX-License-Identifier: MPL-2.0
 		<div class="mx-auto max-w-5xl px-4 pb-10">
 			{#if question.information_body || typeof question.answers === 'string'}
 				<div class="rounded-xl border border-gray-300 bg-white/90 p-5 text-gray-900 shadow">
-					<p class="whitespace-pre-wrap">{question.information_body ?? question.answers}</p>
+					<div class="whitespace-pre-wrap">{@html question.information_body ?? question.answers}</div>
 				</div>
 			{/if}
 			{#if question.type === QuizQuestionType.FILE && question.file_attachments?.length}
@@ -241,7 +241,7 @@ SPDX-License-Identifier: MPL-2.0
 								<p class="font-medium text-gray-900">{attachment.filename}</p>
 								<p class="text-xs text-gray-500">{attachment.mime_type}</p>
 								{#if attachment.description}
-									<p class="text-xs text-gray-600">{attachment.description}</p>
+									<div class="text-xs text-gray-600">{@html attachment.description}</div>
 								{/if}
 							</div>
 							<a
@@ -290,7 +290,7 @@ SPDX-License-Identifier: MPL-2.0
 									src={kahoot_icons[i]}
 								/>
 							{:else}
-								<p class="m-auto">{answer.answer}</p>
+								<p class="m-auto">{@html answer.answer}</p>
 							{/if}
 						</button>
 					{/each}
@@ -396,7 +396,7 @@ SPDX-License-Identifier: MPL-2.0
 								/>
 							</svg>
 						</button>
-						<p class="w-full text-center p-2 text-2xl">{answer.answer}</p>
+						<p class="w-full text-center p-2 text-2xl">{@html answer.answer}</p>
 
 						<button
 							onclick={() => {

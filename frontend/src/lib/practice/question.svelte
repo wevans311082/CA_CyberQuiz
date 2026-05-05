@@ -124,7 +124,7 @@ SPDX-License-Identifier: MPL-2.0
 						class:text-xl={i === selected_answer}
 						class:underline={i === selected_answer}
 						class="p-2 rounded-lg flex justify-center w-full transition my-5 text-black"
-						>{answer.answer}</button
+						>{@html answer.answer}</button
 					>
 				{/each}
 			</div>
@@ -138,7 +138,7 @@ SPDX-License-Identifier: MPL-2.0
 						onclick={() => {
 							selected_answer = i;
 							timer_res = '0';
-						}}>{answer.answer}</button
+						}}>{@html answer.answer}</button
 					>
 				{/each}
 				{#if timer_res === '0'}
@@ -205,7 +205,7 @@ SPDX-License-Identifier: MPL-2.0
 				onclick={() => {
 					selected_answer = i;
 					timer_res = '0';
-				}}>{answer.answer}</button
+				}}>{@html answer.answer}</button
 			>
 		{/each}
 		{#if timer_res === '0'}
@@ -225,7 +225,7 @@ SPDX-License-Identifier: MPL-2.0
 				<div
 					class="p-2 rounded-lg flex justify-center w-full transition bg-gray-200 my-5 text-black"
 				>
-					{answer.answer}
+					{@html answer.answer}
 				</div>
 			{/each}
 		{:else}
@@ -281,7 +281,7 @@ SPDX-License-Identifier: MPL-2.0
 							/>
 						</svg>
 					</button>
-					<p class="w-full text-center p-2 text-2xl">{answer.answer}</p>
+					<p class="w-full text-center p-2 text-2xl">{@html answer.answer}</p>
 
 					<button
 						onclick={() => {
@@ -331,7 +331,7 @@ SPDX-License-Identifier: MPL-2.0
 						class:bg-green-500={question.answers[i].right}
 						class:bg-red-500={!question.answers[i].right}
 						class="p-2 rounded-lg flex justify-center w-full transition my-5 text-black"
-						>{answer.answer}</button
+						>{@html answer.answer}</button
 					>
 				{/each}
 			</div>
@@ -345,7 +345,7 @@ SPDX-License-Identifier: MPL-2.0
 						class:opacity-100={check_choice_selected[i]}
 						onclick={() => {
 							check_choice_selected[i] = !check_choice_selected[i];
-						}}>{answer.answer}</button
+						}}>{@html answer.answer}</button
 					>
 				{/each}
 				<BrownButton

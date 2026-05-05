@@ -60,7 +60,7 @@ SPDX-License-Identifier: MPL-2.0
 			<h2 class="text-4xl text-center">{@html question.question}</h2>
 			{#if question.information_body || typeof question.answers === 'string'}
 				<div class="rounded-xl border border-gray-300 bg-white/90 p-6 text-gray-900 shadow">
-					<p class="whitespace-pre-wrap">{question.information_body ?? question.answers}</p>
+					<div class="whitespace-pre-wrap">{@html question.information_body ?? question.answers}</div>
 				</div>
 			{/if}
 			{#if question.type === QuizQuestionType.FILE && question.file_attachments?.length}
@@ -70,6 +70,9 @@ SPDX-License-Identifier: MPL-2.0
 							<div>
 								<p class="font-medium">{attachment.filename}</p>
 								<p class="text-xs text-gray-500">{attachment.mime_type}</p>
+								{#if attachment.description}
+									<div class="text-xs text-gray-600">{@html attachment.description}</div>
+								{/if}
 							</div>
 							<a
 								href={attachment.url}

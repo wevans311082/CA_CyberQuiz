@@ -6,6 +6,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <script lang="ts">
 	import type { EditorData, FileAttachment } from '$lib/quiz_types';
+	import HoverRichTextEditor from '$lib/editor/HoverRichTextEditor.svelte';
 
 	interface Props {
 		data: EditorData;
@@ -153,13 +154,14 @@ SPDX-License-Identifier: MPL-2.0
 					/>
 				</label>
 			</div>
-			<input
-				type="text"
-				placeholder="Description (optional)"
-				class="rounded border border-gray-300 p-2 text-sm dark:bg-gray-600 md:col-span-2"
-				value={attachment.description ?? ''}
-				oninput={(e) => update_attachment(i, { description: e.currentTarget.value || undefined })}
-			/>
+			<div class="md:col-span-2">
+				<HoverRichTextEditor
+					bind:text={attachment.description}
+					placeholder="Description (optional)"
+					minHeightClass="min-h-[5rem]"
+					toolbarLabel="Attachment description formatting tools"
+				/>
+			</div>
 			<div class="md:col-span-2 flex justify-end">
 				<button
 					type="button"

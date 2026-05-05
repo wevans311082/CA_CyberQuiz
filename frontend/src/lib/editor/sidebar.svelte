@@ -313,6 +313,7 @@ SPDX-License-Identifier: MPL-2.0
 					<div class="grid grid-cols-2 gap-2">
 						{#if Array.isArray(question.answers)}
 							{#each question.answers as answer}
+								{@const plain_answer = answer.answer.replace(/<[^>]*>/g, '').trim()}
 								<span
 									class="whitespace-nowrap truncate rounded-lg p-0.5 text-sm text-center border border-gray-700"
 									class:bg-green-500={answer.right}
@@ -323,14 +324,14 @@ SPDX-License-Identifier: MPL-2.0
 									).isValidSync(answer.answer)}
 									use:tippy={{
 										content:
-											answer.answer === ''
+											plain_answer === ''
 												? $t('editor.empty')
-												: answer.answer
+												: plain_answer
 									}}
-									>{#if answer.answer === ''}
+									>{#if plain_answer === ''}
 										<i>{$t('editor.empty')}</i>
 									{:else}
-										{answer.answer}
+										{plain_answer}
 									{/if}</span
 								>
 							{/each}
@@ -346,6 +347,7 @@ SPDX-License-Identifier: MPL-2.0
 					{#if Array.isArray(question.answers)}
 						<div class="grid grid-cols-2 gap-2">
 							{#each question.answers as answer}
+								{@const plain_answer = answer.answer.replace(/<[^>]*>/g, '').trim()}
 								<span
 									class="whitespace-nowrap truncate rounded-lg p-0.5 text-sm text-center border border-gray-700"
 									class:dark:bg-gray-500={answer.answer}
@@ -356,14 +358,14 @@ SPDX-License-Identifier: MPL-2.0
 									).isValidSync(answer.answer)}
 									use:tippy={{
 										content:
-											answer.answer === ''
+											plain_answer === ''
 												? $t('editor.empty')
-												: answer.answer
+												: plain_answer
 									}}
-									>{#if answer.answer === ''}
+									>{#if plain_answer === ''}
 										<i>{$t('editor.empty')}</i>
 									{:else}
-										{answer.answer}
+										{plain_answer}
 									{/if}</span
 								>
 							{/each}
