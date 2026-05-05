@@ -32,7 +32,20 @@ const config = {
 		include: ['swiper', 'tippy.js']
 	},
 	build: {
-		sourcemap: enableSourceMaps
+		sourcemap: enableSourceMaps,
+		minify: 'esbuild',
+		rollupOptions: {
+			output: {
+				manualChunks: (id) => {
+					if (id.includes('node_modules')) {
+						if (id.includes('ckeditor') || id.includes('uppy')) {
+							return 'vendor-heavy';
+						}
+						return 'vendor';
+					}
+				}
+			}
+		}
 	}
 
 	/* Trying

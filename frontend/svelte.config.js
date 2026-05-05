@@ -21,7 +21,7 @@ const config = {
 	kit: {
 		adapter: adapter({
 			out: 'build',
-			precompress: true
+			precompress: process.env.PRECOMPRESS !== 'false'
 		})
 		// +++ SOON OBSOLETE +++
 		/*
