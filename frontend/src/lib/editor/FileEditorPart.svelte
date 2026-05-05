@@ -175,12 +175,3 @@ SPDX-License-Identifier: MPL-2.0
 		<div class="rounded-md bg-red-50 border border-red-300 px-3 py-2 text-sm text-red-700">{upload_error}</div>
 	{/if}
 </div>
-					class="rounded-md bg-red-500 px-3 py-1 text-sm text-white hover:opacity-90"
-					onclick={() => remove_attachment(i)}
-				>
-					Remove
-				</button>
-			</div>
-		</div>
-	{/each}
-</div>

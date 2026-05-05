@@ -132,7 +132,7 @@ SPDX-License-Identifier: MPL-2.0
 	let qtimer_custom_seconds = $state<number | null>(null);
 	let qtimer_interval: ReturnType<typeof setInterval> | null = null;
 
-	const qtimer_effective_duration = $derived(() => {
+	const qtimer_effective_duration = $derived.by(() => {
 		if (qtimer_custom_seconds != null && qtimer_custom_seconds > 0) {
 			return qtimer_custom_seconds;
 		}
@@ -153,7 +153,7 @@ SPDX-License-Identifier: MPL-2.0
 		
 		// Safe default: 60 seconds
 		return 60;
-	})();
+	});
 
 	const qtimer_start = () => {
 		socket.emit('start_question_timer', { duration: qtimer_effective_duration });
