@@ -4,12 +4,12 @@ SPDX-FileCopyrightText: 2023 Marlon W (Mawoka)
 SPDX-License-Identifier: MPL-2.0
 -->
 
-# ClassQuizController
+# Remote Controller
 
 ## Setup
 
 At first, you plug it into power, and after some seconds a WLAN-hotspot should be available, called
-**ClassQuizController** with no password, which you can connect to. You're getting asked to sign in, and on this page,
+**CyberAsk-Controller** with no password, which you can connect to. You're getting asked to sign in, and on this page,
 you can enter your Wi-Fi SSID and your Wi-Fi password.
 
 After that, wait two minutes and [add the controller](/account/controllers/add). Give it a name and a player name. The

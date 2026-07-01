@@ -66,6 +66,25 @@ SPDX-License-Identifier: MPL-2.0
 			});
 		}
 	};
+
+	const delete_question = (index: number, e: MouseEvent) => {
+		e.stopPropagation();
+		if (!confirm('Do you really want to delete this Question?')) {
+			return;
+		}
+
+		const next_questions = data.questions.filter((_, i) => i !== index);
+		data = {
+			...data,
+			questions: next_questions
+		};
+
+		if (selected_question === index) {
+			selected_question = next_questions.length ? Math.max(0, index - 1) : -1;
+		} else if (selected_question > index) {
+			selected_question -= 1;
+		}
+	};
 	/*	onMount(() => {
             propertyCard.scrollIntoView({
                 behavior: 'smooth'
@@ -83,12 +102,10 @@ SPDX-License-Identifier: MPL-2.0
 			>
 		</div>
 	</div>
-	<div class="border-r-2 pt-6 px-6 overflow-scroll h-full">
+	<div class="h-full overflow-scroll border-r border-slate-200/70 bg-slate-50/50 px-6 pt-6 dark:border-slate-700 dark:bg-slate-950/40">
 		<div
 			bind:this={propertyCard}
-			class="bg-white shadow-smrounded-lg h-40 p-2 mb-6 hover:cursor-pointer drop-shadow-2xl border border-gray-500 dark:bg-gray-600 transition"
-			class:bg-green-300={selected_question === -1}
-			class:dark:bg-green-500={selected_question === -1}
+			class="mb-6 h-40 cursor-pointer rounded-xl border border-slate-200/70 bg-white/90 p-2 shadow-sm transition-all hover:border-brand-accent/30 dark:border-slate-700 dark:bg-slate-900/80 {selected_question === -1 ? 'ring-2 ring-brand-accent border-brand-accent/50 bg-brand-accent/10' : ''}"
 			onclick={() => setSelectedQuestion(-1)}
 		>
 			<div
@@ -174,9 +191,7 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 		{#each data.questions as question, index}
 			<div
-				class="bg-white shadow-smrounded-lg h-40 p-2 mb-6 hover:cursor-pointer drop-shadow-2xl border border-gray-500 dark:bg-gray-600 transition relative"
-				class:bg-green-300={index === selected_question}
-				class:dark:bg-green-500={index === selected_question}
+				class="relative mb-6 h-40 cursor-pointer rounded-xl border border-slate-200/70 bg-white/90 p-2 shadow-sm transition-all hover:border-brand-accent/30 dark:border-slate-700 dark:bg-slate-900/80 {index === selected_question ? 'ring-2 ring-brand-accent border-brand-accent/50 bg-brand-accent/10' : ''}"
 				onclick={() => {
 					setSelectedQuestion(index);
 				}}
@@ -252,13 +267,7 @@ SPDX-License-Identifier: MPL-2.0
 				<button
 					class="rounded-full absolute -top-3 -right-3 opacity-70 hover:opacity-100 transition"
 					type="button"
-					onclick={() => {
-						if (confirm('Do you really want to delete this Question?')) {
-							selected_question = -1;
-							data.questions.splice(index, 1);
-							data.questions = data.questions;
-						}
-					}}
+					onclick={(e) => delete_question(index, e)}
 				>
 					<svg
 						class="w-6 h-6 bg-red-500 rounded-full"

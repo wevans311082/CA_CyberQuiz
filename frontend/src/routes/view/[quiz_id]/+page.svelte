@@ -20,6 +20,8 @@ SPDX-License-Identifier: MPL-2.0
 	import { page } from '$app/state';
 	import ModComponent from './ModComponent.svelte';
 	import { get_foreground_color } from '$lib/helpers.ts';
+	import Card from '$lib/ui/Card.svelte';
+	import { pageTitle } from '$lib/brand';
 
 	const default_colors = ['#D6EDC9', '#B07156', '#7F7057', '#4E6E58'];
 
@@ -77,38 +79,47 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <svelte:head>
-	<title>ClassQuiz - View {quiz.title}</title>
+	<title>{pageTitle(quiz.title)}</title>
 </svelte:head>
 
-<div>
-	<h1 class="text-4xl text-center">{@html quiz.title}</h1>
-	<div class="text-center">
-		<p>{@html quiz.description}</p>
-	</div>
-	<p class="text-center">
-		{$t('view_quiz_page.made_by')}
-		<a href="/user/{quiz.user_id.id}" class="underline">@{quiz.user_id.username}</a>
-	</p>
-	{#if quiz.cover_image}
-		<div class="flex justify-center align-middle items-center">
-			<div class="h-[15vh] m-auto w-auto my-3">
-				<img
-					class="max-h-full max-w-full block"
-					src="/api/v1/storage/download/{quiz.cover_image}"
-					alt="Not provided"
-				/>
-			</div>
+<div class="mx-auto max-w-5xl px-4 py-8">
+	<Card variant="glass" padding="lg" class="mb-8 text-center">
+		<p class="text-xs font-semibold uppercase tracking-[0.28em] text-teal-700 dark:text-cyan-300">
+			Quiz Preview
+		</p>
+		<h1 class="mt-3 text-4xl font-semibold text-slate-950 dark:text-white">{@html quiz.title}</h1>
+		<div class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">
+			<p>{@html quiz.description}</p>
 		</div>
-	{/if}
-	<div class="text-center text-sm pt-1 mb-4">
-		<ImportedOrNot imported={quiz.imported_from_kahoot} />
-	</div>
-	<div class="flex justify-center mb-2 flex-row gap-2">
-		<RatingComponent bind:quiz />
-		{#if mod_view}
-			<ModComponent autoReturn={auto_return} quiz_id={quiz.id} />
+		<p class="mt-4 text-sm text-slate-500 dark:text-slate-400">
+			{$t('view_quiz_page.made_by')}
+			<a
+				href="/user/{quiz.user_id.id}"
+				class="font-medium text-teal-700 underline hover:text-teal-800 dark:text-cyan-300"
+				>@{quiz.user_id.username}</a
+			>
+		</p>
+		{#if quiz.cover_image}
+			<div class="mt-6 flex justify-center">
+				<div class="h-40 w-auto overflow-hidden rounded-2xl border border-slate-200/70 dark:border-slate-700">
+					<img
+						class="max-h-full max-w-full object-cover"
+						src="/api/v1/storage/download/{quiz.cover_image}"
+						alt="Quiz cover"
+					/>
+				</div>
+			</div>
 		{/if}
-	</div>
+		<div class="mt-4 text-sm">
+			<ImportedOrNot imported={quiz.imported_from_kahoot} />
+		</div>
+		<div class="mt-6 flex flex-wrap justify-center gap-2">
+			<RatingComponent bind:quiz />
+			{#if mod_view}
+				<ModComponent autoReturn={auto_return} quiz_id={quiz.id} />
+			{/if}
+		</div>
+	</Card>
 	<div class="flex flex-col justify-center">
 		<div class="mx-auto flex flex-col gap-2 justify-center w-fit">
 			{#if quiz.imported_from_kahoot && quiz.kahoot_id}

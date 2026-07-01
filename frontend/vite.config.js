@@ -5,6 +5,7 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 
 const enableSourceMaps = process.env.VITE_SOURCEMAP === 'true';
+const minifyMode = process.env.SKIP_MINIFY === 'true' ? false : 'esbuild';
 
 /** @type {import("vite").UserConfig} */
 const config = {
@@ -29,16 +30,19 @@ const config = {
 		port: 3000
 	},
 	optimizeDeps: {
-		include: ['swiper', 'tippy.js']
+		include: ['swiper', 'tippy.js', 'ckeditor5']
 	},
 	build: {
 		sourcemap: enableSourceMaps,
-		minify: 'esbuild',
+		minify: minifyMode,
 		rollupOptions: {
 			output: {
 				manualChunks: (id) => {
 					if (id.includes('node_modules')) {
-						if (id.includes('ckeditor') || id.includes('uppy')) {
+						if (id.includes('ckeditor')) {
+							return 'vendor-ckeditor';
+						}
+						if (id.includes('uppy')) {
 							return 'vendor-heavy';
 						}
 						return 'vendor';

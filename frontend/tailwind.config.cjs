@@ -8,6 +8,14 @@ const config = {
 	theme: {
 		extend: {
 			colors: {
+				brand: {
+					accent: '#B07156',
+					'accent-hover': '#c07d62',
+					primary: '#0f766e',
+					'primary-strong': '#155e75',
+					surface: '#0f172a',
+					ink: '#0f172a'
+				},
 				green: {
 					600: '#009444'
 				}

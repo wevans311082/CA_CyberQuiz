@@ -7,6 +7,9 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { getLocalization } from '$lib/i18n';
+	import Card from '$lib/ui/Card.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import { pageTitle } from '$lib/brand';
 
 	const { t } = getLocalization();
 
@@ -17,51 +20,66 @@ SPDX-License-Identifier: MPL-2.0
 	let { data }: Props = $props();
 </script>
 
-<div class="w-full">
-	<div class="flex justify-center w-full">
-		<div class="w-11/12 m-auto">
-			{#if data.results.length === 0}
-				<p class="text-center text-3xl mt-8">{$t('results_page.no_results_so_far')}</p>
-			{:else}
-				<table class="w-full">
-					<thead>
-						<tr class="border-b-2 dark:border-gray-500 text-left border-gray-300">
-							<th class="border-r dark:border-gray-500 p-1 mx-auto border-gray-300"
-								>{$t('results_page.quiz_title')}
+<svelte:head>
+	<title>{pageTitle('Results')}</title>
+</svelte:head>
+
+<div class="mx-auto max-w-6xl px-4 py-8">
+	<PageHeader
+		eyebrow="Session History"
+		title={$t('words.results')}
+		description="Review past game sessions, player counts, and open detailed reports."
+	/>
+
+	{#if data.results.length === 0}
+		<Card variant="glass" padding="lg" class="mt-8 text-center">
+			<p class="text-lg text-slate-500 dark:text-slate-400">{$t('results_page.no_results_so_far')}</p>
+		</Card>
+	{:else}
+		<Card variant="glass" padding="none" class="mt-8 overflow-hidden">
+			<div class="overflow-x-auto">
+				<table class="w-full min-w-[640px] text-left text-sm">
+					<thead class="border-b border-slate-200/70 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/50">
+						<tr>
+							<th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200">
+								{$t('results_page.quiz_title')}
 							</th>
-							<th class="border-r dark:border-gray-500 p-1 mx-auto border-gray-300"
-								>{$t('results_page.date_played')}
+							<th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200">
+								{$t('results_page.date_played')}
 							</th>
-							<th class="border-r dark:border-gray-500 p-1 mx-auto border-gray-300"
-								>{$t('results_page.player_count')}
+							<th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200">
+								{$t('results_page.player_count')}
 							</th>
-							<th class="mx-auto p-1">{$t('words.note')}</th>
+							<th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200">
+								{$t('words.note')}
+							</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each data.results as result}
-							<tr class="text-left">
-								<td class="border-r dark:border-gray-500 p-1 border-gray-300"
-									><a href="/results/{result.id}" class="underline text-lg"
-										>{@html result.title}</a
-									></td
-								>
-								<td class="border-r dark:border-gray-500 p-1 border-gray-300"
-									>{new Date(result.timestamp).toLocaleString()}</td
-								>
-								<td class="border-r dark:border-gray-500 p-1 border-gray-300"
-									>{Object.keys(result.player_scores).length}</td
-								>
-								<td class:p-1={result.note}>
-									{#if result.note}
-										{result.note}
-									{/if}
+							<tr class="border-b border-slate-200/50 transition-colors hover:bg-slate-50/60 dark:border-slate-700/50 dark:hover:bg-slate-800/40">
+								<td class="px-4 py-3">
+									<a
+										href="/results/{result.id}"
+										class="font-medium text-teal-700 underline decoration-teal-700/30 hover:text-teal-800 dark:text-cyan-300 dark:decoration-cyan-300/30"
+									>
+										{@html result.title}
+									</a>
+								</td>
+								<td class="px-4 py-3 text-slate-600 dark:text-slate-400">
+									{new Date(result.timestamp).toLocaleString()}
+								</td>
+								<td class="px-4 py-3 text-slate-600 dark:text-slate-400">
+									{Object.keys(result.player_scores).length}
+								</td>
+								<td class="px-4 py-3 text-slate-500 dark:text-slate-400">
+									{result.note ?? '—'}
 								</td>
 							</tr>
 						{/each}
 					</tbody>
 				</table>
-			{/if}
-		</div>
-	</div>
+			</div>
+		</Card>
+	{/if}
 </div>

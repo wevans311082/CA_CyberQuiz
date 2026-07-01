@@ -5,16 +5,14 @@ SPDX-License-Identifier: MPL-2.0
 -->
 
 <svelte:head>
-	<title>ClassQuiz/docs - Import from Kahoot</title>
+	<title>CyberAsk Quiz — Import from Kahoot</title>
 	<meta
 		name="description"
 		content="How to import quizzes from KAHOOT! into ClassQuiz, the open-source quiz-application,  easily"
 	/>
 </svelte:head>
-<article
-	class="prose prose-sm sm:prose lg:prose-lg xl:prose-xl mx-auto mt-10 prose-slate px-4 dark:prose-invert"
->
-	<h1>Import Quizzes from Kahoot into ClassQuiz</h1>
+<article class="prose prose-sm sm:prose lg:prose-lg max-w-none rounded-2xl border border-slate-200/70 bg-white/85 p-6 prose-slate backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:prose-invert">
+	<h1>Import quizzes from Kahoot into CyberAsk Quiz</h1>
 
 	<p>
 		All in all, this procedure is pretty simple, so just go to <a

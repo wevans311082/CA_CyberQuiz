@@ -15,10 +15,37 @@ SPDX-License-Identifier: MPL-2.0
 
 	let { data = $bindable(), selected_question = $bindable() }: Props = $props();
 
+	const get_selected_question = () => {
+		if (!Array.isArray(data?.questions)) {
+			return null;
+		}
+		if (selected_question < 0 || selected_question >= data.questions.length) {
+			return null;
+		}
+		return data.questions[selected_question];
+	};
+
+	const commit_selected_question = (next_question: (typeof data.questions)[number]) => {
+		const next_questions = [...data.questions];
+		next_questions[selected_question] = next_question;
+		data = {
+			...data,
+			questions: next_questions
+		};
+	};
+
 	const ensure_attachments = () => {
-		const q = data.questions[selected_question];
+		const q = get_selected_question();
+		if (!q) {
+			return [];
+		}
 		if (!q.file_attachments) {
-			q.file_attachments = [];
+			const next_question = {
+				...q,
+				file_attachments: []
+			};
+			commit_selected_question(next_question);
+			return next_question.file_attachments;
 		}
 		return q.file_attachments;
 	};
@@ -30,6 +57,9 @@ SPDX-License-Identifier: MPL-2.0
 		uploading_index = index;
 		upload_error = null;
 		try {
+			if (!file) {
+				throw new Error('No file selected');
+			}
 			const fd = new FormData();
 			fd.append('file', file);
 			const res = await fetch('/api/v1/storage/', { method: 'POST', body: fd });
@@ -40,9 +70,9 @@ SPDX-License-Identifier: MPL-2.0
 			const item = await res.json();
 			
 			// Find question by ID to handle case where selected_question changes during upload
-			let target_question = data.questions[selected_question];
+			let target_question = get_selected_question();
 			if (question_id && question_id !== target_question?.id) {
-				target_question = data.questions.find(q => q.id === question_id);
+				target_question = data.questions.find((q) => q.id === question_id) ?? null;
 			}
 			
 			if (!target_question) {
@@ -50,45 +80,81 @@ SPDX-License-Identifier: MPL-2.0
 			}
 			
 			// Ensure attachments array exists
-			if (!target_question.file_attachments) {
-				target_question.file_attachments = [];
-			}
+			const attachments = [...(target_question.file_attachments ?? [])];
 			
 			// Update the specific attachment
-			target_question.file_attachments[index] = {
-				...(target_question.file_attachments[index] ?? {}),
+			attachments[index] = {
+				...(attachments[index] ?? {}),
 				url: `/api/v1/storage/download/${item.id}`,
 				filename: file.name,
 				mime_type: file.type || 'application/octet-stream',
 				id: item.id,
 			};
-			data = data; // Trigger reactivity
+
+			const updated_question = {
+				...target_question,
+				file_attachments: attachments
+			};
+
+			const target_index = data.questions.findIndex((q) => q.id === target_question.id);
+			if (target_index >= 0) {
+				const next_questions = [...data.questions];
+				next_questions[target_index] = updated_question;
+				data = {
+					...data,
+					questions: next_questions
+				};
+			} else {
+				commit_selected_question(updated_question);
+			}
 		} catch (err) {
-			upload_error = String(err);
+			upload_error = err instanceof Error ? err.message : String(err);
 		} finally {
 			uploading_index = null;
 		}
 	};
 
 	const add_attachment = () => {
-		const attachments = ensure_attachments();
-		attachments.push({ filename: '', mime_type: 'application/pdf', url: '' });
-		data = data;
+		const q = get_selected_question();
+		if (!q) {
+			upload_error = 'No slide is selected.';
+			return;
+		}
+		const attachments = [...(q.file_attachments ?? [])];
+		attachments.push({ filename: '', mime_type: 'application/pdf', url: '', description: '' });
+		commit_selected_question({
+			...q,
+			file_attachments: attachments
+		});
 	};
 
 	const remove_attachment = (index: number) => {
-		const attachments = ensure_attachments();
+		const q = get_selected_question();
+		if (!q) {
+			return;
+		}
+		const attachments = [...(q.file_attachments ?? [])];
 		attachments.splice(index, 1);
-		data = data;
+		commit_selected_question({
+			...q,
+			file_attachments: attachments
+		});
 	};
 
 	const update_attachment = (index: number, patch: Partial<FileAttachment>) => {
-		const attachments = ensure_attachments();
+		const q = get_selected_question();
+		if (!q) {
+			return;
+		}
+		const attachments = [...(q.file_attachments ?? [])];
 		attachments[index] = {
-			...attachments[index],
+			...(attachments[index] ?? {}),
 			...patch
 		};
-		data = data;
+		commit_selected_question({
+			...q,
+			file_attachments: attachments
+		});
 	};
 </script>
 

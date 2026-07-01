@@ -10,6 +10,7 @@ SPDX-License-Identifier: MPL-2.0
 	import QuestionTab from './question_tab_dropdown.svelte';
 	import { QuizQuestionType } from '$lib/quiz_types';
 	import { getLocalization } from '$lib/i18n';
+	import Card from '$lib/ui/Card.svelte';
 
 	const { t } = getLocalization();
 
@@ -56,39 +57,36 @@ SPDX-License-Identifier: MPL-2.0
 	let question_open: number | boolean = $state(false);
 </script>
 
-<div class="w-full flex justify-center">
-	<div class="flex flex-col w-full gap-4">
-		{#each questions as question, i}
-			<div class="transition-all">
-				<div
-					class="w-full bg-white/60 p-2 rounded-sm grid grid-cols-3 z-40 dark:bg-gray-700/80"
+<div class="flex w-full flex-col gap-4">
+	{#each questions as question, i}
+		<div class="transition-all">
+			<Card variant="glass" padding="sm" class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+				<button
+					class="text-left text-base font-medium text-teal-700 underline decoration-teal-700/30 hover:text-teal-800 dark:text-cyan-300 dark:decoration-cyan-300/30 sm:text-center"
+					onclick={() => {
+						toggle_dropdown(i);
+					}}
 				>
-					<button
-						class="text-center underline text-xl"
-						onclick={() => {
-							toggle_dropdown(i);
-						}}>{@html question.question}</button
-					>
-					{#if question.type !== QuizQuestionType.VOTING}
-						{@const correct_answers = get_number_of_correct_answers(i)}
-						<p class="text-center text-sm my-auto">
-							{$t('result_page.average_score', {
-								average_score: get_average_score(i)
-							})}
-						</p>
-						<p class="text-center text-sm my-auto">
-							{$t('result_page.correct_answer', { count: correct_answers })}
-							<!--							{correct_answers} correct
-							{#if correct_answers === 1}Answer{:else}Answers{/if}-->
-						</p>
-					{/if}
-				</div>
-				{#if question_open === i}
-					<div in:fly={{ y: -10 }}>
-						<QuestionTab {question} answers={answers[i]} />
-					</div>
+					<span class="mr-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Q{i + 1}</span>
+					{@html question.question}
+				</button>
+				{#if question.type !== QuizQuestionType.VOTING}
+					{@const correct_answers = get_number_of_correct_answers(i)}
+					<p class="my-auto text-center text-sm text-slate-600 dark:text-slate-400">
+						{$t('result_page.average_score', {
+							average_score: get_average_score(i)
+						})}
+					</p>
+					<p class="my-auto text-center text-sm text-slate-600 dark:text-slate-400">
+						{$t('result_page.correct_answer', { count: correct_answers })}
+					</p>
 				{/if}
-			</div>
-		{/each}
-	</div>
+			</Card>
+			{#if question_open === i}
+				<div class="mt-2" in:fly={{ y: -10 }}>
+					<QuestionTab {question} answers={answers[i]} />
+				</div>
+			{/if}
+		</div>
+	{/each}
 </div>

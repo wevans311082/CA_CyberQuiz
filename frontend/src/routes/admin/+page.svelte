@@ -20,6 +20,7 @@ SPDX-License-Identifier: MPL-2.0
 	import SocketDiagnostics from '$lib/socket_diagnostics.svelte';
 	import { FRONTEND_BUILD_NUMBER } from '$lib/build_info';
 	import { page } from '$app/state';
+	import { pageTitle } from '$lib/brand';
 	import CountdownOverlay from '$lib/play/countdown_overlay.svelte';
 
 	navbarVisible.visible = false;
@@ -37,7 +38,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	let { data }: Props = $props();
 	let game_mode = $state();
-	let { auto_connect, game_token } = $state(data);
+	let { auto_connect, game_token, host_token } = $state(data);
 	const game_pin = data.game_pin;
 
 	let players: Array<Player> = $state([]);
@@ -92,7 +93,8 @@ SPDX-License-Identifier: MPL-2.0
 	const connect = async () => {
 		socket.emit('register_as_admin', {
 			game_pin: game_pin,
-			game_id: game_token
+			game_id: game_token,
+			host_token: host_token
 		});
 		const res = await fetch(`/api/v1/quiz/play/check_captcha/${game_pin}`);
 		const json = await res.json();
@@ -111,6 +113,10 @@ SPDX-License-Identifier: MPL-2.0
 		quiz_data = JSON.parse(data['game']);
 		console.log(quiz_data);
 		success = true;
+	});
+	socket.on('admin_registration_denied', () => {
+		errorMessage = 'Host authentication failed. Start the game again from the dashboard.';
+		success = false;
 	});
 	socket.on('player_joined', (int_data) => {
 		players = [...players.filter((player) => player.username !== int_data.username), int_data];
@@ -225,7 +231,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <svelte:window onbeforeunload={confirmUnload} />
 <svelte:head>
-	<title>ClassQuiz - Host</title>
+	<title>{pageTitle('Host')}</title>
 </svelte:head>
 <div
 	class="min-h-screen min-w-full"
@@ -315,6 +321,8 @@ SPDX-License-Identifier: MPL-2.0
 	{:else if !game_started}
 		<GameNotStarted
 			{game_pin}
+			game_token={game_token}
+			host_token={host_token}
 			bind:players
 			{socket}
 			{chat_messages}

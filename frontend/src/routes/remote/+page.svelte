@@ -16,7 +16,8 @@ SPDX-License-Identifier: MPL-2.0
 
 	const data = {
 		game_pin: page.url.searchParams.get('game_pin'),
-		game_id: page.url.searchParams.get('game_id')
+		game_id: page.url.searchParams.get('game_id'),
+		host_token: page.url.searchParams.get('host_token')
 	};
 
 	navbarVisible.visible = false;
@@ -37,7 +38,7 @@ SPDX-License-Identifier: MPL-2.0
 	let shown_question_now: number;
 	let control_visible = $state(false);
 
-	if (!data.game_id || !data.game_pin) {
+	if (!data.game_id || !data.game_pin || !data.host_token) {
 		console.log('Error!');
 	} else {
 		socket.emit('register_as_remote', data);
@@ -148,7 +149,7 @@ SPDX-License-Identifier: MPL-2.0
 		question_results = null;
 		shown_question_now = data.question_index;
 		timer_res = game_data.questions[data.question_index].time;
-		selected_question = selected_question + 1;
+		selected_question = data.question_index;
 		timer(timer_res);
 	});
 

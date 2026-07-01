@@ -37,6 +37,7 @@ from classquiz.socket_server.helpers import (
     check_answer,
     check_captcha,
     has_already_answered,
+    validate_host_credentials,
 )
 from .models import (
     RejoinGameData,
@@ -675,6 +676,10 @@ async def register_as_admin(sid: str, data: dict):
         return
     game_pin = data.game_pin
     game_id = data.game_id
+    game = await validate_host_credentials(game_pin, game_id, data.host_token)
+    if game is None:
+        await sio.emit("admin_registration_denied", room=sid)
+        return
     if await redis.get(f"game_session:{game_pin}") is not None:
         await sio.emit("already_registered_as_admin", room=sid)
         return
@@ -890,8 +895,8 @@ async def submit_answer(sid: str, data: dict):
                 await sio.emit("role_not_allowed", {"allowed_roles": allowed_roles}, room=sid)
                 return
 
-    already_answered = await has_already_answered(session["game_pin"], question_index, session["username"])
-    if already_answered:
+    answer_lock_key = f"game_session:{session['game_pin']}:{question_index}:answered:{session['username']}"
+    if not await redis.set(answer_lock_key, "1", nx=True, ex=7200):
         await sio.emit("already_replied", room=sid)
         return
     answer_right, answer = check_answer(game_data, data)
@@ -984,7 +989,7 @@ async def submit_answer(sid: str, data: dict):
         eligible_count = await redis.scard(f"game_session:{session['game_pin']}:players")
 
     await sio.emit("player_answer", {}, room=session["game_pin"])
-    if len(answers) >= eligible_count:
+    if eligible_count > 0 and len(answers) >= eligible_count:
         game_data = await PlayGame.get_from_redis(session["game_pin"])
         game_data.question_show = False
         await game_data.save(session["game_pin"])
@@ -1192,12 +1197,16 @@ async def trigger_penalty(sid: str, data: dict):
         return
 
     if target == "__company__":
-        # Deduct equally from all players
         players = await redis.smembers(f"game_session:{game_pin}:players")
-        for player in players:
-            current = int(await redis.hget(f"game_session:{game_pin}:player_scores", player) or 0)
+        for player_raw in players:
+            try:
+                player = GamePlayer.model_validate_json(player_raw)
+            except ValidationError:
+                continue
+            username = player.username
+            current = int(await redis.hget(f"game_session:{game_pin}:player_scores", username) or 0)
             new_score = max(0, current - amount)
-            await redis.hset(f"game_session:{game_pin}:player_scores", player, new_score)
+            await redis.hset(f"game_session:{game_pin}:player_scores", username, new_score)
     else:
         current = int(await redis.hget(f"game_session:{game_pin}:player_scores", target) or 0)
         new_score = max(0, current - amount)
@@ -1303,6 +1312,7 @@ async def kick_player(sid: str, data: dict):
 class _RegisterAsRemoteInput(BaseModel):
     game_pin: str
     game_id: str
+    host_token: str
 
 
 @sio.event
@@ -1312,6 +1322,10 @@ async def register_as_remote(sid: str, data: dict):
     except ValidationError as e:
         await sio.emit("error", room=sid)
         print(e)
+        return
+    game = await validate_host_credentials(data.game_pin, data.game_id, data.host_token)
+    if game is None:
+        await sio.emit("admin_registration_denied", room=sid)
         return
     await sio.emit(
         "registered_as_admin",
@@ -1346,6 +1360,8 @@ async def set_control_visibility(sid: str, data: dict):
         print(e)
         return
     session: dict = await get_session(sid, sio)
+    if not session.get("admin"):
+        return
     await sio.emit(
         "control_visibility",
         {"visible": data.visible},
@@ -1923,10 +1939,42 @@ async def get_situation(sid: str, _data: dict):
 
     status = await get_situation_status(game_pin)
     injects_log = await get_injects_log(game_pin)
-    await sio.emit("situation_room_data", {
-        "status": status or {},
-        "injects_log": injects_log or [],
-    }, room=sid)
+    situation_log = await get_situation_log(game_pin)
+    game_data = await PlayGame.get_from_redis(game_pin)
+    inject_lookup = {}
+    if game_data and game_data.injects:
+        inject_lookup = {inj.id: inj for inj in game_data.injects}
+
+    normalized_injects_log = []
+    for entry in injects_log or []:
+        inj_id = entry.get("inject_id")
+        full_inj = inject_lookup.get(inj_id) if inj_id else None
+        if full_inj:
+            inject_payload = full_inj.model_dump()
+        else:
+            inject_payload = {
+                "id": inj_id or entry.get("title", "inject"),
+                "title": entry.get("title", "Inject"),
+                "content": entry.get("content", ""),
+                "severity": entry.get("severity", "info"),
+            }
+        normalized_injects_log.append(
+            {
+                "inject": inject_payload,
+                "triggered_by": entry.get("triggered_by", "unknown"),
+                "timestamp": entry.get("timestamp"),
+            }
+        )
+
+    await sio.emit(
+        "situation_room_data",
+        {
+            "status": status or {},
+            "injects_log": normalized_injects_log,
+            "situation_log": situation_log or [],
+        },
+        room=sid,
+    )
 
 
 # ============================================================

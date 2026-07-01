@@ -80,7 +80,7 @@ SPDX-License-Identifier: MPL-2.0
 		timer_res = is_timer_enabled_for_question(current_question)
 			? (current_question.timer?.duration_seconds?.toString() ?? current_question.time)
 			: '0';
-		selected_question = selected_question + 1;
+		selected_question = data.question_index;
 		answer_count = 0;
 		scoreboard_data = data.scoreboard ?? null;
 		if (timer_res !== '0') {

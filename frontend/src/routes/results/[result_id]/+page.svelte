@@ -11,6 +11,10 @@ SPDX-License-Identifier: MPL-2.0
 	import GeneralOverview from './general_overview.svelte';
 	import { fade } from 'svelte/transition';
 	import { getLocalization } from '$lib/i18n';
+	import Button from '$lib/ui/Button.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import Tabs from '$lib/ui/Tabs.svelte';
+	import { pageTitle } from '$lib/brand';
 
 	const { t } = getLocalization();
 
@@ -20,97 +24,60 @@ SPDX-License-Identifier: MPL-2.0
 
 	let { data }: Props = $props();
 
-	// eslint-disable-next-line no-unused-vars
-	enum SelectedTab {
-		// eslint-disable-next-line no-unused-vars
-		Overview,
-		// eslint-disable-next-line no-unused-vars
-		Players,
-		// eslint-disable-next-line no-unused-vars
-		Questions
-	}
+	let selected_tab = $state('overview');
 
-	let selected_tab: SelectedTab = $state(SelectedTab.Overview);
+	const tabs = [
+		{ id: 'overview', label: $t('words.overview') },
+		{ id: 'players', label: $t('words.player', { count: 2 }) },
+		{ id: 'questions', label: $t('words.question', { count: 2 }) }
+	];
 </script>
 
-<div class="w-full">
-	<div class="flex flex-row w-full justify-around border-b-2 border-gray-500 mb-4">
-		<div
-			class="w-full py-2 flex transition-all hover:opacity-100"
-			class:text-lg={selected_tab === SelectedTab.Overview}
-			class:opacity-60={selected_tab !== SelectedTab.Overview}
-		>
-			<button
-				onclick={() => {
-					selected_tab = SelectedTab.Overview;
-				}}
-				class="m-auto w-full h-full"
-				>{$t('words.overview')}
-			</button>
-		</div>
-		<div
-			class="w-full py-2 flex border-x-2 border-gray-500 transition-all hover:opacity-100"
-			class:text-lg={selected_tab === SelectedTab.Players}
-			class:opacity-60={selected_tab !== SelectedTab.Players}
-		>
-			<button
-				onclick={() => {
-					selected_tab = SelectedTab.Players;
-				}}
-				class="m-auto w-full h-full"
-			>
-				{$t('words.player', { count: 2 })}
-			</button>
-		</div>
-		<div
-			class="w-full py-2 flex transition-all hover:opacity-100"
-			class:text-lg={selected_tab === SelectedTab.Questions}
-			class:opacity-60={selected_tab !== SelectedTab.Questions}
-		>
-			<button
-				onclick={() => {
-					selected_tab = SelectedTab.Questions;
-				}}
-				class="m-auto w-full h-full"
-				>{$t('words.question', { count: 2 })}
-			</button>
-		</div>
+<svelte:head>
+	<title>{pageTitle(data.results?.title ?? 'Result')}</title>
+</svelte:head>
+
+<div class="mx-auto max-w-6xl px-4 py-8">
+	<PageHeader
+		eyebrow="Session Report"
+		title={data.results?.title ?? 'Result'}
+		description="Review scores, player responses, and question breakdowns from this session."
+	>
+		{#snippet actions()}
+			<Button href="/results/aar/{data.results.id}" variant="primary" size="sm">
+				View After-Action Report
+			</Button>
+			<Button href="/api/v1/results/export-csv/{data.results.id}" download variant="secondary" size="sm">
+				Download CSV
+			</Button>
+		{/snippet}
+	</PageHeader>
+
+	<div class="mt-8">
+		<Tabs {tabs} bind:active={selected_tab} />
 	</div>
-	<!-- Export actions -->
-	<div class="flex flex-wrap items-center gap-2 px-2 mb-4">
-		<a
-			href="/results/aar/{data.results.id}"
-			class="rounded-full border border-[#B07156] px-4 py-1.5 text-sm font-semibold text-[#B07156] hover:bg-[#B07156]/10 transition-colors"
-		>
-			View After-Action Report
-		</a>
-		<a
-			href="/api/v1/results/export-csv/{data.results.id}"
-			download
-			class="rounded-full border border-gray-400 px-4 py-1.5 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-		>
-			Download CSV
-		</a>
+
+	<div class="mt-6">
+		{#if selected_tab === 'overview'}
+			<div in:fade|global={{ duration: 150 }}>
+				<GeneralOverview
+					scores={data.results.player_scores}
+					title={data.results.title}
+					timestamp={data.results.timestamp}
+				/>
+			</div>
+		{:else if selected_tab === 'questions'}
+			<div in:fade|global={{ duration: 150 }}>
+				<QuestionOverview questions={data.results.questions} answers={data.results.answers} />
+			</div>
+		{:else if selected_tab === 'players'}
+			<div in:fade|global={{ duration: 150 }}>
+				<PlayerOverview
+					custom_field={data.results.custom_field_data}
+					scores={data.results.player_scores}
+					answers={data.results.answers}
+				/>
+			</div>
+		{/if}
 	</div>
-	{#if selected_tab === SelectedTab.Overview}
-		<div in:fade|global={{ duration: 150 }}>
-			<GeneralOverview
-				scores={data.results.player_scores}
-				title={data.results.title}
-				timestamp={data.results.timestamp}
-			/>
-		</div>
-	{:else if selected_tab === SelectedTab.Questions}
-		<div in:fade|global={{ duration: 150 }}>
-			<QuestionOverview questions={data.results.questions} answers={data.results.answers} />
-		</div>
-	{:else if selected_tab === SelectedTab.Players}
-		<div in:fade|global={{ duration: 150 }}>
-			<PlayerOverview
-				custom_field={data.results.custom_field_data}
-				scores={data.results.player_scores}
-				answers={data.results.answers}
-			/>
-		</div>
-	{/if}
 </div>

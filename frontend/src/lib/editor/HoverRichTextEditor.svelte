@@ -13,6 +13,18 @@ SPDX-License-Identifier: MPL-2.0
 		Bold,
 		Italic,
 		Underline,
+		Heading,
+		Alignment,
+		BlockQuote,
+		Code,
+		CodeBlock,
+		HorizontalLine,
+		Link,
+		List,
+		Indent,
+		IndentBlock,
+		Highlight,
+		RemoveFormat,
 		Paragraph,
 		TextTransformation,
 		Superscript,
@@ -56,6 +68,18 @@ SPDX-License-Identifier: MPL-2.0
 				Bold,
 				Italic,
 				Underline,
+				Heading,
+				Alignment,
+				BlockQuote,
+				Code,
+				CodeBlock,
+				HorizontalLine,
+				Link,
+				List,
+				Indent,
+				IndentBlock,
+				Highlight,
+				RemoveFormat,
 				Paragraph,
 				TextTransformation,
 				Strikethrough,
@@ -75,7 +99,21 @@ SPDX-License-Identifier: MPL-2.0
 		Editor.create(host, {
 			licenseKey: 'GPL',
 			placeholder,
+			link: {
+				addTargetToExternalLinks: true,
+				defaultProtocol: 'https://'
+			},
+			heading: {
+				options: [
+					{ model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+					{ model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+					{ model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+					{ model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+				]
+			},
 			toolbar: [
+				'heading',
+				'|',
 				'fontFamily',
 				'fontSize',
 				'fontColor',
@@ -85,8 +123,23 @@ SPDX-License-Identifier: MPL-2.0
 				'italic',
 				'underline',
 				'strikethrough',
+				'removeFormat',
 				'superscript',
 				'subscript',
+				'|',
+				'link',
+				'bulletedList',
+				'numberedList',
+				'|',
+				'outdent',
+				'indent',
+				'alignment',
+				'|',
+				'blockQuote',
+				'code',
+				'codeBlock',
+				'highlight',
+				'horizontalLine',
 				'|',
 				'undo',
 				'redo'
@@ -123,18 +176,8 @@ SPDX-License-Identifier: MPL-2.0
 	}
 
 	.hover-rich-editor :global(.ck-editor__top) {
-		max-height: 0;
-		overflow: hidden;
-		opacity: 0;
-		transform: translateY(-0.25rem);
-		transition: max-height 120ms ease, opacity 120ms ease, transform 120ms ease;
-	}
-
-	.hover-rich-editor:hover :global(.ck-editor__top),
-	.hover-rich-editor:focus-within :global(.ck-editor__top) {
-		max-height: 4rem;
 		opacity: 1;
-		transform: translateY(0);
+		transform: none;
 	}
 
 	.hover-rich-editor :global(.ck-toolbar) {

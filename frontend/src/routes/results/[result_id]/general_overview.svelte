@@ -7,6 +7,7 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	import type { Question } from '$lib/quiz_types';
 	import { getLocalization } from '$lib/i18n';
+	import Card from '$lib/ui/Card.svelte';
 
 	const { t } = getLocalization();
 
@@ -31,18 +32,16 @@ SPDX-License-Identifier: MPL-2.0
 	};
 </script>
 
-<div class="w-full">
-	<div class="flex justify-center w-full">
-		<p class="text-3xl w-5/6 text-center">
-			{@html $t('results_page.general_overview.sentence', {
-				title,
-				date: new Date(timestamp).toLocaleString(),
-				player_count: usernames.length,
-				average_score: get_average_final_score()
-			})}
-		</p>
-	</div>
-</div>
+<Card variant="glass" padding="lg" class="text-center">
+	<p class="text-lg leading-relaxed text-slate-700 dark:text-slate-200">
+		{@html $t('results_page.general_overview.sentence', {
+			title,
+			date: new Date(timestamp).toLocaleString(),
+			player_count: usernames.length,
+			average_score: get_average_final_score()
+		})}
+	</p>
+</Card>
 
 <style>
 	underline {

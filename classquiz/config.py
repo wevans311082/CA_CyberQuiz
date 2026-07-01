@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     pixabay_api_key: str | None = None
     mods: list[str] = []
     registration_disabled: bool = False
+    enable_testing_routes: bool = False
 
     # storage_backend
     storage_backend: str  # either "local" or "s3"

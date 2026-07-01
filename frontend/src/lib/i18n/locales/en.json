@@ -92,7 +92,8 @@
                 }
             }
         },
-        "use_backup_code": "Use backup-code"
+        "use_backup_code": "Use backup-code",
+        "use_password": "Use password"
     },
     "words": {
         "question": "Question",

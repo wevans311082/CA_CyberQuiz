@@ -27,10 +27,20 @@ SPDX-License-Identifier: MPL-2.0
 				window.matchMedia('(prefers-color-scheme: dark)').matches);
 	}
 
-	const switchDarkMode = () => {
-		!darkMode ? localStorage.setItem('theme', 'dark') : localStorage.setItem('theme', 'light');
-		window.location.reload();
+	const applyTheme = (isDark: boolean) => {
+		document.documentElement.classList.toggle('dark', isDark);
 	};
+
+	const switchDarkMode = () => {
+		const nextDark = !darkMode;
+		darkMode = nextDark;
+		localStorage.setItem('theme', nextDark ? 'dark' : 'light');
+		applyTheme(nextDark);
+	};
+
+	if (browser) {
+		applyTheme(darkMode);
+	}
 </script>
 
 <nav class="fixed top-0 z-30 w-screen border-b border-slate-200/70 bg-white/78 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-950/70">
@@ -57,9 +67,8 @@ SPDX-License-Identifier: MPL-2.0
 			<div class="flex items-center justify-center rounded-full border border-slate-200/80 bg-white/70 p-2 dark:border-slate-700 dark:bg-slate-900/70">
 				{#if darkMode}
 					<button
-						onclick={() => {
-							switchDarkMode();
-						}}
+						class="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+						onclick={switchDarkMode}
 						aria-label="Activate light mode"
 					>
 						<svg
@@ -79,9 +88,8 @@ SPDX-License-Identifier: MPL-2.0
 					</button>
 				{:else}
 					<button
-						onclick={() => {
-							switchDarkMode();
-						}}
+						class="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+						onclick={switchDarkMode}
 						aria-label="Activate dark mode"
 					>
 						<svg
@@ -117,14 +125,12 @@ SPDX-License-Identifier: MPL-2.0
 			<div class="flex items-center">
 				{#if darkMode}
 					<button
-						class="px-3"
-						onclick={() => {
-							switchDarkMode();
-						}}
+						class="rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+						onclick={switchDarkMode}
 						aria-label="Activate light mode"
 					>
 						<svg
-							class="h-6 w-6 text-black"
+							class="h-6 w-6 text-slate-900 dark:text-white"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -140,14 +146,12 @@ SPDX-License-Identifier: MPL-2.0
 					</button>
 				{:else}
 					<button
-						class="px-3"
-						onclick={() => {
-							switchDarkMode();
-						}}
+						class="rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+						onclick={switchDarkMode}
 						aria-label="Activate dark mode"
 					>
 						<svg
-							class="h-6 w-6"
+							class="h-6 w-6 text-slate-900 dark:text-white"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -165,7 +169,7 @@ SPDX-License-Identifier: MPL-2.0
 
 				{#if menuIsClosed}
 					<button
-						class="px-3"
+						class="rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
 						id="open-menu"
 						onclick={toggleMenu}
 						aria-label="Open navbar"
@@ -176,7 +180,8 @@ SPDX-License-Identifier: MPL-2.0
 							height="24"
 							viewBox="0 0 24 24"
 							fill="none"
-							stroke="#000000"
+							stroke="currentColor"
+							class="text-slate-900 dark:text-white"
 							stroke-width="2"
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -186,7 +191,7 @@ SPDX-License-Identifier: MPL-2.0
 					</button>
 				{:else}
 					<button
-						class="px-3"
+						class="rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
 						id="close-menu"
 						onclick={toggleMenu}
 						aria-label="Close navbar"
@@ -197,7 +202,8 @@ SPDX-License-Identifier: MPL-2.0
 							height="24"
 							viewBox="0 0 24 24"
 							fill="none"
-							stroke="#000000"
+							stroke="currentColor"
+							class="text-slate-900 dark:text-white"
 							stroke-width="2"
 							stroke-linecap="round"
 							stroke-linejoin="round"

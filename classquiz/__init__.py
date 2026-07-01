@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 
+import logging
+
 import sentry_sdk
 from fastapi import FastAPI, Request
 from sentry_sdk.integrations.redis import RedisIntegration
@@ -34,11 +36,15 @@ from classquiz.routers import (
     quiztivity,
     pixabay,
     moderation,
+    seed,
 )
 from classquiz.socket_server import sio
 from classquiz.helpers import meilisearch_init
 
 settings = settings()
+_logger = logging.getLogger(f"uvicorn.{__name__}")
+if settings.secret_key in ("TOP_SECRET", "CHANGE_ME", ""):
+    _logger.warning("SECRET_KEY is using a weak/default value — rotate before production deployment")
 if settings.sentry_dsn:
     sentry_sdk.init(dsn=settings.sentry_dsn, integrations=[RedisIntegration()])
 app = FastAPI(redoc_url="", docs_url="/api/docs")
@@ -109,12 +115,13 @@ app.include_router(stats.router, tags=["stats"], prefix="/api/v1/stats", include
 app.include_router(storage.router, tags=["storage"], prefix="/api/v1/storage", include_in_schema=True)
 app.include_router(search.router, tags=["search"], prefix="/api/v1/search", include_in_schema=True)
 app.include_router(live.router, tags=["live"], prefix="/api/v1/live", include_in_schema=True)
-app.include_router(
-    testing_routes.router,
-    tags=["internal", "testing"],
-    prefix="/api/v1/internal/testing",
-    include_in_schema=False,
-)
+if settings.enable_testing_routes:
+    app.include_router(
+        testing_routes.router,
+        tags=["internal", "testing"],
+        prefix="/api/v1/internal/testing",
+        include_in_schema=False,
+    )
 app.include_router(editor.router, tags=["editor"], prefix="/api/v1/editor", include_in_schema=True)
 app.include_router(
     eximport.router,
@@ -131,4 +138,5 @@ app.include_router(
 )
 app.include_router(avatar.router, tags=["avatar"], prefix="/api/v1/avatar", include_in_schema=True)
 app.include_router(admin.router, tags=["admin"], prefix="/api/v1/admin", include_in_schema=True)
+app.include_router(seed.router, tags=["seed"], prefix="/api/v1/seed", include_in_schema=True)
 app.mount("/", ASGIApp(sio))

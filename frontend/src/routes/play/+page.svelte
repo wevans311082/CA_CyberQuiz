@@ -19,6 +19,10 @@ SPDX-License-Identifier: MPL-2.0
 	import SocketDiagnostics from '$lib/socket_diagnostics.svelte';
 	import { FRONTEND_BUILD_NUMBER } from '$lib/build_info';
 	import SituationRoom from '$lib/play/SituationRoom.svelte';
+	import {
+		normalizeInjectsLog,
+		type SituationLogEntry
+	} from '$lib/facilitator/timeline';
 	import AnswerSummary from '$lib/play/AnswerSummary.svelte';
 	import CountdownOverlay from '$lib/play/countdown_overlay.svelte';
 	import { getLocalization } from '$lib/i18n';
@@ -196,6 +200,7 @@ SPDX-License-Identifier: MPL-2.0
 		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
 	};
 	let injects_log = $state<Array<{ inject: Inject; triggered_by: string; timestamp: string }>>([]);
+	let situation_log = $state<SituationLogEntry[]>([]);
 	let situation_room_open = $state(false);
 	let answer_summary = $state<{ total: number; answers: Record<string, number> } | null>(null);
 	let event_log = $state<TimelineEvent[]>([]);
@@ -247,6 +252,10 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
+	const refresh_situation_data = () => {
+		socket.emit('get_situation', {});
+	};
+
 	const onJoinedGame = (data: PlayerGameData) => {
 		console.log('[JOINED_GAME] Handler fired with data:', data);
 		gameData = data;
@@ -256,6 +265,7 @@ SPDX-License-Identifier: MPL-2.0
 		// Capture tabletop scenario type
 		if (gameData.scenario_type) {
 			scenario_type = gameData.scenario_type;
+			refresh_situation_data();
 		}
 		if (typeof window !== 'undefined' && 'plausible' in window && typeof window.plausible === 'function') {
 			window.plausible('Joined Game', { props: { game_id: gameData.game_id } });
@@ -283,6 +293,7 @@ SPDX-License-Identifier: MPL-2.0
 		}
 		if (data.scenario_type) {
 			scenario_type = data.scenario_type;
+			refresh_situation_data();
 		}
 	};
 
@@ -546,12 +557,19 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
-	const onSituationRoomData = (data: { status: SituationStatus; injects_log: Array<{ inject: Inject; triggered_by: string; timestamp: string }> }) => {
+	const onSituationRoomData = (data: {
+		status?: SituationStatus;
+		injects_log?: Array<{ inject: Inject; triggered_by: string; timestamp: string }>;
+		situation_log?: SituationLogEntry[];
+	}) => {
 		if (data?.status) {
 			situation_status = data.status;
 		}
 		if (data?.injects_log) {
-			injects_log = data.injects_log;
+			injects_log = normalizeInjectsLog(data.injects_log);
+		}
+		if (data?.situation_log) {
+			situation_log = data.situation_log;
 		}
 	};
 
@@ -561,16 +579,16 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
+	const onEmojiPromptReceived = (data: { emoji: string; message: string }) => {
+		current_emoji = data;
+		setTimeout(() => {
+			current_emoji = null;
+		}, 5000);
+	};
+
 	const dismissInject = (id: string) => {
 		active_injects = active_injects.filter(inj => inj.id !== id);
 		socket.emit('dismiss_inject', { inject_id: id });
-		const onEmojiPromptReceived = (data: { emoji: string; message: string }) => {
-			current_emoji = data;
-			setTimeout(() => {
-				current_emoji = null;
-			}, 5000);
-		};
-
 	};
 
 	onMount(() => {
@@ -854,6 +872,7 @@ SPDX-License-Identifier: MPL-2.0
 			bind:open={situation_room_open}
 			{situation_status}
 			{injects_log}
+			{situation_log}
 			{event_log}
 			{socket}
 		/>

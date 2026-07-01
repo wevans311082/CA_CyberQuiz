@@ -50,19 +50,10 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <div class="w-full h-full pb-20 px-20">
-	<div class="rounded-lg bg-white w-full h-full border-gray-500 dark:bg-gray-700">
-		<div class="h-fit bg-gray-300 rounded-t-lg dark:bg-gray-500">
-			<div class="flex align-middle p-4 gap-3">
-				<span
-					class="inline-block bg-gray-600 w-4 h-4 rounded-full hover:bg-red-400 transition"
-				></span>
-				<span
-					class="inline-block bg-gray-600 w-4 h-4 rounded-full hover:bg-yellow-400 transition"
-				></span>
-				<span
-					class="inline-block bg-gray-600 w-4 h-4 rounded-full hover:bg-green-400 transition"
-				></span>
-			</div>
+	<div class="h-full w-full rounded-2xl border border-slate-200/70 bg-white/90 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
+		<div class="rounded-t-2xl border-b border-slate-200/70 bg-slate-50/80 px-6 py-4 dark:border-slate-700 dark:bg-slate-900/60">
+			<p class="text-xs font-semibold uppercase tracking-[0.28em] text-teal-700 dark:text-cyan-300">Quiz settings</p>
+			<h2 class="mt-1 text-xl font-semibold text-slate-900 dark:text-white">Exercise configuration</h2>
 		</div>
 		<div
 			class="dark:bg-gray-700 h-full"

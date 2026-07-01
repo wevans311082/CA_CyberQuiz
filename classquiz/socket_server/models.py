@@ -61,6 +61,7 @@ class RejoinGameData(BaseModel):
 class RegisterAsAdminData(BaseModel):
     game_pin: str
     game_id: str
+    host_token: str
 
 
 class ABCDQuizAnswerWithoutSolution(BaseModel):

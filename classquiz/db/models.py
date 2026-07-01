@@ -433,6 +433,7 @@ class GameInLobby(BaseModel):
     game_pin: str
     quiz_title: str
     game_id: uuid.UUID
+    host_token: str
 
 
 # skipcq: PY-W0069

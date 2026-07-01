@@ -17,6 +17,7 @@ SPDX-License-Identifier: MPL-2.0
 	import BackupComponent from './backup_component.svelte';
 	import TotpComponent from './totp_component.svelte';
 	import { browserSupportsWebAuthn } from '@simplewebauthn/browser';
+	import { pageTitle } from '$lib/brand';
 
 	navbarVisible.visible = true;
 
@@ -81,15 +82,16 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <svelte:head>
-	<title>CyberAsk Admin Login</title>
+	<title>{pageTitle('Admin Login')}</title>
 </svelte:head>
-<div class="flex min-h-screen items-center justify-center px-4 py-10">
+<div class="relative flex min-h-screen items-center justify-center px-4 py-10">
+	<div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(13,148,136,0.14),transparent_35%)]"></div>
 	{#if verified}
 		<VerifiedBadge />
 	{/if}
 
 	<div
-		class="w-full max-w-sm overflow-hidden rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 shadow-[0_30px_80px_rgba(15,23,42,0.6)] backdrop-blur-2xl"
+		class="relative z-10 w-full max-w-md overflow-hidden rounded-[1.75rem] border border-slate-200/70 bg-white/90 shadow-[0_30px_80px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-white/15 dark:bg-[#0f172a]/95 dark:shadow-[0_30px_80px_rgba(15,23,42,0.6)]"
 	>
 		{#if step === 0}
 			<!--			<p>StartWindow</p>-->

@@ -5,7 +5,7 @@ SPDX-License-Identifier: MPL-2.0
 -->
 
 <svelte:head>
-	<title>ClassQuiz/docs - Attribution</title>
+	<title>CyberAsk Quiz — Attribution</title>
 	<meta name="description" content="People who helped making with ClassQuiz." />
 </svelte:head>
 <article

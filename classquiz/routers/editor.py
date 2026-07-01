@@ -113,10 +113,29 @@ async def finish_edit(edit_id: str, quiz_input: QuizInput):
         quiz_input.questions[i].question = bleach.clean(
             quiz_input.questions[i].question, tags=ALLOWED_TAGS_FOR_QUIZ, strip=True
         )
+        if question.information_body is not None:
+            quiz_input.questions[i].information_body = bleach.clean(
+                question.information_body, tags=ALLOWED_TAGS_FOR_QUIZ, strip=True
+            )
+        if question.facilitator_notes is not None:
+            quiz_input.questions[i].facilitator_notes = bleach.clean(
+                question.facilitator_notes, tags=ALLOWED_TAGS_FOR_QUIZ, strip=True
+            )
+        if question.file_attachments:
+            for j, attachment in enumerate(question.file_attachments):
+                if attachment.description is not None:
+                    quiz_input.questions[i].file_attachments[j].description = bleach.clean(
+                        attachment.description, tags=ALLOWED_TAGS_FOR_QUIZ, strip=True
+                    )
         if image == "":
             question.image = None
         if image is not None and not check_image_string(image)[0]:
             raise HTTPException(status_code=400, detail="Image URL(s) aren't valid!")
+
+    if quiz_input.injects:
+        for j, inject in enumerate(quiz_input.injects):
+            quiz_input.injects[j].title = bleach.clean(inject.title, tags=ALLOWED_TAGS_FOR_QUIZ, strip=True)
+            quiz_input.injects[j].content = bleach.clean(inject.content, tags=ALLOWED_TAGS_FOR_QUIZ, strip=True)
 
     if quiz_input.cover_image == "":
         quiz_input.cover_image = None

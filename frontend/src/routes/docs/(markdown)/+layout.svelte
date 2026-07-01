@@ -6,7 +6,9 @@ SPDX-License-Identifier: MPL-2.0
 
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import Card from '$lib/ui/Card.svelte';
 	import '$lib/hljs.css';
+
 	interface Props {
 		children?: import('svelte').Snippet;
 	}
@@ -19,8 +21,6 @@ SPDX-License-Identifier: MPL-2.0
 	});
 </script>
 
-<article
-	class="prose prose-sm sm:prose lg:prose-lg xl:prose-xl mx-auto mt-10 prose-slate px-4 dark:prose-invert"
->
+<Card variant="glass" padding="lg" class="prose prose-sm sm:prose lg:prose-lg max-w-none prose-slate dark:prose-invert">
 	{@render children?.()}
-</article>
+</Card>

@@ -5,11 +5,23 @@ SPDX-License-Identifier: MPL-2.0
 -->
 
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
+	import { page } from '$app/state';
 	import { QuizQuestionType } from '$lib/quiz_types';
-	import type { QuizData, Inject, SituationStatus } from '$lib/quiz_types';
+	import type { QuizData, Inject, SituationStatus, TimelineEvent } from '$lib/quiz_types';
 	import type { Socket } from 'socket.io-client';
 	import { getLocalization } from '$lib/i18n';
 	import RolesPanel from '$lib/play/RolesPanel.svelte';
+	import FacilitatorDock from './FacilitatorDock.svelte';
+	import FacilitatorTimeline from './FacilitatorTimeline.svelte';
+	import InjectPreviewModal, { type InjectPreviewPayload } from './InjectPreviewModal.svelte';
+	import { QUICK_INJECT_PRESETS } from '$lib/facilitator/inject_presets';
+	import {
+		buildFacilitatorTimeline,
+		normalizeInjectsLog,
+		type InjectLogEntry,
+		type SituationLogEntry
+	} from '$lib/facilitator/timeline';
 
 	import EmojiPanel from './EmojiPanel.svelte';
 
@@ -59,10 +71,32 @@ SPDX-License-Identifier: MPL-2.0
 
 	let is_tabletop = $derived(scenario_type === 'tabletop');
 	let override_question_id = $state('');
-	let inject_panel_open = $state(false);
-	let situation_panel_open = $state(false);
-	let roles_panel_open = $state(false);
-	let hands_panel_open = $state(false);
+	let facilitator_dock_open = $state(false);
+	let facilitator_dock_tab = $state<'situation' | 'injects' | 'hands' | 'roles' | 'timeline'>('situation');
+	let injects_log = $state<InjectLogEntry[]>([]);
+	let situation_log = $state<SituationLogEntry[]>([]);
+	let inject_preview_open = $state(false);
+	let inject_preview_payload = $state<InjectPreviewPayload | null>(null);
+
+	const timeline_events = $derived(buildFacilitatorTimeline(injects_log, situation_log));
+
+	const open_facilitator_tab = (tab: 'situation' | 'injects' | 'hands' | 'roles' | 'timeline') => {
+		facilitator_dock_tab = tab;
+		facilitator_dock_open = true;
+		refresh_situation_data();
+	};
+
+	const refresh_situation_data = () => {
+		socket.emit('get_situation', {});
+	};
+
+	const open_projector_display = () => {
+		const token = page.url.searchParams.get('token');
+		const game_id = page.url.searchParams.get('game_id') ?? game_token;
+		const pin = quiz_data?.game_pin ?? page.url.searchParams.get('pin');
+		if (!token || !game_id || !pin) return;
+		window.open(`/projector?token=${encodeURIComponent(token)}&game_id=${encodeURIComponent(game_id)}&pin=${encodeURIComponent(pin)}&connect=1`, '_blank', 'noopener,noreferrer');
+	};
 	let score_review_open = $state(false);
 	let score_review_sheet = $state<any | null>(null);
 	let adhoc_inject_title = $state('');
@@ -261,25 +295,131 @@ SPDX-License-Identifier: MPL-2.0
 		socket.emit('resolve_tie', { answer_text });
 	};
 
+	const emit_push_inject = (payload: InjectPreviewPayload) => {
+		if (payload.inject_id) {
+			socket.emit('push_inject', { inject_id: payload.inject_id });
+		} else {
+			socket.emit('push_inject', {
+				title: payload.title,
+				content: payload.content,
+				severity: payload.severity
+			});
+		}
+		refresh_situation_data();
+	};
+
+	const queue_inject_preview = (payload: InjectPreviewPayload) => {
+		inject_preview_payload = payload;
+		inject_preview_open = true;
+	};
+
 	const push_predefined_inject = (inject: Inject) => {
-		socket.emit('push_inject', { inject_id: inject.id });
+		queue_inject_preview({
+			title: inject.title,
+			content: inject.content,
+			severity: inject.severity,
+			inject_id: inject.id
+		});
+	};
+
+	const push_quick_preset = (preset: (typeof QUICK_INJECT_PRESETS)[number]) => {
+		queue_inject_preview({
+			title: preset.title,
+			content: preset.content,
+			severity: preset.severity
+		});
 	};
 
 	const push_adhoc_inject = () => {
 		if (!adhoc_inject_title.trim()) return;
-		socket.emit('push_inject', {
+		queue_inject_preview({
 			title: adhoc_inject_title,
 			content: adhoc_inject_content,
 			severity: adhoc_inject_severity
 		});
-		adhoc_inject_title = '';
-		adhoc_inject_content = '';
-		adhoc_inject_severity = 'info';
+	};
+
+	const confirm_inject_preview = () => {
+		if (!inject_preview_payload) return;
+		emit_push_inject(inject_preview_payload);
+		if (!inject_preview_payload.inject_id) {
+			adhoc_inject_title = '';
+			adhoc_inject_content = '';
+			adhoc_inject_severity = 'info';
+		}
+		inject_preview_payload = null;
 	};
 
 	const update_situation = () => {
 		socket.emit('update_situation', { ...situation_status });
+		refresh_situation_data();
 	};
+
+	const onSituationRoomData = (data: {
+		status?: SituationStatus;
+		injects_log?: InjectLogEntry[];
+		situation_log?: SituationLogEntry[];
+	}) => {
+		if (data?.injects_log) injects_log = normalizeInjectsLog(data.injects_log);
+		if (data?.situation_log) situation_log = data.situation_log;
+	};
+
+	const onInjectReceived = (inject: Inject) => {
+		injects_log = [
+			...injects_log,
+			{ inject, triggered_by: 'facilitator', timestamp: new Date().toISOString() }
+		];
+	};
+
+	const onSituationUpdated = (status: SituationStatus) => {
+		if (status) {
+			situation_log = [
+				...situation_log,
+				{ ...status, timestamp: new Date().toISOString() }
+			];
+		}
+	};
+
+	const handle_facilitator_hotkey = (e: KeyboardEvent) => {
+		if (!is_tabletop) return;
+		const target = e.target as HTMLElement | null;
+		if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
+
+		const key = e.key.toLowerCase();
+		if (key === 'escape') {
+			facilitator_dock_open = false;
+			inject_preview_open = false;
+			return;
+		}
+		if (key === 'i') {
+			e.preventDefault();
+			open_facilitator_tab('injects');
+		} else if (key === 's') {
+			e.preventDefault();
+			open_facilitator_tab('situation');
+		} else if (key === 'h') {
+			e.preventDefault();
+			open_facilitator_tab('hands');
+		} else if (key === 't') {
+			e.preventDefault();
+			open_facilitator_tab('timeline');
+		}
+	};
+
+	onMount(() => {
+		socket.on('situation_room_data', onSituationRoomData);
+		socket.on('inject_received', onInjectReceived);
+		socket.on('situation_updated', onSituationUpdated);
+		refresh_situation_data();
+		window.addEventListener('keydown', handle_facilitator_hotkey);
+	});
+
+	onDestroy(() => {
+		socket.off('situation_room_data', onSituationRoomData);
+		socket.off('inject_received', onInjectReceived);
+		socket.off('situation_updated', onSituationUpdated);
+		window.removeEventListener('keydown', handle_facilitator_hotkey);
+	});
 
 	const to_plain_text = (html?: string) => {
 		if (!html) return 'Untitled';
@@ -344,24 +484,18 @@ SPDX-License-Identifier: MPL-2.0
 	});
 </script>
 
-<div
-	class="fixed top-0 w-full h-10 z-20 grid grid-cols-2"
-	style="background: {bg_color ? bg_color : 'transparent'}"
-	class:text-black={bg_color}
->
-	<p class="mr-auto ml-0 col-start-1 col-end-1">
-		{selected_question === -1 ? '0' : selected_question + 1}
-		/{quiz_data.questions.length}
-	</p>
-	<div class="justify-self-center col-start-2 col-end-2">
-		<button onclick={on_toggle_socket_diagnostics} class="admin-button">
+<header class="host-toolbar fixed top-0 z-30 w-full">
+	<div class="flex flex-wrap items-center gap-2 px-3 py-2">
+		<span class="host-badge">
+			Q {selected_question === -1 ? '0' : selected_question + 1} / {quiz_data.questions.length}
+		</span>
+		<button onclick={on_toggle_socket_diagnostics} class="host-btn">
 			Diagnostics: {socket_diagnostics_enabled ? 'On' : 'Off'}
 		</button>
-	</div>
-	<div class="justify-self-end ml-auto mr-0 col-start-3 col-end-3">
+		<div class="ml-auto flex flex-wrap items-center justify-end gap-2">
 		{#if selected_question + 1 === quiz_data.questions.length && ((timer_res === '0' && question_results !== null) || quiz_data?.questions?.[selected_question]?.type === QuizQuestionType.SLIDE)}
 			{#if JSON.stringify(final_results) === JSON.stringify([null])}
-				<button onclick={get_final_results} class="admin-button"
+				<button onclick={get_final_results} class="host-btn"
 					>Prepare Score Sheet
 				</button>
 			{/if}
@@ -371,7 +505,7 @@ SPDX-License-Identifier: MPL-2.0
 					onclick={() => {
 						set_question_number(selected_question + 1);
 					}}
-					class="admin-button"
+					class="host-btn"
 					>{$t('admin_page.next_question', { question: selected_question + 2 })}
 				</button>
 			{/if}
@@ -381,7 +515,7 @@ SPDX-License-Identifier: MPL-2.0
 						onclick={() => {
 							set_question_number(selected_question + 1);
 						}}
-						class="admin-button"
+						class="host-btn"
 						>{$t('admin_page.next_question', { question: selected_question + 2 })}
 					</button>
 				{:else if quiz_data.questions[selected_question]?.hide_results === true}
@@ -392,11 +526,11 @@ SPDX-License-Identifier: MPL-2.0
 								set_question_number(selected_question + 1);
 							}, 200);
 						}}
-						class="admin-button"
+						class="host-btn"
 						>{$t('admin_page.next_question', { question: selected_question + 2 })}
 					</button>
 				{:else}
-					<button onclick={get_question_results} class="admin-button"
+					<button onclick={get_question_results} class="host-btn"
 						>{$t('admin_page.show_results')}
 					</button>
 				{/if}
@@ -407,27 +541,21 @@ SPDX-License-Identifier: MPL-2.0
 					onclick={() => {
 						set_question_number(selected_question + 1);
 					}}
-					class="admin-button"
+					class="host-btn"
 					>{$t('admin_page.next_question', { question: selected_question + 2 })}
 				</button>
 			{:else}
-				<button onclick={show_solutions} class="admin-button"
+				<button onclick={show_solutions} class="host-btn"
 					>{$t('admin_page.stop_time_and_solutions')}
 				</button>
 			{/if}
 		{/if}
+		</div>
 	</div>
-</div>
-{#if is_tabletop && selected_question >= 0}
-	<div
-		class="fixed top-10 w-full h-8 z-20 flex items-center gap-3 px-4"
-		style="background: {bg_color ? bg_color : 'rgba(0,0,0,0.05)'}"
-	>
-		<button onclick={advance_tabletop} class="admin-button text-xs">Advance (Branch)</button>
-		<select
-			class="rounded border border-gray-400 px-2 py-0.5 text-xs dark:bg-gray-700 outline-hidden"
-			bind:value={override_question_id}
-		>
+	{#if is_tabletop && selected_question >= 0}
+	<div class="flex flex-wrap items-center gap-2 overflow-x-auto border-t border-slate-700/50 px-3 py-2">
+		<button onclick={advance_tabletop} class="host-btn">Advance (Branch)</button>
+		<select class="host-field w-auto py-1" bind:value={override_question_id}>
 			<option value="">Override → ...</option>
 			{#each quiz_data.questions as q, qi}
 				{#if qi !== selected_question}
@@ -436,12 +564,12 @@ SPDX-License-Identifier: MPL-2.0
 			{/each}
 		</select>
 		{#if override_question_id}
-			<button onclick={force_next_question} class="admin-button text-xs bg-amber-600">Override</button>
+			<button onclick={force_next_question} class="host-btn-warn">Override</button>
 		{/if}
 		{#if tie_pending}
 			<span class="ml-2 text-xs font-semibold text-red-600">TIE — pick a winner:</span>
 			{#each Object.entries(tie_votes) as [answer, count]}
-				<button onclick={() => resolve_tie(answer)} class="admin-button text-xs bg-red-500" title="{count} votes">{answer}</button>
+				<button onclick={() => resolve_tie(answer)} class="host-btn-danger" title="{count} votes">{answer}</button>
 			{/each}
 		{/if}
 		<div class="ml-auto flex gap-2">
@@ -456,11 +584,11 @@ SPDX-License-Identifier: MPL-2.0
 							class:text-gray-300={!qtimer_running}
 						>{qtimer_fmt(qtimer_remaining)}</span>
 						{#if qtimer_running}
-							<button onclick={qtimer_pause} class="admin-button text-xs bg-yellow-600" title="Pause answer timer">⏸</button>
+							<button onclick={qtimer_pause} class="host-btn-warn" title="Pause answer timer">⏸</button>
 						{:else}
-							<button onclick={qtimer_resume} class="admin-button text-xs bg-green-700" title="Resume answer timer">▶</button>
+							<button onclick={qtimer_resume} class="host-btn-accent" title="Resume answer timer">▶</button>
 						{/if}
-						<button onclick={qtimer_stop} class="admin-button text-xs bg-red-700" title="Stop answer timer">■</button>
+						<button onclick={qtimer_stop} class="host-btn-danger" title="Stop answer timer">■</button>
 					{:else}
 						<span class="text-xs text-white/60">Answer:</span>
 						<input
@@ -474,7 +602,7 @@ SPDX-License-Identifier: MPL-2.0
 							title="Override answer timer duration in seconds"
 						/>
 						<span class="text-xs text-white/60">s</span>
-						<button onclick={qtimer_start} class="admin-button text-xs bg-green-700" title="Start answer timer">▶ Start</button>
+						<button onclick={qtimer_start} class="host-btn-accent" title="Start answer timer">▶ Start</button>
 					{/if}
 				</div>
 			{/if}
@@ -488,11 +616,11 @@ SPDX-License-Identifier: MPL-2.0
 						class:text-gray-300={!disc_running}
 					>{disc_fmt(disc_remaining)}</span>
 					{#if disc_running}
-						<button onclick={disc_pause} class="admin-button text-xs bg-yellow-600" title="Pause timer">⏸</button>
+						<button onclick={disc_pause} class="host-btn-warn" title="Pause timer">⏸</button>
 					{:else}
-						<button onclick={disc_resume} class="admin-button text-xs bg-green-700" title="Resume timer">▶</button>
+						<button onclick={disc_resume} class="host-btn-accent" title="Resume timer">▶</button>
 					{/if}
-					<button onclick={disc_stop} class="admin-button text-xs bg-red-700" title="Stop timer">■</button>
+					<button onclick={disc_stop} class="host-btn-danger" title="Stop timer">■</button>
 				{:else}
 					<span class="text-xs text-white/60">Discussion:</span>
 					<input
@@ -506,29 +634,44 @@ SPDX-License-Identifier: MPL-2.0
 						title="Override duration in seconds (blank = use question default)"
 					/>
 					<span class="text-xs text-white/60">s</span>
-					<button onclick={disc_start} class="admin-button text-xs bg-green-700" title="Start discussion timer">▶ Start</button>
+					<button onclick={disc_start} class="host-btn-accent" title="Start discussion timer">▶ Start</button>
 				{/if}
 			</div>
-			<!-- Inject & Situation buttons -->
-			<button onclick={() => inject_panel_open = !inject_panel_open} class="admin-button text-xs"
-				class:bg-orange-600={inject_panel_open}>Injects</button>
-			<button onclick={() => situation_panel_open = !situation_panel_open} class="admin-button text-xs"
-				class:bg-purple-600={situation_panel_open}>Situation Room</button>
-			{#if is_tabletop}
-				<button onclick={() => roles_panel_open = !roles_panel_open} class="admin-button text-xs relative"
-					class:bg-teal-600={roles_panel_open}>
-					🎭 Roles
-				</button>
-				<button onclick={() => hands_panel_open = !hands_panel_open} class="admin-button text-xs relative"
-					class:bg-amber-600={hands_panel_open}>
-					✋ Hands
-					{#if raised_hands.length > 0}
-						<span class="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">{raised_hands.length}</span>
-					{/if}
+			<button
+				type="button"
+				class="host-btn"
+				onclick={() => open_facilitator_tab('situation')}
+				title="Open situation room"
+			>
+				<span
+					class="mr-1 inline-block h-2 w-2 rounded-full"
+					class:bg-emerald-400={situation_status.severity === 'low'}
+					class:bg-amber-400={situation_status.severity === 'medium'}
+					class:bg-orange-500={situation_status.severity === 'high'}
+					class:bg-red-500={situation_status.severity === 'critical'}
+				></span>
+				{situation_status.phase}
+			</button>
+			{#if raised_hands.length > 0}
+				<button type="button" class="host-btn-warn relative" onclick={() => open_facilitator_tab('hands')}>
+					✋ {raised_hands.length}
 				</button>
 			{/if}
+			<button
+				type="button"
+				class="host-btn-accent"
+				onclick={() => {
+					facilitator_dock_open = !facilitator_dock_open;
+					if (facilitator_dock_open) refresh_situation_data();
+				}}
+				title="Shortcuts: S situation, I injects, H hands, T timeline, Esc close"
+			>
+				Facilitator Console
+			</button>
 		</div>
 	</div>
+	{/if}
+</header>
 	{#if quiz_data?.questions?.[selected_question]?.type === QuizQuestionType.SCOREBOARD && scoreboard_data}
 		<div class="fixed inset-0 z-35 flex items-center justify-center bg-black/50 backdrop-blur-sm">
 			<div class="w-full max-w-lg rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 p-8 text-white shadow-[0_30px_80px_rgba(15,23,42,0.6)] backdrop-blur-2xl">
@@ -607,203 +750,215 @@ SPDX-License-Identifier: MPL-2.0
 							</button>
 						{/each}
 					</div>
-					<button onclick={release_final_scores} class="rounded-full bg-[#B07156] px-6 py-2.5 text-sm font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors">
+					<button onclick={release_final_scores} class="host-btn-accent px-6 py-2.5 text-sm">
 						Release Final Scores
 					</button>
 				</div>
 			</div>
 		</div>
 	{/if}
-	<!-- Facilitator Notes -->
-	{#if facilitator_notes}
-		<div class="fixed top-[4.5rem] left-4 z-30 max-w-sm rounded-lg border border-blue-400 bg-blue-50/95 p-3 shadow-lg dark:bg-blue-900/90 dark:border-blue-700">
-			<h4 class="text-xs font-bold uppercase text-blue-700 dark:text-blue-300 mb-1">Facilitator Notes</h4>
-			<p class="text-sm whitespace-pre-wrap text-blue-900 dark:text-blue-100">{facilitator_notes}</p>
-		</div>
-	{/if}
-	<!-- Inject Panel -->
-	{#if inject_panel_open}
-		<div class="fixed top-[4.5rem] right-4 z-30 w-80 max-h-[60vh] overflow-auto rounded-lg border border-orange-400 bg-white/95 p-4 shadow-xl dark:bg-gray-800/95 dark:border-orange-600">
-			<h3 class="text-sm font-bold mb-3 text-orange-700 dark:text-orange-300">Push Inject</h3>
-			<!-- Pre-defined injects -->
-			{#if quiz_data.injects?.length}
-				<div class="mb-3">
-					<span class="text-xs font-semibold text-gray-600 dark:text-gray-400">Pre-defined:</span>
-					{#each quiz_data.injects as inject}
-						<button
-							class="mt-1 w-full text-left rounded border p-2 text-xs hover:bg-orange-50 dark:hover:bg-orange-900/30 transition"
-							class:border-blue-300={inject.severity === 'info'}
-							class:border-yellow-400={inject.severity === 'warning'}
-							class:border-red-400={inject.severity === 'critical'}
-							onclick={() => push_predefined_inject(inject)}
-						>
-							<span class="font-semibold">{inject.title}</span>
-							<span class="ml-1 text-[10px] uppercase rounded px-1"
-								class:bg-blue-100={inject.severity === 'info'}
-								class:bg-yellow-100={inject.severity === 'warning'}
-								class:bg-red-100={inject.severity === 'critical'}
-								class:text-blue-700={inject.severity === 'info'}
-								class:text-yellow-700={inject.severity === 'warning'}
-								class:text-red-700={inject.severity === 'critical'}
-							>{inject.severity}</span>
-						</button>
-					{/each}
-				</div>
-			{/if}
-			<!-- Ad-hoc inject form -->
-			<div class="border-t border-gray-300 dark:border-gray-600 pt-3">
-				<span class="text-xs font-semibold text-gray-600 dark:text-gray-400">Ad-hoc inject:</span>
-				<input
-					type="text"
-					bind:value={adhoc_inject_title}
-					placeholder="Title"
-					class="mt-1 w-full rounded border border-gray-400 p-1.5 text-xs dark:bg-gray-700 outline-hidden"
-				/>
-				<textarea
-					bind:value={adhoc_inject_content}
-					placeholder="Content (markdown)"
-					class="mt-1 w-full rounded border border-gray-400 p-1.5 text-xs dark:bg-gray-700 outline-hidden resize-y min-h-[40px]"
-				></textarea>
-				<div class="mt-1 flex gap-2 items-center">
-					<select bind:value={adhoc_inject_severity} class="rounded border border-gray-400 p-1 text-xs dark:bg-gray-700 outline-hidden">
-						<option value="info">Info</option>
-						<option value="warning">Warning</option>
-						<option value="critical">Critical</option>
-					</select>
-					<button
-						class="ml-auto rounded bg-orange-600 px-3 py-1 text-xs text-white hover:bg-orange-700 disabled:opacity-50"
-						disabled={!adhoc_inject_title.trim()}
-						onclick={push_adhoc_inject}
-					>Push</button>
-				</div>
-			</div>
-		</div>
-	{/if}
-	<!-- Situation Room Panel -->
-	{#if situation_panel_open}
-		<div class="fixed top-[4.5rem] right-[22rem] z-30 w-80 max-h-[60vh] overflow-auto rounded-lg border border-purple-400 bg-white/95 p-4 shadow-xl dark:bg-gray-800/95 dark:border-purple-600">
-			<h3 class="text-sm font-bold mb-3 text-purple-700 dark:text-purple-300">Situation Room</h3>
-			<div class="flex flex-col gap-2">
-				<div>
-					<span class="text-xs font-semibold">Severity</span>
-					<select
-						bind:value={situation_status.severity}
-						class="w-full rounded border border-gray-400 p-1.5 text-xs dark:bg-gray-700 outline-hidden"
-					>
-						<option value="low">Low</option>
-						<option value="medium">Medium</option>
-						<option value="high">High</option>
-						<option value="critical">Critical</option>
-					</select>
-				</div>
-				<div>
-					<span class="text-xs font-semibold">Incident Phase</span>
-					<select
-						bind:value={situation_status.phase}
-						class="w-full rounded border border-gray-400 p-1.5 text-xs dark:bg-gray-700 outline-hidden"
-					>
-						<option value="Detection">Detection</option>
-						<option value="Containment">Containment</option>
-						<option value="Eradication">Eradication</option>
-						<option value="Recovery">Recovery</option>
-						<option value="Lessons Learned">Lessons Learned</option>
-					</select>
-				</div>
-				<div>
-					<span class="text-xs font-semibold">Affected Systems</span>
-					<div class="flex flex-wrap gap-1 mt-1">
-						{#each situation_status.affected_systems as sys, i}
-							<span class="inline-flex items-center gap-1 rounded-full bg-purple-600 px-2 py-0.5 text-[10px] text-white">
-								{sys}
-								<button type="button" class="hover:text-red-200" onclick={() => {
-									situation_status.affected_systems = situation_status.affected_systems.filter((_, idx) => idx !== i);
-								}}>&times;</button>
-							</span>
-						{/each}
+	{#if is_tabletop}
+		<FacilitatorDock
+			bind:open={facilitator_dock_open}
+			bind:activeTab={facilitator_dock_tab}
+			handsCount={raised_hands.length}
+			timelineCount={timeline_events.length}
+			severity={situation_status.severity}
+			phase={situation_status.phase}
+			showRoles={is_tabletop}
+			onopenprojector={open_projector_display}
+		>
+			{#snippet situation()}
+				{#if facilitator_notes}
+					<div class="mb-4 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3">
+						<h4 class="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">Facilitator Notes</h4>
+						<p class="text-sm whitespace-pre-wrap text-slate-200">{facilitator_notes}</p>
 					</div>
-					<div class="flex gap-1 mt-1">
-						<input
-							type="text"
-							bind:value={new_affected_system}
-							placeholder="Add system"
-							class="flex-1 rounded border border-gray-400 p-1 text-xs dark:bg-gray-700 outline-hidden"
-							onkeydown={(e) => {
-								if (e.key === 'Enter') {
-									e.preventDefault();
+				{/if}
+				<div class="flex flex-col gap-3">
+					<div>
+						<span class="host-label">Severity</span>
+						<select bind:value={situation_status.severity} class="host-field mt-1">
+							<option value="low">Low</option>
+							<option value="medium">Medium</option>
+							<option value="high">High</option>
+							<option value="critical">Critical</option>
+						</select>
+					</div>
+					<div>
+						<span class="host-label">Incident Phase</span>
+						<select bind:value={situation_status.phase} class="host-field mt-1">
+							<option value="Detection">Detection</option>
+							<option value="Containment">Containment</option>
+							<option value="Eradication">Eradication</option>
+							<option value="Recovery">Recovery</option>
+							<option value="Lessons Learned">Lessons Learned</option>
+						</select>
+					</div>
+					<div>
+						<span class="host-label">Affected Systems</span>
+						<div class="mt-1 flex flex-wrap gap-1">
+							{#each situation_status.affected_systems as sys, i}
+								<span class="inline-flex items-center gap-1 rounded-full border border-purple-500/40 bg-purple-500/20 px-2 py-0.5 text-[10px] text-purple-200">
+									{sys}
+									<button type="button" class="hover:text-red-300" onclick={() => {
+										situation_status.affected_systems = situation_status.affected_systems.filter((_, idx) => idx !== i);
+									}}>&times;</button>
+								</span>
+							{/each}
+						</div>
+						<div class="mt-1 flex gap-1">
+							<input
+								type="text"
+								bind:value={new_affected_system}
+								placeholder="Add system"
+								class="host-field flex-1"
+								onkeydown={(e) => {
+									if (e.key === 'Enter') {
+										e.preventDefault();
+										const v = new_affected_system.trim();
+										if (v) {
+											situation_status.affected_systems = [...situation_status.affected_systems, v];
+											new_affected_system = '';
+										}
+									}
+								}}
+							/>
+							<button
+								type="button"
+								class="host-btn"
+								onclick={() => {
 									const v = new_affected_system.trim();
 									if (v) {
 										situation_status.affected_systems = [...situation_status.affected_systems, v];
 										new_affected_system = '';
 									}
-								}
-							}}
-						/>
-						<button
-							type="button"
-							class="rounded bg-purple-600 px-2 py-0.5 text-[10px] text-white hover:bg-purple-700"
-							onclick={() => {
-								const v = new_affected_system.trim();
-								if (v) {
-									situation_status.affected_systems = [...situation_status.affected_systems, v];
-									new_affected_system = '';
-								}
-							}}
-						>+</button>
+								}}
+							>+</button>
+						</div>
+					</div>
+					<div>
+						<span class="host-label">Summary</span>
+						<textarea
+							bind:value={situation_status.summary}
+							placeholder="Current situation summary..."
+							class="host-field mt-1 min-h-[40px] resize-y"
+						></textarea>
+					</div>
+					<div>
+						<span class="host-label">Context / Background</span>
+						<textarea
+							bind:value={(situation_status as any).context_notes}
+							placeholder="Scenario background, asset details, threat actor info..."
+							class="host-field mt-1 min-h-[48px] resize-y"
+						></textarea>
+					</div>
+					<button class="host-btn-accent mt-1 w-full" onclick={update_situation}>Broadcast Update</button>
+				</div>
+			{/snippet}
+
+			{#snippet injects()}
+				<div class="mb-4">
+					<span class="host-label">Quick presets</span>
+					<div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+						{#each QUICK_INJECT_PRESETS as preset}
+							<button
+								type="button"
+								class="rounded-xl border p-3 text-left transition-colors hover:bg-slate-800/80 {preset.severity === 'critical' ? 'border-red-500/50 bg-red-500/10' : preset.severity === 'warning' ? 'border-amber-500/50 bg-amber-500/10' : 'border-cyan-500/40 bg-cyan-500/10'}"
+								onclick={() => push_quick_preset(preset)}
+							>
+								<p class="text-sm font-semibold text-slate-100">{preset.title}</p>
+								<p class="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">{preset.hint}</p>
+							</button>
+						{/each}
 					</div>
 				</div>
-				<div>
-					<span class="text-xs font-semibold">Summary</span>
-					<textarea
-						bind:value={situation_status.summary}
-						placeholder="Current situation summary..."
-						class="w-full rounded border border-gray-400 p-1.5 text-xs dark:bg-gray-700 outline-hidden resize-y min-h-[40px]"
-					></textarea>
-				</div>
-				<div>
-					<span class="text-xs font-semibold">Context / Background</span>
-					<textarea
-						bind:value={(situation_status as any).context_notes}
-						placeholder="Scenario background, asset details, threat actor info..."
-						class="w-full rounded border border-gray-400 p-1.5 text-xs dark:bg-gray-700 outline-hidden resize-y min-h-[48px]"
-					></textarea>
-				</div>
-				<button
-					class="mt-1 w-full rounded bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700"
-					onclick={update_situation}
-				>Broadcast Update</button>
-			</div>
-		</div>
-	{/if}
-	<!-- Hands Up Panel -->
-	{#if hands_panel_open && is_tabletop}
-		<div class="fixed top-[4.5rem] right-[44rem] z-30 w-72 max-h-[60vh] overflow-auto rounded-lg border border-amber-400 bg-white/95 p-4 shadow-xl dark:bg-gray-800/95 dark:border-amber-600">
-			<div class="flex items-center justify-between mb-3">
-				<h3 class="text-sm font-bold text-amber-700 dark:text-amber-300">✋ Raised Hands ({raised_hands.length})</h3>
-				{#if raised_hands.length > 0}
-					<button
-						class="text-xs text-amber-600 hover:underline dark:text-amber-400"
-						onclick={() => socket.emit('dismiss_all_hands', {})}
-					>Dismiss All</button>
-				{/if}
-			</div>
-			{#if raised_hands.length === 0}
-				<p class="text-xs text-gray-400 italic">No hands raised.</p>
-			{:else}
-				<div class="flex flex-col gap-2">
-					{#each raised_hands as username}
-						<div class="flex items-center justify-between rounded-lg bg-amber-50 dark:bg-amber-900/30 px-3 py-2">
-							<span class="text-sm font-medium text-amber-900 dark:text-amber-100">✋ {username}</span>
+				{#if quiz_data.injects?.length}
+					<div class="mb-4 border-t border-slate-700/60 pt-3">
+						<span class="host-label">Quiz injects</span>
+						{#each quiz_data.injects as inject}
 							<button
-								class="text-xs rounded bg-amber-600 text-white px-2 py-0.5 hover:bg-amber-700"
-								onclick={() => socket.emit('dismiss_hand', { username })}
-							>Dismiss</button>
-						</div>
-					{/each}
+								class="mt-1.5 w-full rounded-lg border p-2.5 text-left text-xs transition-colors hover:bg-slate-800/80 {inject.severity === 'info' ? 'border-cyan-500/40' : inject.severity === 'warning' ? 'border-amber-500/40' : 'border-red-500/40'}"
+								onclick={() => push_predefined_inject(inject)}
+							>
+								<span class="font-semibold text-slate-100">{inject.title}</span>
+								<span
+									class="ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase {inject.severity === 'info' ? 'bg-cyan-500/20 text-cyan-300' : inject.severity === 'warning' ? 'bg-amber-500/20 text-amber-300' : 'bg-red-500/20 text-red-300'}"
+								>{inject.severity}</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
+				<div class="border-t border-slate-700/60 pt-3">
+					<span class="host-label">Ad-hoc inject</span>
+					<input type="text" bind:value={adhoc_inject_title} placeholder="Title" class="host-field mt-2" />
+					<textarea
+						bind:value={adhoc_inject_content}
+						placeholder="Content (markdown)"
+						class="host-field mt-2 min-h-[40px] resize-y"
+					></textarea>
+					<div class="mt-2 flex items-center gap-2">
+						<select bind:value={adhoc_inject_severity} class="host-field w-auto">
+							<option value="info">Info</option>
+							<option value="warning">Warning</option>
+							<option value="critical">Critical</option>
+						</select>
+						<button class="host-btn-warn ml-auto" disabled={!adhoc_inject_title.trim()} onclick={push_adhoc_inject}>
+							Preview & push
+						</button>
+					</div>
 				</div>
-			{/if}
-		</div>
+			{/snippet}
+
+			{#snippet hands()}
+				<div class="mb-3 flex items-center justify-between">
+					<h3 class="text-sm font-bold text-amber-300">✋ Raised Hands ({raised_hands.length})</h3>
+					{#if raised_hands.length > 0}
+						<button class="text-xs text-amber-400 hover:text-amber-200" onclick={() => socket.emit('dismiss_all_hands', {})}>
+							Dismiss All
+						</button>
+					{/if}
+				</div>
+				{#if raised_hands.length === 0}
+					<p class="text-xs italic text-slate-500">No hands raised.</p>
+				{:else}
+					<div class="flex flex-col gap-2">
+						{#each raised_hands as username}
+							<div class="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+								<span class="text-sm font-medium text-amber-100">✋ {username}</span>
+								<button class="host-btn-warn px-2 py-0.5" onclick={() => socket.emit('dismiss_hand', { username })}>
+									Dismiss
+								</button>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			{/snippet}
+
+			{#snippet roles()}
+				<RolesPanel
+					embedded
+					roles={quiz_data.roles ?? []}
+					role_descriptions={quiz_data.role_descriptions ?? {}}
+					{player_roles}
+				/>
+			{/snippet}
+
+			{#snippet timeline()}
+				<div class="mb-3 flex items-center justify-between">
+					<p class="host-label mb-0">Session timeline</p>
+					<button type="button" class="host-btn" onclick={refresh_situation_data}>Refresh</button>
+				</div>
+				<FacilitatorTimeline events={timeline_events} />
+			{/snippet}
+		</FacilitatorDock>
+
+		<InjectPreviewModal
+			bind:open={inject_preview_open}
+			payload={inject_preview_payload}
+			onconfirm={confirm_inject_preview}
+		/>
 	{/if}
-{/if}
 
 <EmojiPanel
 	{socket}
@@ -811,18 +966,18 @@ SPDX-License-Identifier: MPL-2.0
 />
 
 {#if is_tabletop && selected_question >= 0}
-	<div class="fixed bottom-0 left-0 right-0 z-20 border-t border-gray-300 bg-white/95 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] dark:bg-gray-900/95 dark:border-gray-700">
+	<div class="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-700/80 bg-slate-950/95 px-3 py-2 shadow-[0_-8px_24px_rgba(0,0,0,0.35)] backdrop-blur-xl">
 		<div class="flex items-center gap-3">
-			<span class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">Next Branch Preview</span>
+			<span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Next Branch Preview</span>
 			<div class="flex-1 overflow-x-auto">
 				<div class="flex gap-2 min-w-max">
 					{#if branch_previews.length === 0}
-						<div class="rounded-md border border-dashed border-gray-400 px-3 py-1.5 text-xs text-gray-500">No branch targets configured</div>
+						<div class="rounded-md border border-dashed border-slate-600 px-3 py-1.5 text-xs text-slate-500">No branch targets configured</div>
 					{/if}
 					{#each branch_previews as preview}
-						<div class="rounded-md border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs dark:bg-gray-800 dark:border-gray-600">
-							<p class="font-semibold text-gray-700 dark:text-gray-100">{preview.source}{preview.fallback ? ' (fallback)' : ''}</p>
-							<p class="text-gray-600 dark:text-gray-300">→ Q{preview.target_index + 1}: {preview.target_label.slice(0, 72)}</p>
+						<div class="rounded-xl border border-slate-600/60 bg-slate-800/80 px-3 py-1.5 text-xs">
+							<p class="font-semibold text-slate-100">{preview.source}{preview.fallback ? ' (fallback)' : ''}</p>
+							<p class="text-slate-400">→ Q{preview.target_index + 1}: {preview.target_label.slice(0, 72)}</p>
 						</div>
 					{/each}
 				</div>
@@ -831,9 +986,4 @@ SPDX-License-Identifier: MPL-2.0
 	</div>
 {/if}
 
-<RolesPanel
-	bind:open={roles_panel_open}
-	roles={quiz_data.roles ?? []}
-	role_descriptions={quiz_data.role_descriptions ?? {}}
-	{player_roles}
-/>
+

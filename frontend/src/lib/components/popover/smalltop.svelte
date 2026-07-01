@@ -14,7 +14,7 @@ SPDX-License-Identifier: MPL-2.0
 	interface Props {
 		open?: boolean;
 		type: PopoverTypes;
-		data?: undefined | { game_pin: number | string; game_id: string } | string;
+		data?: undefined | { game_pin: number | string; game_id: string; host_token: string } | string;
 	}
 
 	let { open = $bindable(false), type, data = undefined }: Props = $props();
@@ -34,7 +34,7 @@ SPDX-License-Identifier: MPL-2.0
 					{$t('components.popover.copied_to_clipboard')}
 				{:else if type === PopoverTypes.GameInLobby}A game is currently in the lobby. Click <a
 						class="underline"
-						href="/remote?game_pin={data.game_pin}&game_id={data.game_id}">here</a
+						href="/remote?game_pin={data.game_pin}&game_id={data.game_id}&host_token={data.host_token}">here</a
 					> to join as a remote.
 				{:else if type === PopoverTypes.Generic}
 					{@html data}

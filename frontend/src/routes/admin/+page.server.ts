@@ -9,15 +9,17 @@ export async function load({ parent, url }) {
 	if (!email) {
 		redirect(302, '/account/login');
 	}
-	const token = url.searchParams.get('token');
+	const host_token = url.searchParams.get('token');
+	const game_id = url.searchParams.get('game_id');
 	const pin = url.searchParams.get('pin');
 	let auto_connect = url.searchParams.get('connect') !== null;
-	if (token === null || pin === null) {
+	if (host_token === null || game_id === null || pin === null) {
 		auto_connect = false;
 	}
 	return {
 		game_pin: pin === null ? '' : pin,
-		game_token: token === null ? '' : token,
+		game_token: game_id === null ? '' : game_id,
+		host_token: host_token === null ? '' : host_token,
 		auto_connect
 	};
 }

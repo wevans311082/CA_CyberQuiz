@@ -28,12 +28,144 @@ image_delimiter = b"\xc6\xc6\xc6\x00"
 image_index_delimiter = b"\xc5\xc5\x00"
 
 
+def _build_tabletop_template() -> dict[str, Any]:
+    now_iso = datetime.now().isoformat()
+    return {
+        "public": False,
+        "title": "Tabletop Exercise Template",
+        "description": "Starter tabletop scenario with roles, inject placeholders, and evidence slides.",
+        "created_at": now_iso,
+        "updated_at": now_iso,
+        "cover_image": None,
+        "background_color": "#0f172a",
+        "background_image": None,
+        "scenario_type": "tabletop",
+        "roles": ["Incident Commander", "SOC Analyst", "IT Ops", "Comms Lead"],
+        "master_theme": {
+            "background_color": "#0f172a",
+            "text_color": "#f8fafc",
+            "accent_color": "#b07156",
+            "background_image": None,
+            "font_family": "Inter"
+        },
+        "injects": [
+            {
+                "id": "inject-1",
+                "title": "Initial Alert",
+                "content": "SOC alert indicates suspicious outbound traffic from a finance workstation.",
+                "image": None,
+                "severity": "warning",
+                "trigger_after_question_id": None
+            }
+        ],
+        "questions": [
+            {
+                "id": "q-briefing",
+                "question": "Exercise Briefing",
+                "time": "120",
+                "type": "INFORMATION",
+                "answers": "",
+                "information_body": "<p><strong>Scenario:</strong> You are responding to a potential ransomware precursor event.</p><p>Objective: coordinate detection, containment, communication, and recovery.</p>",
+                "image": None,
+                "hide_results": True,
+                "allowed_roles": None,
+                "default_next_question_id": "q-decision-1",
+                "decision_mode": "single",
+                "facilitator_notes": "Use this slide to set context and assign speaking order.",
+                "discussion_time": 180,
+                "category": "CONTENT",
+                "file_attachments": None,
+                "timer": {"enabled": False, "duration_seconds": None},
+                "theme_override": None,
+                "objective": "Detection",
+                "sla_checkpoints": None
+            },
+            {
+                "id": "q-evidence",
+                "question": "Evidence Review",
+                "time": "90",
+                "type": "FILE",
+                "answers": "",
+                "information_body": "<p>Review attached evidence and identify the likely initial access vector.</p>",
+                "image": None,
+                "hide_results": True,
+                "allowed_roles": ["SOC Analyst", "IT Ops"],
+                "default_next_question_id": "q-decision-1",
+                "decision_mode": "single",
+                "facilitator_notes": "Encourage players to cite specific indicators from files.",
+                "discussion_time": 180,
+                "category": "EVIDENCE",
+                "file_attachments": [
+                    {
+                        "id": None,
+                        "filename": "network-log-sample.txt",
+                        "mime_type": "text/plain",
+                        "url": "https://example.com/network-log-sample.txt",
+                        "description": "Replace with your own evidence file URL or upload in editor."
+                    }
+                ],
+                "timer": {"enabled": False, "duration_seconds": None},
+                "theme_override": None,
+                "objective": "Detection",
+                "sla_checkpoints": None
+            },
+            {
+                "id": "q-decision-1",
+                "question": "What is your first containment action?",
+                "time": "90",
+                "type": "TEXT",
+                "answers": [
+                    {"answer": "Isolate affected endpoint", "case_sensitive": False},
+                    {"answer": "Block suspicious domains", "case_sensitive": False}
+                ],
+                "image": None,
+                "hide_results": False,
+                "allowed_roles": ["Incident Commander", "IT Ops"],
+                "default_next_question_id": None,
+                "decision_mode": "single",
+                "facilitator_notes": "Use this as a branching pivot for your own next slides.",
+                "discussion_time": 240,
+                "category": "INTERACTIVE",
+                "information_body": None,
+                "file_attachments": None,
+                "timer": {"enabled": True, "duration_seconds": 120},
+                "theme_override": None,
+                "objective": "Containment",
+                "sla_checkpoints": [
+                    {
+                        "deadline_seconds": 300,
+                        "bonus_points": 50,
+                        "penalty_points": 25,
+                        "description": "Containment action announced within 5 minutes"
+                    }
+                ]
+            }
+        ]
+    }
+
+
 class UUIDEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, uuid.UUID):
             # if the obj is uuid, we simply return the value of uuid
             return obj.hex
         return json.JSONEncoder.default(self, obj)
+
+
+@router.get("/tabletop-template")
+async def download_tabletop_template(_: User = Depends(get_current_user)):
+    template = _build_tabletop_template()
+    quiz_json = json.dumps(template, cls=UUIDEncoder)
+    bin_data = gzip.compress(quiz_json.encode("utf-8"), compresslevel=9) + quiz_delimiter
+
+    def stream_response():
+        yield bin_data
+
+    return StreamingResponse(
+        stream_response(),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": "attachment;filename=Tabletop-Template.cqa"},
+    )
 
 
 @router.get("/{quiz_id}")
@@ -138,10 +270,9 @@ async def import_quiz(file: UploadFile = File(), user: User = Depends(get_curren
 
 
 @router.get("/excel/{quiz_id}")
-async def export_quiz_as_excel(quiz_id: uuid.UUID, _: User = Depends(get_current_user)):
-    try:
-        quiz: Quiz = await Quiz.objects.filter(Quiz.id == quiz_id).first()
-    except ormar.exceptions.NoMatch:
+async def export_quiz_as_excel(quiz_id: uuid.UUID, user: User = Depends(get_current_user)):
+    quiz: Quiz | None = await Quiz.objects.get_or_none(id=quiz_id, user_id=user.id)
+    if quiz is None:
         raise HTTPException(status_code=404, detail="Quiz not found")
     storage = io.BytesIO()
     workbook = xlsxwriter.Workbook(storage, {"in_memory": True})

@@ -9,12 +9,15 @@ SPDX-License-Identifier: MPL-2.0
 	import ControllerCodeDisplay from '$lib/components/controller/code.svelte';
 	import { getLocalization } from '$lib/i18n';
 	import GrayButton from '$lib/components/buttons/gray.svelte';
+	import BriefingPanel from '$lib/play/admin/BriefingPanel.svelte';
 	import PlayerAvatarChip from '$lib/play/player_avatar_chip.svelte';
 	import { fade } from 'svelte/transition';
 	import type { QuizData } from '$lib/quiz_types';
 
 	interface Props {
 		game_pin: string;
+		game_token?: string;
+		host_token?: string;
 		players: any;
 		socket: any;
 		cqc_code: string;
@@ -30,6 +33,8 @@ SPDX-License-Identifier: MPL-2.0
 
 	let {
 		game_pin,
+		game_token = '',
+		host_token = '',
 		players = $bindable(),
 		socket,
 		cqc_code = $bindable(),
@@ -55,7 +60,16 @@ SPDX-License-Identifier: MPL-2.0
 		pending_proposals = { ...pending_proposals, [username]: role };
 	};
 
-	const is_tabletop = $derived(quiz_data?.scenario_type === 'tabletop' && (quiz_data?.roles?.length ?? 0) > 0);
+	const is_tabletop = $derived(quiz_data?.scenario_type === 'tabletop');
+
+	const open_projector_display = () => {
+		if (!host_token || !game_token || !game_pin) return;
+		window.open(
+			`/projector?token=${encodeURIComponent(host_token)}&game_id=${encodeURIComponent(game_token)}&pin=${encodeURIComponent(game_pin)}&connect=1`,
+			'_blank',
+			'noopener,noreferrer'
+		);
+	};
 
 	// Hands up state
 	let raised_hands = $state<string[]>([]);
@@ -156,7 +170,15 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <div class="w-full h-full">
-	<!-- <AudioPlayer bind:play={play_music} /> -->
+	{#if is_tabletop && quiz_data}
+		<BriefingPanel
+			{quiz_data}
+			player_count={players.length}
+			start_disabled={players.length < 1}
+			onstart={() => socket.emit('start_game', '')}
+			onopenprojector={host_token && game_token ? open_projector_display : undefined}
+		/>
+	{/if}
 	<div class="grid grid-cols-3 pt-12">
 		<!--mt-12 -->
 		<div class="flex justify-center">
@@ -215,18 +237,21 @@ SPDX-License-Identifier: MPL-2.0
 	<p class="text-3xl text-center">
 		{$t('words.pin')}: <span class="select-all">{game_pin}</span>
 	</p>
-	<div class="flex flex-col justify-center items-center w-full mt-4 gap-2">
-		{#if !roles_ready}
-			<p class="text-xs text-amber-600 dark:text-amber-400 font-medium">⚠ Not all roles have been accepted yet. You can still start, but some roles remain unassigned.</p>
-		{/if}
-		<GrayButton
-			disabled={players.length < 1}
-			onclick={() => {
-				socket.emit('start_game', '');
-			}}
-			>{$t('admin_page.start_game')}
-		</GrayButton>
-	</div>
+	{#if !is_tabletop}
+		<div class="flex flex-col justify-center items-center w-full mt-4 gap-2">
+			<GrayButton
+				disabled={players.length < 1}
+				onclick={() => {
+					socket.emit('start_game', '');
+				}}
+				>{$t('admin_page.start_game')}
+			</GrayButton>
+		</div>
+	{:else if !roles_ready}
+		<p class="mx-auto mt-4 max-w-2xl text-center text-xs font-medium text-amber-600 dark:text-amber-400">
+			Not all roles have been accepted yet. You can still start from the briefing panel above, but some roles remain unassigned.
+		</p>
+	{/if}
 	<div class="flex flex-row w-full mt-4 px-10 flex-wrap">
 		{#if players.length > 0}
 			{#each players as player}

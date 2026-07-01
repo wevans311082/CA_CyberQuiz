@@ -11,6 +11,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { navbarVisible } from '$lib/stores.svelte.ts';
 	import type { EditorData, Question } from '$lib/quiz_types';
 	import { page } from '$app/state';
+	import { pageTitle } from '$lib/brand';
 
 	navbarVisible.visible = false;
 
@@ -80,7 +81,7 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <svelte:head>
-	<title>ClassQuiz - Create</title>
+	<title>{pageTitle('Create')}</title>
 </svelte:head>
 
 {#if data !== undefined}

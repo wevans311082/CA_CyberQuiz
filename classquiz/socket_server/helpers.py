@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 import aiohttp
-from classquiz.config import settings
+from classquiz.config import settings, redis
 from classquiz.db.models import (
     PlayGame,
     QuizQuestionType,
@@ -14,6 +14,19 @@ from classquiz.db.models import (
 )
 from classquiz.socket_server.models import SubmitAnswerData
 from .models import SubmitAnswerDataOrderType
+
+
+async def validate_host_credentials(game_pin: str, game_id: str, host_token: str) -> PlayGame | None:
+    stored_token = await redis.get(f"game:{game_pin}:host_token")
+    if not stored_token or stored_token != host_token:
+        return None
+    game_raw = await redis.get(f"game:{game_pin}")
+    if game_raw is None:
+        return None
+    game = PlayGame.model_validate_json(game_raw)
+    if str(game.game_id) != str(game_id):
+        return None
+    return game
 
 
 async def check_captcha(captcha_data: str) -> bool:
