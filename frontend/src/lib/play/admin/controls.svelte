@@ -137,8 +137,7 @@ SPDX-License-Identifier: MPL-2.0
 		return `${m}:${sec.toString().padStart(2, '0')}`;
 	};
 
-	// Listen to discussion timer events (admin is also in game room)
-	socket.on('discussion_timer_started', (data: { duration: number; server_timestamp: string }) => {
+	const onDiscussionTimerStarted = (data: { duration: number; server_timestamp: string }) => {
 		disc_running = true;
 		disc_total = data.duration;
 		const serverStart = new Date(data.server_timestamp).getTime();
@@ -152,18 +151,18 @@ SPDX-License-Identifier: MPL-2.0
 				if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
 			}
 		}, 250);
-	});
-	socket.on('discussion_timer_paused', (data: { remaining: number }) => {
+	};
+	const onDiscussionTimerPaused = (data: { remaining: number }) => {
 		disc_running = false;
 		disc_remaining = data.remaining;
 		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
-	});
-	socket.on('discussion_timer_stopped', () => {
+	};
+	const onDiscussionTimerStopped = () => {
 		disc_running = false;
 		disc_remaining = 0;
 		disc_total = 0;
 		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
-	});
+	};
 
 	// Question answer timer (server-synced admin controls)
 	let qtimer_running = $state(false);
@@ -208,7 +207,7 @@ SPDX-License-Identifier: MPL-2.0
 		return m > 0 ? `${m}:${sec.toString().padStart(2, '0')}` : `${Math.floor(s)}s`;
 	};
 
-	socket.on('question_timer_started', (data: { duration: number; server_timestamp: string }) => {
+	const onQuestionTimerStarted = (data: { duration: number; server_timestamp: string }) => {
 		qtimer_running = true;
 		qtimer_total = data.duration;
 		const serverStart = new Date(data.server_timestamp).getTime();
@@ -222,18 +221,18 @@ SPDX-License-Identifier: MPL-2.0
 				if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
 			}
 		}, 250);
-	});
-	socket.on('question_timer_paused', (data: { remaining: number }) => {
+	};
+	const onQuestionTimerPaused = (data: { remaining: number }) => {
 		qtimer_running = false;
 		qtimer_remaining = data.remaining;
 		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
-	});
-	socket.on('question_timer_stopped', () => {
+	};
+	const onQuestionTimerStopped = () => {
 		qtimer_running = false;
 		qtimer_remaining = 0;
 		qtimer_total = 0;
 		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
-	});
+	};
 
 	let adhoc_inject_content = $state('');
 	let adhoc_inject_severity = $state<'info' | 'warning' | 'critical'>('info');
@@ -356,10 +355,13 @@ SPDX-License-Identifier: MPL-2.0
 	};
 
 	const onSituationRoomData = (data: {
-		status?: SituationStatus;
+		status?: SituationStatus | null;
 		injects_log?: InjectLogEntry[];
 		situation_log?: SituationLogEntry[];
 	}) => {
+		if (data?.status && Object.keys(data.status).length > 0) {
+			situation_status = data.status;
+		}
 		if (data?.injects_log) injects_log = normalizeInjectsLog(data.injects_log);
 		if (data?.situation_log) situation_log = data.situation_log;
 	};
@@ -406,10 +408,22 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
+	const onScoreReviewSheet = (sheet: unknown) => {
+		score_review_sheet = sheet;
+		score_review_open = true;
+	};
+
 	onMount(() => {
 		socket.on('situation_room_data', onSituationRoomData);
 		socket.on('inject_received', onInjectReceived);
 		socket.on('situation_updated', onSituationUpdated);
+		socket.on('discussion_timer_started', onDiscussionTimerStarted);
+		socket.on('discussion_timer_paused', onDiscussionTimerPaused);
+		socket.on('discussion_timer_stopped', onDiscussionTimerStopped);
+		socket.on('question_timer_started', onQuestionTimerStarted);
+		socket.on('question_timer_paused', onQuestionTimerPaused);
+		socket.on('question_timer_stopped', onQuestionTimerStopped);
+		socket.on('score_review_sheet', onScoreReviewSheet);
 		refresh_situation_data();
 		window.addEventListener('keydown', handle_facilitator_hotkey);
 	});
@@ -418,6 +432,15 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('situation_room_data', onSituationRoomData);
 		socket.off('inject_received', onInjectReceived);
 		socket.off('situation_updated', onSituationUpdated);
+		socket.off('discussion_timer_started', onDiscussionTimerStarted);
+		socket.off('discussion_timer_paused', onDiscussionTimerPaused);
+		socket.off('discussion_timer_stopped', onDiscussionTimerStopped);
+		socket.off('question_timer_started', onQuestionTimerStarted);
+		socket.off('question_timer_paused', onQuestionTimerPaused);
+		socket.off('question_timer_stopped', onQuestionTimerStopped);
+		socket.off('score_review_sheet', onScoreReviewSheet);
+		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
+		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
 		window.removeEventListener('keydown', handle_facilitator_hotkey);
 	});
 
@@ -442,7 +465,7 @@ SPDX-License-Identifier: MPL-2.0
 
 		if (Array.isArray(current.answers)) {
 			for (const answer of current.answers) {
-				if (!answer?.next_question_id) continue;
+				if (!answer || !('next_question_id' in answer) || !answer.next_question_id) continue;
 				const target = find_question_by_id(answer.next_question_id);
 				if (!target) continue;
 				previews.push({
@@ -478,10 +501,6 @@ SPDX-License-Identifier: MPL-2.0
 		return previews;
 	});
 
-	socket.on('score_review_sheet', (sheet) => {
-		score_review_sheet = sheet;
-		score_review_open = true;
-	});
 </script>
 
 <header class="host-toolbar fixed top-0 z-30 w-full">
@@ -596,7 +615,7 @@ SPDX-License-Identifier: MPL-2.0
 							min="5"
 							max="7200"
 							step="10"
-							placeholder="{qtimer_effective_duration}"
+							placeholder={String(qtimer_effective_duration)}
 							class="w-16 rounded border border-white/30 bg-white/10 px-1 py-0.5 text-xs text-white placeholder:text-white/40 outline-hidden"
 							onchange={(e) => { qtimer_custom_seconds = parseInt(e.currentTarget.value) || null; }}
 							title="Override answer timer duration in seconds"
@@ -628,7 +647,7 @@ SPDX-License-Identifier: MPL-2.0
 						min="10"
 						max="7200"
 						step="30"
-						placeholder="{disc_effective_duration}"
+						placeholder={String(disc_effective_duration)}
 						class="w-16 rounded border border-white/30 bg-white/10 px-1 py-0.5 text-xs text-white placeholder:text-white/40 outline-hidden"
 						onchange={(e) => { disc_custom_seconds = parseInt(e.currentTarget.value) || null; }}
 						title="Override duration in seconds (blank = use question default)"

@@ -246,6 +246,8 @@ class QuizInput(BaseModel):
     background_image: str | None = None
     scenario_type: str | None = None
     roles: list[str] | None = None
+    role_descriptions: dict[str, str] | None = None
+    teams: dict[str, list[str]] | None = None
     injects: list[Inject] | None = None
     master_theme: MasterTheme | None = None
 
@@ -271,6 +273,8 @@ class Quiz(ormar.Model):
     mod_rating: int | None = ormar.SmallInteger(nullable=True)
     scenario_type: str | None = ormar.Text(nullable=True, unique=False)
     roles: Json[list[str]] | None = ormar.JSON(nullable=True)
+    role_descriptions: Json[dict[str, str]] | None = ormar.JSON(nullable=True)
+    teams: Json[dict[str, list[str]]] | None = ormar.JSON(nullable=True)
     injects: Json[list[dict]] | None = ormar.JSON(nullable=True)
     master_theme: Json[dict] | None = ormar.JSON(nullable=True)
 
@@ -329,6 +333,7 @@ class PlayGame(BaseModel):
     current_question_id: str | None = None
     injects: list[Inject] | None = None
     situation_status: dict | None = None  # {severity, phase, affected_systems, summary}
+    roles: list[str] | None = None
     role_descriptions: dict[str, str] | None = None  # {role_name: description}
     master_theme: dict | None = None
     roles_config: dict[str, float] | None = None  # {role_name: score_multiplier}

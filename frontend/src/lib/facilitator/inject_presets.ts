@@ -50,7 +50,7 @@ export const QUICK_INJECT_PRESETS: QuickInjectPreset[] = [
 		title: 'Service degradation',
 		content:
 			'**Operations:** Customer-facing portal latency has increased 400%. Monitoring shows database connection pool exhaustion on the primary cluster.',
-		severity: 'high',
+		severity: 'warning',
 		hint: 'Business impact'
 	},
 	{

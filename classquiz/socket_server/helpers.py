@@ -43,7 +43,7 @@ async def check_captcha(captcha_data: str) -> bool:
                     ) as resp:
                         resp_data = await resp.json()
                         if not resp_data["success"]:
-                            return
+                            return False
                 except KeyError:
                     return False
             elif settings.recaptcha_key is not None:

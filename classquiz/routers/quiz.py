@@ -131,6 +131,9 @@ async def start_quiz(
         custom_field=custom_field,
         background_image=quiz.background_image,
         scenario_type=getattr(quiz, "scenario_type", None),
+        roles=getattr(quiz, "roles", None),
+        role_descriptions=getattr(quiz, "role_descriptions", None),
+        teams=getattr(quiz, "teams", None),
         injects=[inj if isinstance(inj, dict) else inj for inj in quiz.injects] if getattr(quiz, "injects", None) else None,
         master_theme=getattr(quiz, "master_theme", None),
     )

@@ -28,35 +28,48 @@ SPDX-License-Identifier: MPL-2.0
 		});
 	};
 
+	const onRegisteredAsAdmin = (payload: { game: string }) => {
+		quiz_data = JSON.parse(payload.game);
+		success = true;
+		socket.emit('get_situation', {});
+	};
+	const onAdminRegistrationDenied = () => {
+		errorMessage = 'Could not connect to session. Check your host link.';
+	};
+	const onSituationUpdated = (status: SituationStatus) => {
+		if (status) situation_status = status;
+	};
+	const onInjectReceived = (inject: Inject) => {
+		if (inject) latest_inject = inject;
+	};
+	const onSituationRoomData = (payload: { status?: SituationStatus; injects_log?: Array<{ inject: Inject }> }) => {
+		if (payload?.status) situation_status = payload.status;
+		const last = payload?.injects_log?.at(-1);
+		if (last?.inject) latest_inject = last.inject;
+	};
+
 	onMount(() => {
 		const tick = setInterval(() => {
 			clock = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 		}, 1000);
 		clock = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-		socket.on('registered_as_admin', (payload) => {
-			quiz_data = JSON.parse(payload.game);
-			success = true;
-			socket.emit('get_situation', {});
-		});
-		socket.on('admin_registration_denied', () => {
-			errorMessage = 'Could not connect to session. Check your host link.';
-		});
-		socket.on('situation_updated', (status: SituationStatus) => {
-			if (status) situation_status = status;
-		});
-		socket.on('inject_received', (inject: Inject) => {
-			if (inject) latest_inject = inject;
-		});
-		socket.on('situation_room_data', (payload: { status?: SituationStatus; injects_log?: Array<{ inject: Inject }> }) => {
-			if (payload?.status) situation_status = payload.status;
-			const last = payload?.injects_log?.at(-1);
-			if (last?.inject) latest_inject = last.inject;
-		});
+		socket.on('registered_as_admin', onRegisteredAsAdmin);
+		socket.on('admin_registration_denied', onAdminRegistrationDenied);
+		socket.on('situation_updated', onSituationUpdated);
+		socket.on('inject_received', onInjectReceived);
+		socket.on('situation_room_data', onSituationRoomData);
 
 		if (data.auto_connect) connect();
 
-		return () => clearInterval(tick);
+		return () => {
+			socket.off('registered_as_admin', onRegisteredAsAdmin);
+			socket.off('admin_registration_denied', onAdminRegistrationDenied);
+			socket.off('situation_updated', onSituationUpdated);
+			socket.off('inject_received', onInjectReceived);
+			socket.off('situation_room_data', onSituationRoomData);
+			clearInterval(tick);
+		};
 	});
 </script>
 

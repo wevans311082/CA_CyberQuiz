@@ -169,7 +169,14 @@ async def finish_edit(edit_id: str, quiz_input: QuizInput):
         quiz.mod_rating = None
         quiz.scenario_type = quiz_input.scenario_type
         quiz.roles = quiz_input.roles
+        quiz.role_descriptions = quiz_input.role_descriptions
+        quiz.teams = quiz_input.teams
         quiz.injects = [inj.model_dump() for inj in quiz_input.injects] if quiz_input.injects else None
+        quiz.master_theme = (
+            quiz_input.master_theme.model_dump(exclude_none=True)
+            if quiz_input.master_theme
+            else None
+        )
         for image in images_to_delete:
             if image is not None:
                 try:

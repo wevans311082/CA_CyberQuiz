@@ -807,53 +807,7 @@ async def set_question_number(sid: str, data: str):
                 )
             )
 
-    temp_return = game_data.model_dump(include={"questions"})["questions"][int(float(data))]
-    if game_data.questions[int(float(data))].type in [
-        QuizQuestionType.SLIDE,
-        QuizQuestionType.INFORMATION,
-        QuizQuestionType.FILE,
-        QuizQuestionType.SCOREBOARD,
-    ]:
-        q_type = game_data.questions[int(float(data))].type
-        scoreboard_data = None
-        if q_type == QuizQuestionType.SCOREBOARD:
-            scores_raw = await redis.hgetall(f"game_session:{game_pin}:player_scores")
-            scores = {k: int(v) for k, v in scores_raw.items()}
-            ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-            team_scores_raw = await redis.hgetall(f"game:{game_pin}:team_scores")
-            team_scores = {k: float(v) for k, v in team_scores_raw.items()} if team_scores_raw else {}
-            team_ranked = sorted(team_scores.items(), key=lambda x: x[1], reverse=True) if team_scores else []
-            scoreboard_data = {
-                "ranked": [[u, s] for u, s in ranked],
-                "scores": scores,
-                "team_scores": team_scores,
-                "team_ranked": [[t, s] for t, s in team_ranked],
-            }
-        evt_payload = {
-            "question_index": int(float(data)),
-            "question": {
-                **temp_return,
-                "type": q_type,
-            },
-        }
-        if scoreboard_data is not None:
-            evt_payload["scoreboard"] = scoreboard_data
-        await sio.emit("set_question_number", evt_payload, room=game_pin)
-        return
-    if game_data.questions[int(float(data))].type == QuizQuestionType.VOTING:
-        for i in range(len(temp_return["answers"])):
-            temp_return["answers"][i] = VotingQuizAnswer(**temp_return["answers"][i])
-    temp_return["type"] = game_data.questions[int(float(data))].type
-    if temp_return["type"] == QuizQuestionType.ORDER:
-        random.shuffle(temp_return["answers"])
-    await sio.emit(
-        "set_question_number",
-        {
-            "question_index": int(float(data)),
-            "question": ReturnQuestion(**temp_return).model_dump(),
-        },
-        room=game_pin,
-    )
+    await emit_current_question(game_pin, game_data)
 
 
 @sio.event

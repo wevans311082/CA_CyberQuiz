@@ -4,6 +4,11 @@
 
 import type { Inject, TimelineEvent } from '$lib/quiz_types';
 
+const new_id = () =>
+	typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+		? crypto.randomUUID()
+		: `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
 export type InjectLogEntry = {
 	inject?: Inject;
 	inject_id?: string;
@@ -36,7 +41,7 @@ export function buildFacilitatorTimeline(
 
 	for (const entry of injectsLog) {
 		const inject = entry.inject ?? {
-			id: entry.inject_id ?? crypto.randomUUID(),
+			id: entry.inject_id ?? new_id(),
 			title: entry.title ?? 'Inject',
 			content: entry.content ?? '',
 			severity: (entry.severity as Inject['severity']) ?? 'info'
@@ -53,7 +58,7 @@ export function buildFacilitatorTimeline(
 
 	for (const entry of situationLog) {
 		events.push({
-			id: `sit-${entry.timestamp ?? crypto.randomUUID()}`,
+			id: `sit-${entry.timestamp ?? new_id()}`,
 			type: 'situation_update',
 			timestamp: fmt_time(entry.timestamp),
 			title: `Situation: ${entry.severity ?? 'unknown'} / ${entry.phase ?? 'N/A'}`,
@@ -77,7 +82,7 @@ export function normalizeInjectsLog(raw: InjectLogEntry[]): InjectLogEntry[] {
 		return {
 			...entry,
 			inject: {
-				id: entry.inject_id ?? crypto.randomUUID(),
+				id: entry.inject_id ?? new_id(),
 				title: entry.title ?? 'Inject',
 				content: entry.content ?? '',
 				severity: (entry.severity as Inject['severity']) ?? 'info'

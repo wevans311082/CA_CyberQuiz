@@ -11,7 +11,7 @@ SPDX-License-Identifier: MPL-2.0
 	import type { Answer, Question as QuestionType, Inject, SituationStatus, TimelineEvent } from '$lib/quiz_types';
 	import { QuizQuestionType } from '$lib/quiz_types';
 	import ShowTitle from '$lib/play/title.svelte';
-	import Question from '$lib/play/question.svelte';
+	import QuestionView from '$lib/play/question.svelte';
 	import Slide from '$lib/play/admin/slide.svelte';
 	import { navbarVisible } from '$lib/stores.svelte.ts';
 	import ShowEndScreen from '$lib/play/admin/final_results.svelte';
@@ -21,8 +21,10 @@ SPDX-License-Identifier: MPL-2.0
 	import SituationRoom from '$lib/play/SituationRoom.svelte';
 	import {
 		normalizeInjectsLog,
+		type InjectLogEntry,
 		type SituationLogEntry
 	} from '$lib/facilitator/timeline';
+	import type { PlayerAnswer } from '$lib/admin';
 	import AnswerSummary from '$lib/play/AnswerSummary.svelte';
 	import CountdownOverlay from '$lib/play/countdown_overlay.svelte';
 	import { getLocalization } from '$lib/i18n';
@@ -66,17 +68,19 @@ SPDX-License-Identifier: MPL-2.0
 	let game_mode = $state();
 	let final_results: Array<null> | Array<Array<PlayerAnswer>> = $state([null]);
 
-	interface PlayerAnswer {
+	interface QuestionResult {
 		username: string;
 		answer: string;
-		right: string;
+		right: boolean;
+		time_taken: number;
+		score: number;
 	}
 
 	// Variables init
 	let question_index = $state('');
 	let unique = $state({});
 	navbarVisible.visible = false;
-	let answer_results: Array<Answer> = $state();
+	let answer_results: QuestionResult[] | null | undefined = $state();
 	let gameData: PlayerGameData | undefined = $state();
 	let solution: QuestionType = $state();
 	let username = $state('');
@@ -85,7 +89,7 @@ SPDX-License-Identifier: MPL-2.0
 		started: false
 	});
 
-	let question: Question = $state();
+	let question: QuestionType | undefined = $state();
 	let chat_messages = $state<Array<{ sender: string; content: string; timestamp: string; sender_is_admin?: boolean }>>([]);
 	let chat_block_reason = $state<string | null>(null);
 	let final_results_avatar_map = $state<Record<string, any>>({});
@@ -199,7 +203,7 @@ SPDX-License-Identifier: MPL-2.0
 		qtimer_total = 0;
 		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
 	};
-	let injects_log = $state<Array<{ inject: Inject; triggered_by: string; timestamp: string }>>([]);
+	let injects_log = $state<InjectLogEntry[]>([]);
 	let situation_log = $state<SituationLogEntry[]>([]);
 	let situation_room_open = $state(false);
 	let answer_summary = $state<{ total: number; answers: Record<string, number> } | null>(null);
@@ -374,7 +378,7 @@ SPDX-License-Identifier: MPL-2.0
 		window.location.reload();
 	};
 
-	const onQuestionResults = (data: Array<Answer>) => {
+	const onQuestionResults = (data: QuestionResult[]) => {
 		restart();
 		answer_results = data;
 		if (data) {
@@ -441,13 +445,13 @@ SPDX-License-Identifier: MPL-2.0
 
 	const onSlaCheckpointResult = (data: { question_index: number; description: string; outcome: string; delta: number; deadline_seconds: number }) => {
 		if (!data) return;
+		const notification_id = Date.now();
 		sla_notifications = [
-			{ ...data, id: Date.now() },
+			{ ...data, id: notification_id },
 			...sla_notifications.slice(0, 2),
 		];
-		// Auto-dismiss after 6 seconds
 		setTimeout(() => {
-			sla_notifications = sla_notifications.filter((n) => n.id !== Date.now());
+			sla_notifications = sla_notifications.filter((n) => n.id !== notification_id);
 		}, 6000);
 	};
 
@@ -633,7 +637,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('question_timer_started', onQuestionTimerStarted);
 		socket.on('question_timer_paused', onQuestionTimerPaused);
 		socket.on('question_timer_stopped', onQuestionTimerStopped);
-			socket.on('emoji_prompt_received', onEmojiPromptReceived);
+		socket.on('emoji_prompt_received', onEmojiPromptReceived);
 	});
 
 	onDestroy(() => {
@@ -678,7 +682,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('question_timer_started', onQuestionTimerStarted);
 		socket.off('question_timer_paused', onQuestionTimerPaused);
 		socket.off('question_timer_stopped', onQuestionTimerStopped);
-				socket.off('emoji_prompt_received', onEmojiPromptReceived);
+		socket.off('emoji_prompt_received', onEmojiPromptReceived);
 		if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
 		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
 		if (countdown_timer) {
@@ -822,7 +826,7 @@ SPDX-License-Identifier: MPL-2.0
 							</div>
 						</div>
 					{:else}
-						<Question bind:game_mode bind:question {question_index} {solution} {my_role} {scenario_type} allowed_roles={current_allowed_roles} master_theme={gameData?.master_theme} />
+						<QuestionView bind:game_mode bind:question {question_index} {solution} {my_role} {scenario_type} allowed_roles={current_allowed_roles} master_theme={gameData?.master_theme} />
 					{/if}
 				</div>
 			{/key}
