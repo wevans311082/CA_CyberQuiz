@@ -85,6 +85,7 @@ SPDX-License-Identifier: MPL-2.0
 				<button
 					class="rounded-full absolute -top-2 -right-2 opacity-70 hover:opacity-100 transition"
 					type="button"
+					aria-label="Remove answer"
 					onclick={() => {
 						data.questions[selected_question].answers.splice(i, 1);
 						data.questions[selected_question].answers =
@@ -111,6 +112,7 @@ SPDX-License-Identifier: MPL-2.0
 						onclick={() => {
 							move_item(true, i);
 						}}
+						aria-label="Move answer up"
 						class="disabled:opacity-50 transition"
 						type="button"
 						disabled={i === 0}
@@ -136,6 +138,7 @@ SPDX-License-Identifier: MPL-2.0
 						onclick={() => {
 							move_item(false, i);
 						}}
+						aria-label="Move answer down"
 						class="disabled:opacity-50 transition"
 						type="button"
 						disabled={i === data.questions[selected_question].answers.length - 1}

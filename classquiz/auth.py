@@ -20,7 +20,7 @@ from passlib.hash import argon2
 
 from classquiz.cache import get_cache
 from classquiz.config import settings, redis
-from datetime import datetime
+from datetime import datetime, timezone
 from classquiz.db.models import User, TokenData, ApiKey
 
 settings = settings()
@@ -98,9 +98,9 @@ async def authenticate_user(email: str, password: str) -> Union[User, bool]:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
     return encoded_jwt

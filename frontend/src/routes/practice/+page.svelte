@@ -43,6 +43,7 @@ SPDX-License-Identifier: MPL-2.0
 		<div class="grid grid-cols-2 h-fit px-20 mt-6 absolute bottom-0 w-full">
 			<button
 				class="flex justify-start transition-all disabled:opacity-60"
+				aria-label="Previous question"
 				disabled={selected_question <= -1}
 				onclick={() => {
 					selected_question -= 1;
@@ -65,6 +66,7 @@ SPDX-License-Identifier: MPL-2.0
 			</button>
 			<button
 				class="flex justify-end transition-all disabled:opacity-60"
+				aria-label="Next question"
 				disabled={selected_question >= quiz.questions.length - 1}
 				onclick={() => {
 					reload_q();

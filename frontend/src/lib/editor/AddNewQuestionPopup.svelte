@@ -132,6 +132,10 @@ SPDX-License-Identifier: MPL-2.0
 <div
 	class="fixed top-0 left-0 w-screen h-screen flex items-center justify-center bg-black/70 z-50"
 	onclick={on_parent_click}
+	onkeydown={(event) => event.key === 'Escape' && on_parent_click(event)}
+	tabindex="-1"
+	role="dialog"
+	aria-label="Select question type"
 	transition:fade={{ duration: 100 }}
 >
 	<div class="relative w-full max-w-3xl mx-4 rounded-[2rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_120px_rgba(15,23,42,0.7)] p-8 flex flex-col gap-6 text-white max-h-[90vh]">

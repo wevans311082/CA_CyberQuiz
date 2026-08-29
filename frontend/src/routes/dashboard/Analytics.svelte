@@ -34,6 +34,10 @@ SPDX-License-Identifier: MPL-2.0
 	<div
 		class="fixed inset-0 flex bg-black/70 z-50 overflow-y-auto"
 		onclick={on_parent_click}
+		onkeydown={(event) => event.key === 'Escape' && (quiz = undefined)}
+		tabindex="-1"
+		role="dialog"
+		aria-label="Quiz analytics"
 		transition:fade={{ duration: 100 }}
 	>
 		<div

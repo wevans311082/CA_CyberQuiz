@@ -195,7 +195,7 @@ SPDX-License-Identifier: MPL-2.0
 	</div>
 
 	{#if error}
-		<div class="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>
+		<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">{error}</div>
 	{/if}
 
 	{#if loading}
@@ -221,6 +221,7 @@ SPDX-License-Identifier: MPL-2.0
 				{#each templates as template}
 					<button
 						type="button"
+						aria-pressed={selected_template === template.id && !create_all}
 						class="rounded-xl border p-4 text-left transition-colors {selected_template === template.id && !create_all ? 'border-brand-accent bg-brand-accent/10' : 'border-slate-200/70 dark:border-slate-700'} {create_all ? 'opacity-60' : ''}"
 						disabled={create_all}
 						onclick={() => {

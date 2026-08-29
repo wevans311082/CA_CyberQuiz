@@ -46,7 +46,7 @@ SPDX-License-Identifier: MPL-2.0
 		ghost:
 			'border border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60',
 		danger: 'bg-red-600 text-white hover:bg-red-700 border border-transparent',
-		icon: 'bg-brand-accent text-slate-950 hover:bg-brand-accent-hover border border-transparent p-2.5'
+		icon: 'border border-slate-200 bg-white text-slate-600 shadow-sm hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-cyan-400 dark:hover:bg-slate-800 dark:hover:text-cyan-300'
 	};
 
 	const sizeClasses: Record<Size, string> = {

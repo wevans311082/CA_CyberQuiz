@@ -37,9 +37,9 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 		<div class="border-t border-white/8"></div>
 		<div class="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-			<p class="select-all font-mono text-lg text-white cursor-pointer" onclick={() => download_code(false)}>
+			<button type="button" class="select-all font-mono text-lg text-white cursor-pointer" onclick={() => download_code(false)} aria-label="Copy backup code">
 				{backup_code}
-			</p>
+			</button>
 		</div>
 		<p class="text-sm text-slate-400 text-center">{$t('security_settings.backup_codes.save_somewhere_save')}</p>
 		<div class="flex gap-3 justify-center">

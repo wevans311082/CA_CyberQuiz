@@ -8,7 +8,7 @@ import uuid
 
 from fastapi import APIRouter, Response
 from jinja2 import Template
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from classquiz.config import redis, settings
 from classquiz.db import database
 
@@ -44,8 +44,7 @@ class SitemapQuiz(BaseModel):
     id: uuid.UUID
     updated_at: datetime.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 @router.get("/get")

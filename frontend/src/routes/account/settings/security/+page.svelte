@@ -185,6 +185,7 @@ SPDX-License-Identifier: MPL-2.0
 				</div>
 				<button
 					disabled={!totp_activated}
+					aria-label="Require password on 2FA"
 					onclick={() => { user_data.require_password = !user_data.require_password; save_password_required(); }}
 					type="button"
 					role="switch"

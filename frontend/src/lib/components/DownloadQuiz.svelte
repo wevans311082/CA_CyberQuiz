@@ -32,6 +32,10 @@ SPDX-License-Identifier: MPL-2.0
 	<div
 		class="w-screen h-screen fixed top-0 left-0 bg-black/50 z-20 flex justify-center"
 		onclick={handle_on_click}
+		onkeydown={(event) => event.key === 'Escape' && handle_on_click()}
+		tabindex="-1"
+		role="dialog"
+		aria-label="Download quiz"
 		transition:fade={{ duration: 100 }}
 	>
 		<div class="m-auto w-1/3 h-auto bg-white dark:bg-gray-700 p-4 rounded-sm">

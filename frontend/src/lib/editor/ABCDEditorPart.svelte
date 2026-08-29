@@ -82,6 +82,7 @@ SPDX-License-Identifier: MPL-2.0
 				<button
 					class="rounded-full absolute -top-2 -right-2 opacity-70 hover:opacity-100 transition"
 					type="button"
+					aria-label="Remove answer"
 					onclick={() => {
 						data.questions[selected_question].answers.splice(index, 1);
 						data.questions[selected_question].answers =

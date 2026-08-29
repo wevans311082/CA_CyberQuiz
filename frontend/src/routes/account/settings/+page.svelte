@@ -182,16 +182,16 @@ SPDX-License-Identifier: MPL-2.0
 			<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">{$t('settings_page.change_password_submit')}</p>
 			<form class="flex flex-col sm:flex-row gap-4 flex-wrap" onsubmit={changePassword}>
 				<div class="flex flex-col gap-1 flex-1 min-w-[160px]">
-					<label class="text-xs uppercase tracking-[0.25em] text-slate-400/70">{$t('settings_page.old_password')}</label>
-					<input type="password" class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors" bind:value={changePasswordData.oldPassword} />
+			<label for="old-password" class="text-xs uppercase tracking-[0.25em] text-slate-400/70">{$t('settings_page.old_password')}</label>
+			<input id="old-password" type="password" class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors" bind:value={changePasswordData.oldPassword} />
 				</div>
 				<div class="flex flex-col gap-1 flex-1 min-w-[160px]">
-					<label class="text-xs uppercase tracking-[0.25em] text-slate-400/70">{$t('settings_page.new_password')}</label>
-					<input type="password" class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors" bind:value={changePasswordData.newPassword} />
+			<label for="new-password" class="text-xs uppercase tracking-[0.25em] text-slate-400/70">{$t('settings_page.new_password')}</label>
+			<input id="new-password" type="password" class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors" bind:value={changePasswordData.newPassword} />
 				</div>
 				<div class="flex flex-col gap-1 flex-1 min-w-[160px]">
-					<label class="text-xs uppercase tracking-[0.25em] text-slate-400/70">{$t('settings_page.repeat_password')}</label>
-					<input type="password" class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors" bind:value={changePasswordData.newPasswordConfirm} />
+			<label for="repeat-password" class="text-xs uppercase tracking-[0.25em] text-slate-400/70">{$t('settings_page.repeat_password')}</label>
+			<input id="repeat-password" type="password" class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors" bind:value={changePasswordData.newPasswordConfirm} />
 				</div>
 				<div class="flex items-end">
 					<button type="submit" disabled={!passwordChangeDataValid} class="{passwordChangeDataValid ? 'bg-[#B07156] hover:bg-[#c07d62] text-slate-950' : 'bg-white/10 text-slate-500 cursor-not-allowed'} rounded-full px-6 py-2.5 text-sm font-semibold transition-colors">

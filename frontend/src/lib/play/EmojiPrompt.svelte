@@ -38,7 +38,11 @@ SPDX-License-Identifier: MPL-2.0
 	<div
 		transition:scale={{ duration: 300, start: 0.3 }}
 		class="fixed inset-0 flex items-center justify-center pointer-events-auto z-50"
-		on:click={dismiss}
+		onclick={dismiss}
+		onkeydown={(event) => event.key === 'Escape' && dismiss()}
+		tabindex="-1"
+		role="button"
+		aria-label="Dismiss emoji prompt"
 	>
 		<div class="flex flex-col items-center gap-4">
 			<!-- Large animated emoji -->

@@ -5,7 +5,7 @@
 
 import hashlib
 import hmac
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Tuple, BinaryIO, Generator
 
 from aiohttp import ClientSession
@@ -53,7 +53,7 @@ class S3Storage:
         service = "s3"
 
         # --- Timestamp ---
-        t = datetime.utcnow()
+        t = datetime.now(timezone.utc)
         amz_date = t.strftime("%Y%m%dT%H%M%SZ")
         datestamp = t.strftime("%Y%m%d")
 

@@ -192,12 +192,9 @@ SPDX-License-Identifier: MPL-2.0
 				})}
 			</p>
 		</div>
-		<img
-			onclick={() => (fullscreen_open = true)}
-			alt="QR code to join the game"
-			src="/api/v1/utils/qr/{game_pin}"
-			class="block mx-auto w-1/2 dark:bg-white shadow-2xl rounded-sm hover:cursor-pointer"
-		/>
+		<button type="button" class="mx-auto block w-1/2 rounded-sm shadow-2xl hover:ring-2 hover:ring-teal-400" onclick={() => (fullscreen_open = true)} aria-label="Open QR code fullscreen">
+			<img alt="QR code to join the game" src="/api/v1/utils/qr/{game_pin}" class="block w-full rounded-sm dark:bg-white" />
+		</button>
 		{#if cqc_code}
 			<div class="m-auto">
 				<div class="flex justify-center my-4">
@@ -414,12 +411,9 @@ SPDX-License-Identifier: MPL-2.0
 		tabindex="0"
 		role="button"
 		aria-label="Close modal"
-		onkeydown={(e) =>
-			e.key === 'Enter' || e.key === ' '
-				? () => {
-						fullscreen_open = false;
-					}
-				: null}
+		onkeydown={(e) => {
+			if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') fullscreen_open = false;
+		}}
 	>
 		<img
 			alt="QR code to join the game"

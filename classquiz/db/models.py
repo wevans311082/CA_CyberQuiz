@@ -182,6 +182,7 @@ class SlideThemeOverride(BaseModel):
     text_color: str | None = None
     accent_color: str | None = None
     background_image: str | None = None
+    font_family: str | None = None
 
 
 class MasterTheme(BaseModel):

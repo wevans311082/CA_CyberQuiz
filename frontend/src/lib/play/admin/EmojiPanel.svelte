@@ -77,15 +77,17 @@ SPDX-License-Identifier: MPL-2.0
 		<div class="bg-white/5 rounded border border-white/10 p-3 space-y-3">
 			<!-- Emoji Selector -->
 			<div>
-				<label class="block text-xs font-semibold text-white/80 mb-2">Select Emoji</label>
+				<p class="block text-xs font-semibold text-white/80 mb-2">Select Emoji</p>
 				<div class="grid grid-cols-5 gap-2">
 					{#each emoji_presets as preset (preset.emoji)}
 						<button
+							type="button"
 							onclick={() => (selected_emoji = preset.emoji)}
 							class="text-2xl p-2 rounded border {selected_emoji === preset.emoji
 								? 'border-white/40 bg-white/10'
 								: 'border-white/10 hover:bg-white/5'}"
 							title={preset.description}
+							aria-label={preset.label}
 						>
 							{preset.emoji}
 						</button>
@@ -95,8 +97,9 @@ SPDX-License-Identifier: MPL-2.0
 
 			<!-- Custom Message -->
 			<div>
-				<label class="block text-xs font-semibold text-white/80 mb-1">Custom Message (optional)</label>
+				<label for="emoji-custom-message" class="block text-xs font-semibold text-white/80 mb-1">Custom Message (optional)</label>
 				<input
+					id="emoji-custom-message"
 					type="text"
 					bind:value={custom_message}
 					maxlength="50"
@@ -108,8 +111,9 @@ SPDX-License-Identifier: MPL-2.0
 
 			<!-- Player Selection -->
 			<div>
-				<label class="block text-xs font-semibold text-white/80 mb-2">Send To</label>
+				<label for="emoji-player" class="block text-xs font-semibold text-white/80 mb-2">Send To</label>
 				<select
+					id="emoji-player"
 					bind:value={selected_player}
 					class="w-full rounded border border-white/20 bg-white/10 px-2 py-1.5 text-xs text-white outline-hidden"
 				>

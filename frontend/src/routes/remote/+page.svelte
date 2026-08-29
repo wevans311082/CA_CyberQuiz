@@ -329,7 +329,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <a
 	onclick={request_answer_export}
-	href="#"
+	href="/#export"
 	bind:this={dataexport_download_a}
 	class="absolute -top-3/4 -left-3/4 opacity-0 hidden">Download</a
 >

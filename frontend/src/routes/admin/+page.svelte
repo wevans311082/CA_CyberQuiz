@@ -360,7 +360,7 @@ SPDX-License-Identifier: MPL-2.0
 </div>
 <a
 	onclick={request_answer_export}
-	href="#"
+	href="/#export"
 	target="_blank"
 	bind:this={dataexport_download_a}
 	download=""
