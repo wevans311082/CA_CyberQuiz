@@ -336,9 +336,11 @@ SPDX-License-Identifier: MPL-2.0
 			bind:final_results_avatar_map
 			bind:socket_diagnostics_enabled
 			{game_token}
+			host_token={host_token}
 			bind:quiz_data
 			{bg_color}
 			bind:player_scores
+			{players}
 			{control_visible}
 			on_toggle_socket_diagnostics={toggleSocketDiagnostics}
 		/>

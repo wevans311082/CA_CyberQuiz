@@ -97,6 +97,12 @@ SPDX-License-Identifier: MPL-2.0
 		if (!token || !game_id || !pin) return;
 		window.open(`/projector?token=${encodeURIComponent(token)}&game_id=${encodeURIComponent(game_id)}&pin=${encodeURIComponent(pin)}&connect=1`, '_blank', 'noopener,noreferrer');
 	};
+	const on_local_console_request = (event: Event) => {
+		const tab = (event as CustomEvent<{ tab?: 'situation' | 'injects' | 'hands' | 'roles' | 'timeline' }>).detail?.tab;
+		open_facilitator_tab(tab ?? 'situation');
+	};
+	onMount(() => window.addEventListener('cyberask:facilitator-console', on_local_console_request));
+	onDestroy(() => window.removeEventListener('cyberask:facilitator-console', on_local_console_request));
 	let score_review_open = $state(false);
 	let score_review_sheet = $state<any | null>(null);
 	let adhoc_inject_title = $state('');
@@ -1004,5 +1010,4 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 	</div>
 {/if}
-
 

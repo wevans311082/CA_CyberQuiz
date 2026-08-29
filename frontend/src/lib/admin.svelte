@@ -8,13 +8,14 @@ SPDX-License-Identifier: MPL-2.0
 	import type { QuizData, Inject, SituationStatus } from '$lib/quiz_types';
 	import { getLocalization } from '$lib/i18n';
 	import { get_question_title } from '$lib/admin.ts';
-	import type { PlayerAnswer } from '$lib/admin.ts';
+	import type { PlayerAnswer, Player } from '$lib/admin.ts';
 	import { socket } from './socket';
 	import { QuizQuestionType } from '$lib/quiz_types';
 	import Spinner from '$lib/Spinner.svelte';
 	import Controls from '$lib/play/admin/controls.svelte';
 	import Question from '$lib/play/admin/question.svelte';
 	import BranchMap from '$lib/play/admin/BranchMap.svelte';
+	import FacilitatorControlCentre from '$lib/play/admin/FacilitatorControlCentre.svelte';
 
 	const { t } = getLocalization();
 	const default_colors = ['#D6EDC9', '#B07156', '#7F7057', '#4E6E58'];
@@ -46,24 +47,28 @@ SPDX-License-Identifier: MPL-2.0
 
 	interface Props {
 		game_token: string;
+		host_token?: string;
 		quiz_data: QuizData;
 		bg_color: string;
 		final_results?: Array<null> | Array<Array<PlayerAnswer>>;
 		final_results_avatar_map?: Record<string, any>;
 		control_visible: boolean;
 		player_scores: any;
+		players?: Player[];
 		socket_diagnostics_enabled: boolean;
 		on_toggle_socket_diagnostics: () => void;
 	}
 
 	let {
 		game_token,
+		host_token = '',
 		quiz_data = $bindable(),
 		bg_color,
 		final_results = $bindable([null]),
 		final_results_avatar_map = $bindable({}),
 		control_visible,
 		player_scores = $bindable(),
+		players = [],
 		socket_diagnostics_enabled = $bindable(false),
 		on_toggle_socket_diagnostics
 	}: Props = $props();
@@ -176,6 +181,21 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 {#if control_visible}
+	{#if quiz_data.scenario_type === 'tabletop'}
+		<FacilitatorControlCentre
+			{quiz_data}
+			game_pin={quiz_data.game_pin}
+			game_token={game_token}
+			host_token={host_token}
+			{players}
+			{selected_question}
+			{answer_count}
+			{timer_res}
+			{socket}
+			player_roles={admin_player_roles}
+			onopenconsole={(tab = 'situation') => window.dispatchEvent(new CustomEvent('cyberask:facilitator-console', { detail: { tab } }))}
+		/>
+	{/if}
 	<Controls
 		{bg_color}
 		{selected_question}
@@ -210,7 +230,7 @@ SPDX-License-Identifier: MPL-2.0
 	></span>
 {/if}
 
-<div class="w-full h-full" class:pt-28={control_visible} class:pt-12={!control_visible}>
+<div class="w-full h-full" class:pt-44={control_visible} class:pt-12={!control_visible}>
 	{#if timer_res !== undefined && !final_results_clicked && !question_results}
 		<!-- Question is shown -->
 		{#if is_content_screen(quiz_data.questions[selected_question])}
