@@ -61,7 +61,7 @@ SPDX-License-Identifier: MPL-2.0
 		<p>{data.error ?? 'Report unavailable.'}</p>
 	</div>
 {:else}
-<div class="min-h-screen bg-[#0a0f1e] text-white">
+<div class="aar-shell min-h-screen bg-slate-50 text-slate-900">
 	<!-- Header -->
 	<div class="border-b border-white/10 bg-[#0f172a]/80 px-6 py-5 backdrop-blur-xl">
 		<div class="mx-auto max-w-5xl">
@@ -369,3 +369,20 @@ SPDX-License-Identifier: MPL-2.0
         </div>
 </div>
 {/if}
+
+<style>
+	:global(.aar-shell [class*="bg-[#0a0f1e]"]) { background-color: #f8fafc !important; }
+	:global(.aar-shell [class*="bg-[#0f172a]"]) { background-color: rgba(255, 255, 255, 0.94) !important; }
+	:global(.aar-shell [class*="bg-white/4"]) { background-color: #ffffff !important; }
+	:global(.aar-shell [class*="bg-white/5"]) { background-color: #f8fafc !important; }
+	:global(.aar-shell [class*="bg-black/10"]) { background-color: #f8fafc !important; }
+	:global(.aar-shell [class*="border-white/10"]) { border-color: #e2e8f0 !important; }
+	:global(.aar-shell [class*="border-white/15"]) { border-color: #e2e8f0 !important; }
+	:global(.aar-shell .text-white) { color: #0f172a !important; }
+	:global(.aar-shell .text-slate-200) { color: #334155 !important; }
+	:global(.aar-shell .text-slate-300) { color: #475569 !important; }
+	:global(.aar-shell .text-slate-400) { color: #64748b !important; }
+	:global(.aar-shell [class*="text-[#B07156]"]) { color: #0f766e !important; }
+	:global(.aar-shell [class*="bg-[#B07156]"]) { background-color: #0f766e !important; }
+	:global(.aar-shell [class*="border-[#B07156]"]) { border-color: #99f6e4 !important; }
+</style>

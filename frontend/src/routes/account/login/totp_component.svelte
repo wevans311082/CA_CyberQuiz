@@ -9,6 +9,7 @@ SPDX-License-Identifier: MPL-2.0
 	import Button from '$lib/ui/Button.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import Spinner from '$lib/ui/Spinner.svelte';
+	import { notify } from '$lib/notifications.svelte';
 
 	interface Props {
 		session_data: any;
@@ -57,11 +58,11 @@ SPDX-License-Identifier: MPL-2.0
 			try {
 				data = await res.json();
 			} catch {
-				alert('Unknown error');
+				notify('Unable to verify the code. Please try again.', 'error');
 				window.location.reload();
 			}
 			if (data.detail === 'totp wrong') {
-				alert('TOTP code was incorrect');
+				notify('TOTP code was incorrect.', 'error');
 				totp = '';
 			}
 		}

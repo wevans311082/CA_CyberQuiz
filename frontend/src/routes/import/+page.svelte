@@ -15,6 +15,7 @@ SPDX-License-Identifier: MPL-2.0
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Spinner from '$lib/ui/Spinner.svelte';
 	import { pageTitle } from '$lib/brand';
+	import { notify } from '$lib/notifications.svelte';
 
 	navbarVisible.visible = true;
 
@@ -48,16 +49,16 @@ SPDX-License-Identifier: MPL-2.0
 				title: 'Import failed',
 				body: "This quiz isn't (yet) supported!"
 			});*/
-			alert("This quiz isn't (yet) supported!");
+			notify("This quiz isn't (yet) supported.", 'error');
 		} else if (res.status === 403) {
 			/*			alertModal.set({
 				open: true,
 				title: 'Import failed',
 				body: 'Unknown error while importing the quiz!'
 			});*/
-			alert('Quiz is probably private!');
+			notify('This quiz is probably private.', 'error');
 		} else {
-			alert(`Kahoot replied with ${res.status}`);
+			notify(`Kahoot replied with ${res.status}.`, 'error');
 		}
 		is_loading = false;
 	};
@@ -79,7 +80,7 @@ SPDX-License-Identifier: MPL-2.0
 				body: formdata
 			});
 		} else {
-			alert('Wrong file type');
+			notify('Wrong file type. Choose a .cqa or .xlsx file.', 'error');
 			is_loading = false;
 			return;
 		}
@@ -92,7 +93,7 @@ SPDX-License-Identifier: MPL-2.0
 				title: 'Import failed',
 				body: 'Something went wrong!'
 			});*/
-			alert('Something went wrong!');
+			notify('Import failed. Please check the file and try again.', 'error');
 		}
 		is_loading = false;
 	};

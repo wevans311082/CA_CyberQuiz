@@ -6,6 +6,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <script lang="ts">
 	import { getLocalization } from '$lib/i18n';
+	import { notify } from '$lib/notifications.svelte';
 	import { navbarVisible } from '$lib/stores.svelte.ts';
 
 	navbarVisible.visible = true;
@@ -27,10 +28,10 @@ SPDX-License-Identifier: MPL-2.0
 			})
 		});
 		if (res.status === 200) {
-			alert('Email was sent! Please check your inbox.');
+			notify('Email sent. Please check your inbox.', 'success');
 			return;
 		} else if (res.status === 404) {
-			alert('user not found!');
+			notify('We could not find that user.', 'error');
 		}
 		isSubmitting = false;
 	};

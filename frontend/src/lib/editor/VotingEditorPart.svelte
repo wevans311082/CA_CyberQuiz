@@ -62,9 +62,9 @@ SPDX-License-Identifier: MPL-2.0
 			<div
 				out:fade={{ duration: 150 }}
 				class="p-4 rounded-lg flex justify-center w-full transition relative"
-				class:bg-yellow-500={!reach(VotingQuestionSchema, 'answer').isValidSync(
+				class:bg-yellow-500={!((reach(VotingQuestionSchema, 'answer') as any).isValidSync(
 					answer.answer
-				)}
+				))}
 				class:dark:bg-gray-500={answer.answer}
 				class:bg-gray-300={answer.answer}
 			>

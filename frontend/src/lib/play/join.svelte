@@ -15,6 +15,7 @@ SPDX-License-Identifier: MPL-2.0
 	import Button from '$lib/ui/Button.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import AvatarPicker from '$lib/play/AvatarPicker.svelte';
+	import { notify } from '$lib/notifications.svelte';
 
 	const { t } = getLocalization();
 
@@ -137,7 +138,7 @@ SPDX-License-Identifier: MPL-2.0
                 body: 'The game pin you entered seems invalid.'
             });*/
 			if (browser) {
-				alert('Game not found');
+				notify('Game not found. Check the PIN and try again.', 'error');
 			}
 			game_pin = '';
 			return;
@@ -148,7 +149,7 @@ SPDX-License-Identifier: MPL-2.0
                 body: `Unknown error with response-code ${res.status}`,
                 title: 'Unknown Error'
             });*/
-			alert('Unknown error');
+			notify('Unable to validate the game PIN. Please try again.', 'error');
 			return;
 		}
 	};
@@ -163,7 +164,7 @@ SPDX-License-Identifier: MPL-2.0
 		joinStatus = `connect_error:${error.message}`;
 		console.error('Socket connection failed', error.message);
 		if (browser) {
-			alert('Live connection to the quiz server failed. Please reload and try again.');
+			notify('Live connection to the quiz server failed. Please reload and try again.', 'error');
 		}
 	};
 	const onJoinedGame = (data) => {
@@ -199,7 +200,7 @@ SPDX-License-Identifier: MPL-2.0
 		joined = false;
 		game_pin = '';
 		if (browser) {
-			alert('Game not found');
+			notify('Game not found. Check the PIN and try again.', 'error');
 		}
 	};
 	const onSocketError = () => {
@@ -209,7 +210,7 @@ SPDX-License-Identifier: MPL-2.0
 	const onUsernameBlocked = () => {
 		joinStatus = 'username_blocked';
 		if (browser) {
-			alert('That username is blocked by moderation. Please choose another one.');
+			notify('That username is blocked by moderation. Please choose another one.', 'error');
 		}
 	};
 
@@ -271,7 +272,7 @@ SPDX-License-Identifier: MPL-2.0
                         body: "The captcha failed, which is normal, but most of the time it's fixed by reloading!",
                         title: 'Captcha failed'
                     });*/
-					alert('Captcha failed!');
+				notify('Captcha failed. Please reload and try again.', 'error');
 					window.location.reload();
 				}
 			} else if (import.meta.env.VITE_RECAPTCHA) {

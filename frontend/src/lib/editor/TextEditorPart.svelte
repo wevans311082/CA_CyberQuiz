@@ -53,9 +53,9 @@ SPDX-License-Identifier: MPL-2.0
 				class="p-4 rounded-lg flex justify-center w-full transition relative"
 				class:dark:bg-gray-500={answer.answer}
 				class:bg-gray-300={answer.answer}
-				class:bg-yellow-500={!reach(TextQuestionSchema, 'answer').isValidSync(
+				class:bg-yellow-500={!((reach(TextQuestionSchema, 'answer') as any).isValidSync(
 					answer.answer
-				)}
+				))}
 			>
 				<button
 					class="rounded-full absolute -top-2 -right-2 opacity-70 hover:opacity-100 transition"

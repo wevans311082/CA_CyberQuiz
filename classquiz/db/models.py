@@ -251,6 +251,13 @@ class QuizInput(BaseModel):
     teams: dict[str, list[str]] | None = None
     injects: list[Inject] | None = None
     master_theme: MasterTheme | None = None
+    tags: list[str] = []
+    difficulty: str | None = None
+    duration_minutes: int | None = None
+    framework_mappings: dict[str, list[str]] = {}
+    reusable_roles: list[dict] = []
+    reusable_injects: list[dict] = []
+    evidence_packs: list[dict] = []
 
 
 class Quiz(ormar.Model):
@@ -278,12 +285,97 @@ class Quiz(ormar.Model):
     teams: Json[dict[str, list[str]]] | None = ormar.JSON(nullable=True)
     injects: Json[list[dict]] | None = ormar.JSON(nullable=True)
     master_theme: Json[dict] | None = ormar.JSON(nullable=True)
+    tags: Json[list[str]] = ormar.JSON(nullable=False, default=[])
+    difficulty: str | None = ormar.String(max_length=32, nullable=True)
+    duration_minutes: int | None = ormar.Integer(nullable=True)
+    framework_mappings: Json[dict[str, list[str]]] = ormar.JSON(nullable=False, default={})
+    reusable_roles: Json[list[dict]] = ormar.JSON(nullable=False, default=[])
+    reusable_injects: Json[list[dict]] = ormar.JSON(nullable=False, default=[])
+    evidence_packs: Json[list[dict]] = ormar.JSON(nullable=False, default=[])
 
     ormar_config = ormar.OrmarConfig(
         tablename="quiz",
         metadata=metadata,
         database=database,
     )
+
+
+class ScenarioVersion(ormar.Model):
+    """Durable, user-owned scenario snapshot used for drafts and rollback."""
+
+    id: uuid.UUID = ormar.UUID(primary_key=True, default=uuid.uuid4(), nullable=False, unique=True)
+    quiz: Quiz | uuid.UUID = ormar.ForeignKey(Quiz, ondelete=ReferentialAction.CASCADE)
+    created_by: User | uuid.UUID = ormar.ForeignKey(User, ondelete=ReferentialAction.CASCADE)
+    version_number: int = ormar.Integer(nullable=False)
+    status: str = ormar.String(max_length=16, nullable=False, default="draft")
+    label: str = ormar.String(max_length=160, nullable=False, default="Draft")
+    change_summary: str | None = ormar.Text(nullable=True)
+    parent_version_id: uuid.UUID | None = ormar.UUID(nullable=True, default=None)
+    content: Json[dict] = ormar.JSON(nullable=False)
+    created_at: datetime = ormar.DateTime(default=datetime.now(), nullable=False)
+
+    ormar_config = ormar.OrmarConfig(
+        tablename="scenario_versions",
+        metadata=metadata,
+        database=database,
+    )
+
+
+class ExerciseFacilitator(ormar.Model):
+    id: uuid.UUID = ormar.UUID(primary_key=True, default=uuid.uuid4(), nullable=False, unique=True)
+    game_id: str = ormar.String(max_length=64, nullable=False, index=True)
+    user: User | uuid.UUID = ormar.ForeignKey(User, ondelete=ReferentialAction.CASCADE)
+    permission: str = ormar.String(max_length=32, nullable=False, default="facilitator")
+    created_at: datetime = ormar.DateTime(default=datetime.now(), nullable=False)
+
+    ormar_config = ormar.OrmarConfig(tablename="exercise_facilitators", metadata=metadata, database=database)
+
+
+class ExerciseNote(ormar.Model):
+    id: uuid.UUID = ormar.UUID(primary_key=True, default=uuid.uuid4(), nullable=False, unique=True)
+    game_id: str = ormar.String(max_length=64, nullable=False, index=True)
+    author: User | uuid.UUID = ormar.ForeignKey(User, ondelete=ReferentialAction.CASCADE)
+    body: str = ormar.Text(nullable=False)
+    created_at: datetime = ormar.DateTime(default=datetime.now(), nullable=False)
+    updated_at: datetime = ormar.DateTime(default=datetime.now(), nullable=False)
+
+    ormar_config = ormar.OrmarConfig(tablename="exercise_notes", metadata=metadata, database=database)
+
+
+class ExerciseEvidence(ormar.Model):
+    id: uuid.UUID = ormar.UUID(primary_key=True, default=uuid.uuid4(), nullable=False, unique=True)
+    game_id: str = ormar.String(max_length=64, nullable=False, index=True)
+    uploaded_by: User | uuid.UUID = ormar.ForeignKey(User, ondelete=ReferentialAction.CASCADE)
+    storage_item_id: uuid.UUID | None = ormar.UUID(nullable=True, default=None)
+    title: str = ormar.String(max_length=200, nullable=False)
+    question_index: int | None = ormar.Integer(nullable=True)
+    created_at: datetime = ormar.DateTime(default=datetime.now(), nullable=False)
+
+    ormar_config = ormar.OrmarConfig(tablename="exercise_evidence", metadata=metadata, database=database)
+
+
+class ExerciseAuditLog(ormar.Model):
+    id: uuid.UUID = ormar.UUID(primary_key=True, default=uuid.uuid4(), nullable=False, unique=True)
+    game_id: str | None = ormar.String(max_length=64, nullable=True, index=True)
+    actor: User | uuid.UUID = ormar.ForeignKey(User, ondelete=ReferentialAction.CASCADE)
+    action: str = ormar.String(max_length=100, nullable=False)
+    details: Json[dict] = ormar.JSON(nullable=False, default={})
+    created_at: datetime = ormar.DateTime(default=datetime.now(), nullable=False, index=True)
+
+    ormar_config = ormar.OrmarConfig(tablename="exercise_audit_logs", metadata=metadata, database=database)
+
+
+class DataRetentionPolicy(ormar.Model):
+    id: uuid.UUID = ormar.UUID(primary_key=True, default=uuid.uuid4(), nullable=False, unique=True)
+    user: User | uuid.UUID = ormar.ForeignKey(User, ondelete=ReferentialAction.CASCADE, unique=True)
+    results_days: int = ormar.Integer(nullable=False, default=365)
+    evidence_days: int = ormar.Integer(nullable=False, default=180)
+    audit_days: int = ormar.Integer(nullable=False, default=730)
+    updated_at: datetime = ormar.DateTime(default=datetime.now(), nullable=False)
+
+    ormar_config = ormar.OrmarConfig(tablename="data_retention_policies", metadata=metadata, database=database)
+
+
 
 
 class InstanceData(ormar.Model):
@@ -479,6 +571,18 @@ class GameResults(ormar.Model):
         metadata=metadata,
         database=database,
     )
+
+
+class ExerciseCompletion(ormar.Model):
+    id: uuid.UUID = ormar.UUID(primary_key=True, default=uuid.uuid4(), nullable=False, unique=True)
+    result: GameResults | uuid.UUID = ormar.ForeignKey(GameResults, ondelete=ReferentialAction.CASCADE)
+    user: User | uuid.UUID = ormar.ForeignKey(User, ondelete=ReferentialAction.CASCADE)
+    participant_name: str = ormar.String(max_length=100, nullable=False)
+    completion_code: str = ormar.String(max_length=32, nullable=False, unique=True)
+    certificate_status: str = ormar.String(max_length=20, nullable=False, default="issued")
+    completed_at: datetime = ormar.DateTime(default=datetime.now(), nullable=False)
+
+    ormar_config = ormar.OrmarConfig(tablename="exercise_completions", metadata=metadata, database=database)
 
 
 class QuizTivityInput(BaseModel):

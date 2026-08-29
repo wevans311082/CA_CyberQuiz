@@ -55,12 +55,8 @@ SPDX-License-Identifier: MPL-2.0
 		time: string;
 		question: string;
 		image?: string;
-		answers: Answer[];
-	}
-
-	interface Answer {
-		right: boolean;
-		answer: string;
+		type?: QuizQuestionType;
+		answers: any;
 	}
 
 	interface QuizData {
@@ -70,9 +66,20 @@ SPDX-License-Identifier: MPL-2.0
 		description: string;
 		created_at: string;
 		updated_at: string;
-		user_id: string;
+		user_id: { id: string; username: string };
 		imported_from_kahoot?: boolean;
 		questions: Question[];
+		quiz_id: string;
+		game_id: string;
+		game_pin: string;
+		started: boolean;
+		cover_image?: string;
+		background_color?: string;
+		background_image?: string;
+		likes: number;
+		dislikes: number;
+		plays: number;
+		views: number;
 		kahoot_id?: string;
 		mod_rating?: number;
 	}

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	import BrownButton from '$lib/components/buttons/brown.svelte';
 	import GrayButton from '$lib/components/buttons/gray.svelte';
+	import { notify } from '$lib/notifications.svelte';
 
 	interface Props {
 		autoReturn?: boolean;
@@ -28,7 +29,7 @@ SPDX-License-Identifier: MPL-2.0
 			window.history.back();
 		}
 		if (!res.ok) {
-			alert('Setting rating failed');
+			notify('Setting rating failed. Please try again.', 'error');
 		}
 	};
 </script>

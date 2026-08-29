@@ -203,6 +203,13 @@ export interface EditorData {
 	injects?: Inject[];
 	master_theme?: MasterTheme;
 	teams?: Record<string, string[]>;
+	tags?: string[];
+	difficulty?: string;
+	duration_minutes?: number;
+	framework_mappings?: Record<string, string[]>;
+	reusable_roles?: Record<string, unknown>[];
+	reusable_injects?: Record<string, unknown>[];
+	evidence_packs?: Record<string, unknown>[];
 }
 
 export interface PrivateImageData {

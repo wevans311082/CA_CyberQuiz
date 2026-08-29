@@ -7,19 +7,28 @@
 	import Spinner from '$lib/ui/Spinner.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 	import { pageTitle } from '$lib/brand';
+	import { notify } from '$lib/notifications.svelte';
 
 	type Template = { id: string; name: string; summary: string; topic: string; slide_count: number; branch_count: number; inject_count: number; difficulty: string };
 	let templates = $state<Template[]>([]);
 	let search = $state('');
 	let loading = $state(true);
 	let error = $state('');
+	let owned = $state<Array<{ id: string; title: string; scenario_type?: string }>>([]);
 	const filtered = $derived(templates.filter((template) => `${template.name} ${template.topic} ${template.summary}`.toLowerCase().includes(search.toLowerCase())));
 
 	onMount(async () => {
-		try { const response = await fetch('/api/v1/seed/templates'); if (!response.ok) throw new Error('Unable to load scenarios'); templates = (await response.json()).templates ?? []; }
+		try { const response = await fetch('/api/v1/seed/templates'); if (!response.ok) throw new Error('Unable to load scenarios'); templates = (await response.json()).templates ?? []; const owned_response = await fetch('/api/v1/quiz/list?page_size=50&page=1'); if (owned_response.ok) owned = await owned_response.json(); }
 		catch (e) { error = e instanceof Error ? e.message : 'Unable to load scenarios'; }
 		finally { loading = false; }
 	});
+	const copy_scenario = async (id: string, action: 'duplicate' | 'fork') => {
+		const response = await fetch(`/api/v1/scenarios/${id}/${action}`, { method: 'POST' });
+		if (!response.ok) { notify(`Scenario could not be ${action}ed.`, 'error'); return; }
+		const result = await response.json();
+		notify(`Scenario ${action}ed.`, 'success');
+		window.location.href = `/edit/${result.id}`;
+	};
 </script>
 
 <svelte:head><title>{pageTitle('Scenario library')}</title></svelte:head>
@@ -31,6 +40,7 @@
 		</PageHeader>
 		<div class="mt-8 grid gap-4 sm:grid-cols-3"><div class="app-panel p-5"><p class="eyebrow">Templates</p><p class="mt-2 text-3xl font-bold text-slate-950">{templates.length || '—'}</p><p class="mt-1 text-sm text-slate-500">Deep scenario blueprints</p></div><div class="app-panel p-5"><p class="eyebrow">Format</p><p class="mt-2 text-3xl font-bold text-slate-950">Tabletop</p><p class="mt-1 text-sm text-slate-500">Facilitator-led decisions</p></div><div class="app-panel p-5"><p class="eyebrow">Editable</p><p class="mt-2 text-3xl font-bold text-slate-950">100%</p><p class="mt-1 text-sm text-slate-500">Content, paths, and injects</p></div></div>
 		<div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 class="text-xl font-bold text-slate-950">Choose a threat theme</h2><p class="mt-1 text-sm text-slate-500">Every template contains meaningful branches and consequences.</p></div><div class="w-full sm:max-w-sm"><Input bind:value={search} placeholder="Search scenarios" ariaLabel="Search scenarios" /></div></div>
+		{#if owned.length}<section class="mt-8"><div class="flex items-end justify-between"><div><p class="eyebrow">Your workspace</p><h2 class="mt-1 text-xl font-bold text-slate-950">Continue an exercise</h2></div><span class="text-sm text-slate-500">{owned.length} scenario{owned.length === 1 ? '' : 's'}</span></div><div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{#each owned as scenario}<div class="app-panel flex items-center justify-between gap-3 p-4"><a href={`/edit/${scenario.id}`} class="min-w-0"><p class="truncate text-sm font-bold text-slate-900">{scenario.title}</p><p class="mt-1 text-xs text-slate-500">{scenario.scenario_type === 'tabletop' ? 'Tabletop exercise' : 'Classic quiz'}</p></a><div class="flex shrink-0 gap-1"><Button size="sm" variant="ghost" ariaLabel="Duplicate scenario" onclick={() => copy_scenario(scenario.id, 'duplicate')}><Icon name="file" size={14} /></Button><Button size="sm" variant="ghost" ariaLabel="Fork scenario" onclick={() => copy_scenario(scenario.id, 'fork')}><Icon name="arrow-right" size={14} /></Button></div></div>{/each}</div></section>{/if}
 		{#if loading}<div class="flex justify-center py-20"><Spinner size="lg" /></div>{:else if error}<div class="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>{:else}<div class="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{#each filtered as template}
 			<Card variant="elevated" padding="none" class="overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl"><div class="h-2 bg-gradient-to-r from-teal-500 to-cyan-400"></div><div class="p-6"><div class="flex items-start justify-between gap-3"><div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-xl text-teal-700">⌁</div><span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-600">{template.difficulty}</span></div><p class="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-teal-700">{template.topic}</p><h3 class="mt-2 text-xl font-bold text-slate-950">{template.name}</h3><p class="mt-2 min-h-12 text-sm leading-6 text-slate-500">{template.summary}</p><div class="mt-6 grid grid-cols-3 gap-2 border-y border-slate-100 py-4 text-center"><div><p class="text-lg font-bold text-slate-900">{template.slide_count}</p><p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Slides</p></div><div><p class="text-lg font-bold text-slate-900">{template.branch_count}</p><p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Branches</p></div><div><p class="text-lg font-bold text-slate-900">{template.inject_count}</p><p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Injects</p></div></div><Button href="/seed?template={template.id}" variant="secondary" fullWidth={true} class="mt-5">Use this scenario</Button></div></Card>
 		{/each}{#if filtered.length === 0}<div class="col-span-full rounded-2xl border border-dashed border-slate-300 bg-white/70 p-10 text-center"><p class="font-semibold text-slate-900">No matching scenarios</p><p class="mt-1 text-sm text-slate-500">Try a different threat, theme, or keyword.</p></div>{/if}</div>{/if}

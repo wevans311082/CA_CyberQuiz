@@ -9,6 +9,7 @@ SPDX-License-Identifier: MPL-2.0
 	import Button from '$lib/ui/Button.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import Spinner from '$lib/ui/Spinner.svelte';
+	import { notify } from '$lib/notifications.svelte';
 
 	let {
 		session_data,
@@ -41,7 +42,7 @@ SPDX-License-Identifier: MPL-2.0
 			step += 1;
 			selected_method = null;
 		} else if (res.status === 401) {
-			alert('Wrong credentials');
+			notify('Wrong credentials.', 'error');
 		}
 		isSubmitting = false;
 	};

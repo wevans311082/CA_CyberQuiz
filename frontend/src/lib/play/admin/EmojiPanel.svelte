@@ -6,6 +6,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <script lang="ts">
 	import type { Socket } from 'socket.io-client';
+	import { notify } from '$lib/notifications.svelte';
 
 	interface Props {
 		socket: Socket;
@@ -35,7 +36,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	const send_emoji = () => {
 		if (!selected_player) {
-			alert('Please select a player');
+			notify('Please select a player first.', 'info');
 			return;
 		}
 

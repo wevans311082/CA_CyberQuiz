@@ -25,6 +25,7 @@ def template_catalog() -> list[dict]:
             "branch_count": t.branch_count,
             "inject_count": t.inject_count,
             "difficulty": t.difficulty,
+            "industries": list(t.industries),
         }
         for t in list_templates()
     ]

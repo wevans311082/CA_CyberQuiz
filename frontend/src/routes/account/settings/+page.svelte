@@ -148,7 +148,7 @@ SPDX-License-Identifier: MPL-2.0
 {#await getUser()}
 	<Spinner />
 {:then user}
-	<div class="min-h-screen px-4 py-8 sm:px-6 lg:px-10"><div class="mx-auto flex max-w-7xl flex-col gap-8 text-slate-900">
+	<div class="settings-shell min-h-screen px-4 py-8 sm:px-6 lg:px-10"><div class="mx-auto flex max-w-7xl flex-col gap-8 text-slate-900">
 
 		<!-- Profile card -->
 		<div class="app-panel flex flex-col gap-6 p-6 sm:flex-row sm:items-start">
@@ -226,7 +226,8 @@ SPDX-License-Identifier: MPL-2.0
 					</div>
 				{:else}
 					<p class="text-sm text-slate-500">No API keys yet.</p>
-				{/if}
+{/if}
+
 			{/await}
 		</div>
 
@@ -275,3 +276,13 @@ SPDX-License-Identifier: MPL-2.0
 
 	</div></div>
 {/await}
+
+<style>
+	:global(.settings-shell [class*="bg-[#0f172a]"]) { background: #ffffff !important; }
+	:global(.settings-shell [class*="bg-white/5"]) { background: #f8fafc !important; }
+	:global(.settings-shell [class*="border-white/15"]), :global(.settings-shell [class*="border-white/10"]) { border-color: #e2e8f0 !important; }
+	:global(.settings-shell .text-white) { color: #0f172a !important; }
+	:global(.settings-shell .text-slate-400) { color: #64748b !important; }
+	:global(.settings-shell [class*="bg-[#B07156]"]) { background: #0f766e !important; }
+	:global(.settings-shell [class*="text-[#B07156]"]) { color: #0f766e !important; }
+</style>

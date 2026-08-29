@@ -6,6 +6,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <script lang="ts">
 	import { startAuthentication } from '@simplewebauthn/browser';
+	import { notify } from '$lib/notifications.svelte';
 	import { getLocalization } from '$lib/i18n';
 	import Button from '$lib/ui/Button.svelte';
 	import Spinner from '$lib/ui/Spinner.svelte';
@@ -28,7 +29,7 @@ SPDX-License-Identifier: MPL-2.0
 			asseResp = await startAuthentication({ optionsJSON: data });
 		} catch (e) {
 			console.error(e);
-			alert('Unknown error');
+			notify('Unable to start passkey authentication.', 'error');
 			isLoading = false;
 		}
 		const res = await fetch(
@@ -52,11 +53,11 @@ SPDX-License-Identifier: MPL-2.0
 			try {
 				data = await res.json();
 			} catch {
-				alert('Unknown error');
+					notify('Unable to complete passkey authentication.', 'error');
 				window.location.reload();
 			}
 			if (data.detail === 'webauthn failed') {
-				alert('Webauthn failed');
+					notify('Passkey authentication failed.', 'error');
 			}
 		}
 		isLoading = false;

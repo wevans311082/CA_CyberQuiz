@@ -108,9 +108,9 @@ SPDX-License-Identifier: MPL-2.0
 			<div
 				use:tippy={{ content: data.title === '' ? "It's empty!" : data.title }}
 				class="m-1 border border-gray-500 rounded-lg p-0.5 transition"
-				class:border-red-600={!reach(dataSchema, 'title').isValidSync(data.title)}
-				class:border-solid={!reach(dataSchema, 'title').isValidSync(data.title)}
-				class:border-2={!reach(dataSchema, 'title').isValidSync(data.title)}
+				class:border-red-600={!((reach(dataSchema, 'title') as any).isValidSync(data.title))}
+				class:border-solid={!((reach(dataSchema, 'title') as any).isValidSync(data.title))}
+				class:border-2={!((reach(dataSchema, 'title') as any).isValidSync(data.title))}
 			>
 				<p
 					type="text"
@@ -127,11 +127,11 @@ SPDX-License-Identifier: MPL-2.0
 			<div
 				use:tippy={{ content: data.description === '' ? "It's empty!" : data.description }}
 				class="m-1 border border-gray-500 rounded-lg p-0.5 transition"
-				class:border-red-600={!reach(dataSchema, 'description').isValidSync(
+				class:border-red-600={!((reach(dataSchema, 'description') as any).isValidSync(
 					data.description
-				)}
-				class:border-solid={!reach(dataSchema, 'description').isValidSync(data.description)}
-				class:border-2={!reach(dataSchema, 'description').isValidSync(data.description)}
+				))}
+				class:border-solid={!((reach(dataSchema, 'description') as any).isValidSync(data.description))}
+				class:border-2={!((reach(dataSchema, 'description') as any).isValidSync(data.description))}
 			>
 				<textarea
 					bind:value={data.description}
@@ -289,9 +289,9 @@ SPDX-License-Identifier: MPL-2.0
 				>
 					<h1
 						class="whitespace-nowrap truncate text-center rounded-lg dark:text-white transition"
-						class:bg-yellow-500={!reach(dataSchema, 'questions[].question').isValidSync(
+						class:bg-yellow-500={!((reach(dataSchema, 'questions[].question') as any).isValidSync(
 							question.question
-						)}
+						))}
 						class:dark:text-black={index === selected_question}
 					>
 						{#if question.question === ''}

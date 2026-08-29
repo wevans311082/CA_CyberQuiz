@@ -37,6 +37,8 @@ from classquiz.routers import (
     pixabay,
     moderation,
     seed,
+    scenarios,
+    exercise_ops,
 )
 from classquiz.socket_server import sio
 from classquiz.helpers import meilisearch_init
@@ -139,4 +141,6 @@ app.include_router(
 app.include_router(avatar.router, tags=["avatar"], prefix="/api/v1/avatar", include_in_schema=True)
 app.include_router(admin.router, tags=["admin"], prefix="/api/v1/admin", include_in_schema=True)
 app.include_router(seed.router, tags=["seed"], prefix="/api/v1/seed", include_in_schema=True)
+app.include_router(scenarios.router, tags=["scenarios"], prefix="/api/v1/scenarios", include_in_schema=True)
+app.include_router(exercise_ops.router, tags=["exercise-operations"], prefix="/api/v1/exercises", include_in_schema=True)
 app.mount("/", ASGIApp(sio))

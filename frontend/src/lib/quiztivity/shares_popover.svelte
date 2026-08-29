@@ -14,6 +14,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { PopoverTypes } from '$lib/components/popover/smalltop';
 	import { onMount } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
+	import { confirmAction, notify } from '$lib/notifications.svelte';
 
 	const { t } = getLocalization();
 	interface Props {
@@ -103,11 +104,12 @@ SPDX-License-Identifier: MPL-2.0
 	let loaded_shares = $state(load_shares());
 
 	const delete_share = async (id: string) => {
-		if (!confirm('Do you really want to delete this Share?')) {
+		if (!(await confirmAction('Do you really want to delete this share?', { title: 'Delete share', confirmLabel: 'Delete share' }))) {
 			return;
 		}
 		await fetch(`/api/v1/quiztivity/shares/${id}`, { method: 'DELETE' });
 		loaded_shares = load_shares();
+		notify('Share deleted.', 'success');
 	};
 
 	const share_available = (): boolean => {

@@ -8,7 +8,7 @@
 		children?: import('svelte').Snippet;
 	}
 
-	let { open = false, title, description = '', width = 'max-w-xl', onclose, children }: Props = $props();
+	let { open = $bindable(false), title, description = '', width = 'max-w-xl', onclose, children }: Props = $props();
 </script>
 
 {#if open}

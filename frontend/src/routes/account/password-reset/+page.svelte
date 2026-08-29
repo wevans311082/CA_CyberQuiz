@@ -6,6 +6,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <script lang="ts">
 	import { getLocalization } from '$lib/i18n';
+	import { notify } from '$lib/notifications.svelte';
 
 	const { t } = getLocalization();
 	let { data } = $props();
@@ -43,7 +44,7 @@ SPDX-License-Identifier: MPL-2.0
 		if (response.status === 200) {
 			window.location.assign('/account/login');
 		} else {
-			alert(data.detail);
+			notify(data.detail ?? 'Password reset failed.', 'error');
 		}
 		isSubmitting = false;
 	};

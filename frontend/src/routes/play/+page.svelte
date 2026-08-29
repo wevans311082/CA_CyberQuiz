@@ -28,6 +28,7 @@ SPDX-License-Identifier: MPL-2.0
 	import AnswerSummary from '$lib/play/AnswerSummary.svelte';
 	import CountdownOverlay from '$lib/play/countdown_overlay.svelte';
 	import { getLocalization } from '$lib/i18n';
+	import { notify } from '$lib/notifications.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import Cookies from 'js-cookie';
@@ -374,7 +375,7 @@ SPDX-License-Identifier: MPL-2.0
 	};
 
 	const onGameAlreadyStarted = () => {
-		window.alert('This quiz has already started. Reloading to rejoin the live session.');
+		notify('This quiz has already started. Reloading to rejoin the live session.', 'info');
 		window.location.reload();
 	};
 
@@ -388,11 +389,11 @@ SPDX-License-Identifier: MPL-2.0
 	};
 
 	const onUsernameAlreadyExists = () => {
-		window.alert('Username already exists!');
+		notify('Username already exists.', 'error');
 	};
 
 	const onKick = () => {
-		window.alert('You got kicked');
+		notify('You were removed from the session.', 'error');
 		preventReload = false;
 		game_pin = '';
 		username = '';

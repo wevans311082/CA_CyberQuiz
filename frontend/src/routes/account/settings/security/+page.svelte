@@ -12,6 +12,7 @@ SPDX-License-Identifier: MPL-2.0
 	import BackupCodes from './backup_codes.svelte';
 	import BrownButton from '$lib/components/buttons/brown.svelte';
 	import { getLocalization } from '$lib/i18n';
+	import { confirmAction, notify } from '$lib/notifications.svelte';
 
 	const { t } = getLocalization();
 
@@ -60,7 +61,7 @@ SPDX-License-Identifier: MPL-2.0
 			headers: { 'Content-Type': 'application/json' }
 		});
 		if (res1.status === 401) {
-			alert('Password probably wrong');
+			notify('Password probably wrong.', 'error');
 			return;
 		}
 		if (!res1.ok) {
@@ -97,7 +98,7 @@ SPDX-License-Identifier: MPL-2.0
 			headers: { 'Content-Type': 'application/json' }
 		});
 		if (res.status === 401) {
-			alert('Password probably wrong');
+			notify('Password probably wrong.', 'error');
 			return;
 		}
 		data = get_data();
@@ -112,7 +113,7 @@ SPDX-License-Identifier: MPL-2.0
 			headers: { 'Content-Type': 'application/json' }
 		});
 		if (res.status === 401) {
-			alert('Password probably wrong');
+			notify('Password probably wrong.', 'error');
 			return;
 		}
 		data = get_data();
@@ -127,7 +128,7 @@ SPDX-License-Identifier: MPL-2.0
 			headers: { 'Content-Type': 'application/json' }
 		});
 		if (res.status === 401) {
-			alert('Password probably wrong');
+			notify('Password probably wrong.', 'error');
 			return;
 		}
 		data = get_data();
@@ -137,7 +138,7 @@ SPDX-License-Identifier: MPL-2.0
 	const get_backup_code = async () => {
 		const pw = require_password();
 		if (!pw) return;
-		if (!confirm('If you continue, your old backup-code will be removed.')) {
+		if (!(await confirmAction('If you continue, your old backup code will be removed.', { title: 'Regenerate backup code', confirmLabel: 'Regenerate' }))) {
 			return;
 		}
 		const res = await fetch('/api/v1/users/2fa/backup_code', {
@@ -146,7 +147,7 @@ SPDX-License-Identifier: MPL-2.0
 			headers: { 'Content-Type': 'application/json' }
 		});
 		if (res.status === 401) {
-			alert('Password probably wrong');
+			notify('Password probably wrong.', 'error');
 			return;
 		}
 		backup_code = (await res.json()).code;
@@ -156,7 +157,7 @@ SPDX-License-Identifier: MPL-2.0
 {#await data}
 	<Spinner my_20={false} />
 {:then _}
-	<div class="min-h-screen text-white px-4 py-8 max-w-3xl mx-auto flex flex-col gap-6">
+	<div class="settings-shell min-h-screen text-white px-4 py-8 max-w-3xl mx-auto flex flex-col gap-6">
 
 		<h1 class="text-2xl font-semibold text-white">{$t('settings_page.security_settings')}</h1>
 
@@ -251,3 +252,13 @@ SPDX-License-Identifier: MPL-2.0
 {#if backup_code}
 	<BackupCodes bind:backup_code />
 {/if}
+
+<style>
+	:global(.settings-shell [class*="bg-[#0f172a]"]) { background: #ffffff !important; }
+	:global(.settings-shell [class*="bg-white/5"]) { background: #f8fafc !important; }
+	:global(.settings-shell [class*="border-white/15"]), :global(.settings-shell [class*="border-white/10"]) { border-color: #e2e8f0 !important; }
+	:global(.settings-shell .text-white) { color: #0f172a !important; }
+	:global(.settings-shell .text-slate-400) { color: #64748b !important; }
+	:global(.settings-shell [class*="bg-[#B07156]"]) { background: #0f766e !important; }
+	:global(.settings-shell [class*="text-[#B07156]"]) { color: #0f766e !important; }
+</style>

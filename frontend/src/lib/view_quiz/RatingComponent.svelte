@@ -8,6 +8,7 @@ SPDX-License-Identifier: MPL-2.0
 	import type { QuizData } from '$lib/quiz_types';
 	import Hoverable from '$lib/view_quiz/Hoverable.svelte';
 	import { createTippy } from 'svelte-tippy';
+	import { notify } from '$lib/notifications.svelte';
 
 	interface Props {
 		quiz: QuizData;
@@ -34,9 +35,10 @@ SPDX-License-Identifier: MPL-2.0
 			body: JSON.stringify({ type: positive ? 'LIKE' : 'DISLIKE' })
 		});
 		if (res.status === 409) {
-			alert("You've already rated this quiz!");
+			notify("You've already rated this quiz.", 'info');
 			return;
 		} else if (!res.ok) {
+			notify('Rating could not be saved. Please try again.', 'error');
 			return;
 		}
 		if (positive) {

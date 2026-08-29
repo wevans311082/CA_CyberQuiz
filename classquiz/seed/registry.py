@@ -20,6 +20,7 @@ class SeedTemplateMeta:
     branch_count: int
     inject_count: int
     difficulty: str
+    industries: tuple[str, ...]
     builder: Callable[[], dict]
 
 
@@ -33,6 +34,7 @@ TEMPLATES: dict[str, SeedTemplateMeta] = {
 		branch_count=7,
 		inject_count=5,
 		difficulty="Advanced",
+		industries=("Technology", "Financial Services", "Public Sector"),
 		builder=cloud_identity.build,
 	),
     "ransomware": SeedTemplateMeta(
@@ -44,6 +46,7 @@ TEMPLATES: dict[str, SeedTemplateMeta] = {
         branch_count=8,
         inject_count=4,
         difficulty="Advanced",
+        industries=("Healthcare", "Financial Services", "Retail"),
         builder=ransomware.build,
     ),
     "data_leak": SeedTemplateMeta(
@@ -55,6 +58,7 @@ TEMPLATES: dict[str, SeedTemplateMeta] = {
         branch_count=7,
         inject_count=3,
         difficulty="Advanced",
+        industries=("Public Sector", "Technology", "Financial Services"),
         builder=data_leak.build,
     ),
     "insider_threat": SeedTemplateMeta(
@@ -66,6 +70,7 @@ TEMPLATES: dict[str, SeedTemplateMeta] = {
         branch_count=7,
         inject_count=3,
         difficulty="Intermediate",
+        industries=("Technology", "Manufacturing", "Professional Services"),
         builder=insider_threat.build,
     ),
     "disaster_recovery": SeedTemplateMeta(
@@ -77,6 +82,7 @@ TEMPLATES: dict[str, SeedTemplateMeta] = {
         branch_count=7,
         inject_count=3,
         difficulty="Intermediate",
+        industries=("Healthcare", "Manufacturing", "Energy"),
         builder=disaster_recovery.build,
     ),
 }
