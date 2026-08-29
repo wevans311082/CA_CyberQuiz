@@ -5,6 +5,7 @@
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 revision = "f6a7b8c9d0e1"
 down_revision = "e5f6a7b8c9d0"
@@ -22,14 +23,14 @@ def upgrade() -> None:
     op.add_column("quiz", sa.Column("evidence_packs", sa.JSON(), nullable=False, server_default="[]"))
     op.create_table(
         "scenario_versions",
-        sa.Column("id", sa.UUID(), primary_key=True, nullable=False),
-        sa.Column("quiz", sa.UUID(), sa.ForeignKey("quiz.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("created_by", sa.UUID(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, nullable=False),
+        sa.Column("quiz", postgresql.UUID(as_uuid=True), sa.ForeignKey("quiz.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("created_by", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("version_number", sa.Integer(), nullable=False),
         sa.Column("status", sa.String(length=16), nullable=False, server_default="draft"),
         sa.Column("label", sa.String(length=160), nullable=False, server_default="Draft"),
         sa.Column("change_summary", sa.Text(), nullable=True),
-        sa.Column("parent_version_id", sa.UUID(), nullable=True),
+        sa.Column("parent_version_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("content", sa.JSON(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
     )
