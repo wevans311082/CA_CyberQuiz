@@ -49,7 +49,7 @@
 	};
 </script>
 
-<section class="fixed left-3 right-3 top-[7.25rem] z-20 mx-auto max-w-[1500px] rounded-2xl border border-slate-200 bg-white/95 shadow-[0_12px_35px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+<section class="fixed left-2 right-2 top-[7.25rem] z-20 mx-auto max-h-[calc(100vh-8rem)] max-w-[1500px] overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 shadow-[0_12px_35px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:left-3 sm:right-3">
 	<div class="flex min-h-14 flex-wrap items-center gap-2 px-3 py-2 sm:px-4">
 		<div class="mr-2 flex min-w-[155px] items-center gap-2 border-r border-slate-100 pr-3"><span class="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-50 text-sm text-teal-700">⌁</span><div><p class="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">Live control centre</p><p class="max-w-[170px] truncate text-xs font-bold text-slate-900">{quiz_data.title}</p></div></div>
 		<div class="rounded-xl bg-slate-50 px-3 py-1.5"><p class="text-[9px] font-bold uppercase tracking-wider text-slate-400">Phase</p><p class="text-xs font-bold text-slate-800">{current?.objective ?? (selected_question < 0 ? 'Briefing' : 'In progress')}</p></div>

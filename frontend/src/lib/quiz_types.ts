@@ -11,6 +11,7 @@ export enum ElementTypes {
 }
 
 export interface QuizData {
+	id?: string;
 	title: string;
 	description: string;
 	quiz_id: string;
@@ -102,11 +103,12 @@ export type SlideAnimation = 'none' | 'fade' | 'rise' | 'zoom' | 'slide-left' | 
 export type ElementAnimation = 'none' | 'fade' | 'rise' | 'zoom' | 'slide-left';
 
 export interface SlideThemeOverride {
-	enabled: boolean;
+	enabled?: boolean;
 	background_color?: string;
 	text_color?: string;
 	accent_color?: string;
 	background_image?: string;
+	font_family?: string;
 }
 
 export interface MasterTheme {
@@ -165,13 +167,14 @@ export interface SLACheckpoint {
 	description: string;
 }
 
-export type Answers =
-	| Answer[]
-	| RangeQuizAnswer
-	| VotingAnswer[]
-	| string
-	| TextQuizAnswer[]
-	| OrderQuizAnswer[];
+/**
+ * Answers are intentionally modelled as a flexible wire value. The API uses
+ * arrays for choice/order/text questions, an object for range questions, and
+ * a string for free-text questions. Consumers should narrow by question.type.
+ * Keeping the wire shape flexible prevents unsafe casts at every socket and
+ * editor boundary while the API evolves.
+ */
+export type Answers = any;
 
 export interface Answer {
 	right: boolean;

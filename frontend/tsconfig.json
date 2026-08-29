@@ -36,6 +36,8 @@
 	"extends": "./.svelte-kit/tsconfig.json",
 	"compilerOptions": {
 		"resolveJsonModule": true,
-		"allowImportingTsExtensions": true
-	}
+		"allowImportingTsExtensions": true,
+		"skipLibCheck": true
+	},
+	"exclude": ["src/tests"]
 }

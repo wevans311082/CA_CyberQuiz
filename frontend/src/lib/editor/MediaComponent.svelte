@@ -26,7 +26,7 @@ SPDX-License-Identifier: MPL-2.0
 	}: Props = $props();
 	let type: 'img' | 'video' | undefined = $state(undefined);
 
-	let img_data = $state();
+	let img_data = $state<{ data: string; alt_text?: string } | undefined>(undefined);
 	let thumbhash_data: string = $state();
 
 	function base64ToBytes(base64: string): Uint8Array {
@@ -40,15 +40,16 @@ SPDX-License-Identifier: MPL-2.0
 		}
 		const res = await fetch(`/api/v1/storage/info/${src}`);
 		const fileType = res.headers.get('Content-Type');
-		if (fileType.includes('video')) {
+		if (fileType?.includes('video')) {
 			type = 'video';
 		} else {
 			type = 'img';
-			thumbhash_data = thumbHashToDataURL(base64ToBytes(res.headers.get('x-thumbhash')));
+			const thumbhash = res.headers.get('x-thumbhash');
+			if (thumbhash) thumbhash_data = thumbHashToDataURL(base64ToBytes(thumbhash));
 			const data = await fetch(`/api/v1/storage/download/${src}`);
 			img_data = {
 				data: URL.createObjectURL(await data.blob()),
-				alt_text: new TextDecoder().decode(base64ToBytes(res.headers.get('X-Alt-Text')))
+				alt_text: res.headers.get('X-Alt-Text') ? new TextDecoder().decode(base64ToBytes(res.headers.get('X-Alt-Text')!)) : undefined
 			};
 			thumbhash_data = undefined;
 		}
@@ -80,7 +81,6 @@ SPDX-License-Identifier: MPL-2.0
 		<video
 			class={css_classes}
 			disablepictureinpicture
-			x-webkit-airplay="deny"
 			controls
 			autoplay
 			loop
@@ -99,6 +99,8 @@ SPDX-License-Identifier: MPL-2.0
 		class="fixed top-0 left-0 z-50 w-screen h-screen bg-black/50 fle p-2"
 		transition:fade|global={{ duration: 80 }}
 		onclick={() => (fullscreen_open = false)}
+		role="presentation"
+		onkeydown={(event) => event.key === 'Escape' && (fullscreen_open = false)}
 	>
 		<img
 			src={img_data.data}

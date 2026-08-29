@@ -14,6 +14,7 @@ SPDX-License-Identifier: MPL-2.0
 	import AddNewQuestionPopup from '$lib/editor/AddNewQuestionPopup.svelte';
 	import BrownButton from '$lib/components/buttons/brown.svelte';
 	import { fade } from 'svelte/transition';
+	import { confirmAction } from '$lib/notifications.svelte';
 
 	const { t } = getLocalization();
 
@@ -67,9 +68,9 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
-	const delete_question = (index: number, e: MouseEvent) => {
+	const delete_question = async (index: number, e: MouseEvent) => {
 		e.stopPropagation();
-		if (!confirm('Do you really want to delete this Question?')) {
+		if (!(await confirmAction('Do you really want to delete this question?', { title: 'Delete question', confirmLabel: 'Delete question' }))) {
 			return;
 		}
 

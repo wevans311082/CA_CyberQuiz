@@ -14,6 +14,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { onMount } from 'svelte';
 	import Uploader from './uploader.svelte';
 	import { getLocalization } from '$lib/i18n';
+	import { confirmAction, notify } from '$lib/notifications.svelte';
 
 	const { t } = getLocalization();
 
@@ -70,15 +71,16 @@ SPDX-License-Identifier: MPL-2.0
 	};
 
 	const delete_image = async (id: string) => {
-		if (!confirm('Delete this asset? This cannot be undone.')) {
+		if (!(await confirmAction('Delete this asset? This cannot be undone.', { title: 'Delete asset', confirmLabel: 'Delete asset' }))) {
 			return;
 		}
 		const res = await fetch(`/api/v1/storage/meta/${id}`, { method: 'DELETE' });
 		if (!res.ok) {
-			alert('Delete failed. This asset may still be in use.');
+			notify('Delete failed. This asset may still be in use.', 'error');
 			return;
 		}
 		images = images.filter((img) => img.id !== id);
+		notify('Asset deleted.', 'success');
 	};
 
 	const copy_asset_url = async (id: string) => {
@@ -191,8 +193,10 @@ SPDX-License-Identifier: MPL-2.0
 		transition:fade={{ duration: 100 }}
 		class="fixed top-0 left-0 h-screen w-screen z-40 flex bg-black/50"
 		onclick={close_popup_handler}
+		role="presentation"
+		onkeydown={(event) => event.key === 'Escape' && (edit_popup = null)}
 	>
-		<div class="w-auto h-auto m-auto rounded-sm bg-white dark:bg-gray-700 p-4">
+		<div class="w-auto h-auto m-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
 			<h1 class="text-2xl text-center">{$t('file_dashboard.edit_the_image')}</h1>
 			<form class="flex flex-col" onsubmit={save_image_metadata}>
 				<div class="flex flex-row">

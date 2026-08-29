@@ -112,7 +112,7 @@ if (typeof window !== 'undefined' && import.meta.env.DEV && !debugSocket.__verbo
 		log('POLLING', 'pollComplete');
 	});
 
-	socket.io.engine.transport.on('pollError', (error: Error) => {
-		log('POLLING', 'pollError', { message: error.message });
-	});
+	// The transport's public typings do not expose pollError consistently across
+	// Socket.IO versions. Connection errors are already surfaced by the socket
+	// error handlers above, so avoid registering an untyped transport listener.
 }

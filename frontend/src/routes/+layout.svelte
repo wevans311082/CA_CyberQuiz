@@ -14,6 +14,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { initLocalizationContext } from '$lib/i18n';
 	import { browser } from '$app/environment';
 	import CommandPalette from '$lib/components/commandpalette.svelte';
+	import ToastHost from '$lib/ui/ToastHost.svelte';
 	interface Props {
 		children?: import('svelte').Snippet;
 	}
@@ -44,6 +45,7 @@ SPDX-License-Identifier: MPL-2.0
 {#if $signedIn}
 	<CommandPalette />
 {/if}
+<ToastHost />
 
 <style lang="scss">
 	:global(html:not(.dark)) {

@@ -50,12 +50,12 @@ SPDX-License-Identifier: MPL-2.0
 
 	let { text = $bindable('') }: Props = $props();
 
-	let html_el = $state();
+	let html_el = $state<HTMLDivElement>();
 
 	run(() => {
 		text = text.replace('<p>', '').replace('</p>', '');
 	});
-	let editor;
+	let editor: any;
 	onMount(() => {
 		class Editor extends BalloonEditor {
 			static builtinPlugins = [
@@ -107,10 +107,6 @@ SPDX-License-Identifier: MPL-2.0
 				]
 			},
 			// plugins: [Strikethrough],
-			config: {
-				enterMode: BalloonEditor.ENTER_DIV,
-				shiftEnterMode: BalloonEditor.ENTER_BR
-			},
 			toolbar: [
 				'heading',
 				'|',

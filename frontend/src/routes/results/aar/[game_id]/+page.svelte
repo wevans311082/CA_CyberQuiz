@@ -16,8 +16,9 @@ SPDX-License-Identifier: MPL-2.0
 	const aar = data.aar;
 
 	// Tabs
-	type Tab = 'summary' | 'scores' | 'decisions' | 'timeline' | 'badges';
-	let active_tab = $state<Tab>('summary');
+	type Tab = 'executive' | 'summary' | 'scores' | 'decisions' | 'timeline' | 'badges';
+	let active_tab = $state<Tab>('executive');
+	const executive = $derived(aar?.executive_metrics ?? {});
 
 	// Replay state
 	let replay_step = $state(-1); // -1 = show all, 0..n = step through
@@ -95,6 +96,7 @@ SPDX-License-Identifier: MPL-2.0
 					download
 					class="rounded-full border border-white/15 px-4 py-1.5 text-xs font-semibold hover:bg-white/5 transition-colors"
 				>Download CSV</a>
+				<a href="/api/v1/results/export-csv/{aar.metadata.game_id}" download class="rounded-full bg-[#B07156] px-4 py-1.5 text-xs font-bold text-slate-950 hover:bg-[#c07d62]">Export executive data</a>
 			</div>
 		</div>
 	</div>
@@ -102,7 +104,7 @@ SPDX-License-Identifier: MPL-2.0
 	<!-- Tab bar -->
 	<div class="border-b border-white/10 bg-[#0f172a]/60 px-6">
 		<div class="mx-auto max-w-5xl flex gap-1">
-			{#each ([['summary','Summary'],['scores','Scores'],['decisions','Decisions'],['timeline','Timeline'],['badges','Badges']] as const) as [tab, label]}
+			{#each ([['executive','Executive'],['summary','Summary'],['scores','Scores'],['decisions','Decisions'],['timeline','Timeline'],['badges','Badges']] as const) as [tab, label]}
 				<button
 					onclick={() => { active_tab = tab; }}
 					class="{active_tab === tab ? 'border-b-2 border-[#B07156] text-white' : 'text-slate-400 hover:text-slate-200'} px-4 py-3 text-sm font-medium transition-colors"
@@ -113,9 +115,28 @@ SPDX-License-Identifier: MPL-2.0
 
 	<!-- Tab content -->
 	<div class="mx-auto max-w-5xl px-6 py-8">
+		{#if active_tab === 'executive'}
+		<div in:fade={{ duration: 150 }}>
+			<div class="mb-6"><p class="text-xs uppercase tracking-[0.25em] text-[#B07156]">Executive debrief</p><h2 class="mt-2 text-3xl font-bold">What the team demonstrated</h2><p class="mt-2 max-w-3xl text-sm leading-6 text-slate-400">A decision-focused view of exercise outcomes, branch behaviour, team performance, and recommended follow-up actions.</p></div>
+			<div class="grid gap-4 sm:grid-cols-4">
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><p class="text-xs uppercase tracking-widest text-slate-400">Decision quality</p><p class="mt-2 text-3xl font-bold text-[#B07156]">{executive.decision_quality?.score ?? '—'}</p><p class="mt-1 text-xs text-slate-500">out of {executive.decision_quality?.scale ?? 1000}</p></div>
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><p class="text-xs uppercase tracking-widest text-slate-400">Avg decision time</p><p class="mt-2 text-3xl font-bold">{executive.time_to_decision_seconds ? `${Math.round(executive.time_to_decision_seconds)}s` : '—'}</p></div>
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><p class="text-xs uppercase tracking-widest text-slate-400">Branches taken</p><p class="mt-2 text-3xl font-bold">{executive.branches_taken ?? 0}</p></div>
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><p class="text-xs uppercase tracking-widest text-slate-400">Inject response</p><p class="mt-2 text-3xl font-bold">{executive.inject_response?.injects_pushed ?? 0}</p><p class="mt-1 text-xs text-slate-500">injects delivered</p></div>
+			</div>
+			<div class="mt-6 grid gap-4 lg:grid-cols-2">
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Exercise objectives</h3>{#if executive.objectives?.length}<div class="mt-4 flex flex-wrap gap-2">{#each executive.objectives as objective}<span class="rounded-full border border-teal-400/30 bg-teal-400/10 px-3 py-1 text-xs text-teal-300">{objective}</span>{/each}</div>{:else}<p class="mt-3 text-sm text-slate-500">No objectives were configured.</p>{/if}</div>
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Strengths</h3>{#if executive.strengths?.length}<ul class="mt-3 space-y-2 text-sm text-slate-300">{#each executive.strengths as strength}<li>✓ {strength}</li>{/each}</ul>{:else}<p class="mt-3 text-sm text-slate-500">Strengths will appear as more observations are recorded.</p>{/if}</div>
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Missed decision points</h3>{#if executive.missed_decision_points?.length}<div class="mt-3 space-y-2">{#each executive.missed_decision_points as missed}<div class="rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-sm text-amber-200">Q{missed.question_index} · {missed.title}</div>{/each}</div>{:else}<p class="mt-3 text-sm text-emerald-300">No missed decision points detected.</p>{/if}</div>
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Improvement actions</h3><div class="mt-3 space-y-2">{#each executive.improvement_actions ?? [] as action}<div class="rounded-lg border border-white/10 bg-black/10 px-3 py-2"><p class="text-sm text-slate-200">{action.action}</p><p class="mt-1 text-xs text-slate-500">Owner: {action.owner}{action.due_date ? ` · Due ${action.due_date}` : ''}</p></div>{/each}</div></div>
+			</div>
+			<div class="mt-6 rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Role performance</h3>{#if Object.keys(executive.role_performance ?? {}).length}<div class="mt-4 grid gap-3 sm:grid-cols-2">{#each Object.entries(executive.role_performance ?? {}) as [role, performance]}<div class="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2"><span class="text-sm text-slate-300">{role}</span><span class="text-xs font-bold text-[#B07156]">{performance.average_score} avg · {performance.responses} responses</span></div>{/each}</div>{:else}<p class="mt-3 text-sm text-slate-500">Role performance becomes available when participants are assigned roles.</p>{/if}</div>
+		</div>
 
 		<!-- SUMMARY TAB -->
-		{#if active_tab === 'summary'}
+		{:else if active_tab === 'summary'}
+
+		<!-- SUMMARY TAB -->
 		<div in:fade={{ duration: 150 }}>
 			<div class="grid gap-4 sm:grid-cols-3">
 				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5">

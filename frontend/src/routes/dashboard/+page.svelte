@@ -24,6 +24,7 @@ SPDX-License-Identifier: MPL-2.0
 	import Analytics from './Analytics.svelte';
 	import MediaComponent from '$lib/editor/MediaComponent.svelte';
 	import { onMount } from 'svelte';
+	import { confirmAction, notify } from '$lib/notifications.svelte';
 
 	interface Props {
 		data: PageData;
@@ -78,7 +79,7 @@ SPDX-License-Identifier: MPL-2.0
 	});
 
 	const deleteQuiz = async (to_delete: string, type: 'quiz' | 'quiztivity') => {
-		if (!confirm('Do you really want to delete this quiz?')) {
+		if (!(await confirmAction('Do you really want to delete this exercise?', { title: 'Delete exercise', confirmLabel: 'Delete exercise' }))) {
 			return;
 		}
 		let res: Response;
@@ -88,11 +89,12 @@ SPDX-License-Identifier: MPL-2.0
 			res = await fetch(`/api/v1/quiztivity/${to_delete}`, { method: 'DELETE' });
 		}
 		if (!res.ok) {
-			alert('Delete failed. Please try again.');
+			notify('Delete failed. Please try again.', 'error');
 			return;
 		}
 		all_items = all_items.filter((item) => item.id !== to_delete);
 		rebuild_search_index();
+		notify('Exercise deleted.', 'success');
 	};
 
 	let analytics_quiz_selected: undefined | QuizData = $state(undefined);

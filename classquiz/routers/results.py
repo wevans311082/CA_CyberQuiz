@@ -179,6 +179,70 @@ def _detect_anomalies(answers: list, player_scores: dict) -> list[dict]:
     return flags
 
 
+def _build_executive_metrics(questions: list, answers: list, player_scores: dict, player_roles: dict, branch_path: list, injects_log: list, file_downloads_log: list) -> dict:
+    """Create decision-focused metrics from the immutable session snapshot."""
+    decision_indexes = set()
+    time_values: list[float] = []
+    role_scores: dict[str, list[float]] = {}
+    answered_indexes = set()
+    for q_index, q_answers in enumerate(answers or []):
+        if not isinstance(q_answers, list) or not q_answers:
+            continue
+        answered_indexes.add(q_index)
+        for answer in q_answers:
+            if not isinstance(answer, dict):
+                continue
+            if answer.get("right") is not None or answer.get("score") is not None:
+                decision_indexes.add(q_index)
+            if answer.get("time_taken") is not None:
+                try:
+                    time_values.append(float(answer["time_taken"]))
+                except (TypeError, ValueError):
+                    pass
+            player = answer.get("username")
+            role = player_roles.get(player, "Unassigned")
+            role_scores.setdefault(role, []).append(float(answer.get("score", 0) or 0))
+
+    objective_names = sorted({q.get("objective") for q in questions if isinstance(q, dict) and q.get("objective")})
+    missed = [
+        {"question_index": index + 1, "title": (q.get("question") or "").replace("<", " <")[:140]}
+        for index, q in enumerate(questions)
+        if isinstance(q, dict) and q.get("objective") and index not in answered_indexes
+    ]
+    role_performance = {
+        role: {"average_score": round(sum(scores) / len(scores), 1) if scores else 0, "responses": len(scores)}
+        for role, scores in role_scores.items()
+    }
+    score_values = [float(value) for value in (player_scores or {}).values() if value is not None]
+    company_score = round(sum(score_values) / len(score_values), 1) if score_values else None
+    strengths = []
+    if company_score is not None and company_score >= 700:
+        strengths.append("Strong overall decision performance")
+    if branch_path:
+        strengths.append("The team actively navigated scenario branches")
+    if injects_log:
+        strengths.append("Facilitator injects were incorporated into the exercise")
+    actions = []
+    if missed:
+        actions.append({"action": "Review missed decision points", "owner": "Exercise owner", "due_date": None})
+    if time_values and sum(time_values) / len(time_values) > 120:
+        actions.append({"action": "Reduce decision latency through clearer escalation criteria", "owner": "Incident leadership", "due_date": None})
+    if not actions:
+        actions.append({"action": "Convert exercise observations into 30/60/90-day improvements", "owner": "Exercise owner", "due_date": None})
+    return {
+        "objectives": objective_names,
+        "decision_quality": {"score": company_score, "scale": 1000, "decisions_recorded": len(decision_indexes)},
+        "time_to_decision_seconds": round(sum(time_values) / len(time_values), 1) if time_values else None,
+        "branches_taken": len(branch_path or []),
+        "missed_decision_points": missed,
+        "role_performance": role_performance,
+        "team_performance": {"participants": len(player_scores or {}), "average_score": company_score},
+        "inject_response": {"injects_pushed": len(injects_log or []), "evidence_downloads": len(file_downloads_log or [])},
+        "strengths": strengths,
+        "improvement_actions": actions,
+    }
+
+
 @router.get("/aar/{game_id}")
 async def get_after_action_report(game_id: UUID, user: User = Depends(get_current_user)) -> dict:
     """Return a structured After-Action Report for a completed tabletop game."""
@@ -236,6 +300,15 @@ async def get_after_action_report(game_id: UUID, user: User = Depends(get_curren
         "questions": _safe_parse(res.questions),
         "answers": answers,
     }
+    aar["executive_metrics"] = _build_executive_metrics(
+        aar["questions"] or [],
+        answers,
+        player_scores,
+        aar["player_roles"] or {},
+        aar["branch_path"] or [],
+        aar["injects_log"] or [],
+        aar["file_downloads_log"] or [],
+    )
     return aar
 
 

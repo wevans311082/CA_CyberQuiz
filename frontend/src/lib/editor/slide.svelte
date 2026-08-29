@@ -32,8 +32,18 @@ SPDX-License-Identifier: MPL-2.0
 	let selected_element = $state(undefined);
 	let canvas_el: HTMLDivElement | undefined = $state();
 	let canvas: Pikaso;
-	let selected_el: null | ShapeModel<Konva.Shape | Konva.Group, Konva.ShapeConfig> = $state(null);
+	let selected_el: any = $state(null);
 	let properties_open = $state(false);
+	let history_open = $state(false);
+	let history_stack = $state<string[]>([]);
+	let history_index = $state(-1);
+	let applying_history = false;
+	let locked_elements = $state<Set<any>>(new Set());
+	let layer_items = $state<any[]>([]);
+	let layer_models = $state<any[]>([]);
+	let format_clipboard = $state<Record<string, any> | null>(null);
+	let animation_timeline_open = $state(false);
+	let animation_drag_index = $state<number | null>(null);
 
 	let elements_binds: Array<HTMLElement> | undefined = [];
 	let main_el: undefined | HTMLElement = $state();
@@ -184,6 +194,104 @@ SPDX-License-Identifier: MPL-2.0
 		if (selected_el?.type === 'label') selected_el.updateText({ fill: value });
 		else selected_el?.update({ fill: value });
 	};
+	const sync_layers = () => {
+		layer_models = [...((canvas as any)?.board?.shapes ?? [])].reverse();
+		layer_items = layer_models.map((shape: any) => shape.node).filter((node: any) => node?.attrs?.name !== 'Transformer');
+	};
+	const record_history = () => {
+		if (!canvas || applying_history) return;
+		const json = JSON.stringify(canvas.export.toJson());
+		if (history_stack[history_index] === json) return;
+		history_stack = [...history_stack.slice(0, history_index + 1), json].slice(-50);
+		history_index = history_stack.length - 1;
+	};
+	const restore_history = (index: number) => {
+		const json = history_stack[index];
+		if (!json || !canvas) return;
+		applying_history = true;
+		canvas.import.json(JSON.parse(json));
+		data.answers = json;
+		history_index = index;
+		applying_history = false;
+		sync_layers();
+	};
+	const undo = () => restore_history(Math.max(0, history_index - 1));
+	const redo = () => restore_history(Math.min(history_stack.length - 1, history_index + 1));
+	const duplicate_selected = () => {
+		const node = selected_el?.node as any;
+		if (!node) return;
+		const clone = node.clone({ x: (node.x?.() ?? 40) + 24, y: (node.y?.() ?? 40) + 24 });
+		node.getParent()?.add(clone);
+		(canvas as any)?.board?.stage?.draw();
+		record_history();
+		sync_layers();
+	};
+	const toggle_lock = () => {
+		if (!selected_el) return;
+		const next = new Set(locked_elements);
+		if (next.has(selected_el.node)) next.delete(selected_el.node); else next.add(selected_el.node);
+		locked_elements = next;
+		selected_el.update({ draggable: !next.has(selected_el.node), locked: next.has(selected_el.node) } as any);
+		record_history();
+	};
+	const group_selected = () => {
+		const selection = (canvas as any)?.board?.selection;
+		if (!selection || selection.shapes.length < 2) return;
+		selection.group(`group-${Date.now()}`);
+		record_history();
+		sync_layers();
+	};
+	const ungroup_selected = () => {
+		const group = selected_el?.group;
+		if (!group) return;
+		(canvas as any)?.board?.groups?.ungroup(group);
+		record_history();
+		sync_layers();
+	};
+	const select_layer = (shape: any) => shape?.select?.();
+	const selected_shapes = () => (canvas as any)?.board?.selection?.shapes ?? [];
+	const align_selected = (mode: 'left' | 'center' | 'top') => {
+		const shapes = selected_shapes();
+		if (shapes.length < 2) return;
+		const nodes = shapes.map((shape: any) => shape.node);
+		const left = Math.min(...nodes.map((node: any) => node.x()));
+		const top = Math.min(...nodes.map((node: any) => node.y()));
+		const right = Math.max(...nodes.map((node: any) => node.x() + node.width() * node.scaleX()));
+		const center = (left + right) / 2;
+		nodes.forEach((node: any) => node.position({ x: mode === 'left' ? left : mode === 'center' ? center - (node.width() * node.scaleX()) / 2 : node.x(), y: mode === 'top' ? top : node.y() }));
+		(canvas as any)?.board?.stage?.draw(); record_history();
+	};
+	const distribute_selected = (axis: 'x' | 'y') => {
+		const shapes = selected_shapes();
+		if (shapes.length < 3) return;
+		const nodes = shapes.map((shape: any) => shape.node).sort((a: any, b: any) => a[axis]() - b[axis]());
+		const first = nodes[0][axis](); const last = nodes[nodes.length - 1][axis](); const step = (last - first) / (nodes.length - 1);
+		nodes.forEach((node: any, index: number) => node[axis](first + step * index));
+		(canvas as any)?.board?.stage?.draw(); record_history();
+	};
+	const copy_format = () => { if (selected_el) format_clipboard = { ...(selected_el.node.attrs ?? {}) }; };
+	const paste_format = () => {
+		if (!selected_el || !format_clipboard) return;
+		const format = { ...format_clipboard };
+		delete format.x; delete format.y; delete format.width; delete format.height; delete format.rotation;
+		if (selected_el.type === 'label') selected_el.updateText(format as any); else selected_el.update(format as any);
+		record_history();
+	};
+	const timeline_items = $derived(layer_models);
+	const reorder_animation = (from: number, to: number) => {
+		if (from === to || from < 0 || to < 0 || from >= layer_models.length || to >= layer_models.length) return;
+		const next = [...layer_models];
+		const [moved] = next.splice(from, 1);
+		next.splice(to, 0, moved);
+		layer_models = next;
+		next.forEach((shape: any, index) => {
+			if (shape.node?.attrs?.animation && shape.node.attrs.animation !== 'none') shape.update({ animationDelay: index * 180 } as any);
+		});
+		animation_drag_index = null;
+		record_history();
+	};
+	const timeline_animation = (shape: any) => shape.node?.attrs?.animation ?? 'none';
+	const timeline_label = (shape: any) => shape.type === 'label' ? String(shape.node?.children?.[1]?.attrs?.text ?? 'Text').slice(0, 26) : shape.type;
 
 	let filtered_thesvg_icons = $derived.by(() => {
 		if (!thesvg_search.trim()) return thesvg_icons.slice(0, 40);
@@ -263,6 +371,8 @@ SPDX-License-Identifier: MPL-2.0
 		}
 		canvas.on('*', () => {
 			data.answers = JSON.stringify(canvas.export.toJson());
+			record_history();
+		sync_layers();
 		});
 		canvas.on('selection:change', (data) => {
 			/*			data.shapes[0].update({fill: "#ffffff"})
@@ -274,6 +384,8 @@ SPDX-License-Identifier: MPL-2.0
 				selected_el = null;
 			}
 		});
+		record_history();
+		sync_layers();
 	});
 </script>
 
@@ -360,7 +472,10 @@ SPDX-License-Identifier: MPL-2.0
 			{/if}
 		</div>
 		<div class="col-start-2 col-end-6 transition bg-transparent pt-2">
+			<div class="mb-1 flex items-center justify-center gap-1"><button type="button" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 shadow-sm disabled:opacity-40" title="Undo" onclick={undo} disabled={history_index <= 0}>↶ Undo</button><button type="button" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 shadow-sm disabled:opacity-40" title="Redo" onclick={redo} disabled={history_index < 0 || history_index >= history_stack.length - 1}>Redo ↷</button><button type="button" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 shadow-sm" onclick={() => (history_open = !history_open)}>History</button></div>
+			<div class="mb-1 flex justify-center"><button type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 shadow-sm hover:border-teal-300 hover:text-teal-700" onclick={() => (animation_timeline_open = !animation_timeline_open)}>Animation timeline · {timeline_items.filter((shape: any) => timeline_animation(shape) !== 'none').length}</button></div>
 			<EditMenu bind:selected_el />
+			{#if history_open}<div class="mx-auto mt-1 max-w-xs rounded-xl border border-slate-200 bg-white p-2 text-[10px] shadow-lg"><p class="font-bold text-slate-500">Edit history · {history_stack.length} states</p><p class="mt-1 text-slate-400">Use Undo/Redo to move through the current slide history.</p></div>{/if}
 		</div>
 
 		<div class="flex flex-col pr-2 rounded-t-lg z-40 pt-2">
@@ -392,8 +507,15 @@ SPDX-License-Identifier: MPL-2.0
 			{#if selected_element === null}
 				<ElementSelection bind:selected_element />
 			{/if}
+			<button type="button" class="mt-2 ml-auto rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 shadow-sm hover:border-teal-300 hover:text-teal-700" onclick={() => (properties_open = !properties_open)}>Layers</button>
 		</div>
 	</div>
+	{#if animation_timeline_open}
+		<div class="absolute left-3 top-14 z-50 w-80 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur"><div class="flex items-center justify-between"><div><p class="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-600">Animation timeline</p><p class="mt-1 text-xs text-slate-500">Drag to reorder the reveal sequence.</p></div><button type="button" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100" aria-label="Close animation timeline" onclick={() => (animation_timeline_open = false)}>×</button></div><div class="mt-3 space-y-1.5">{#each timeline_items as shape, index}<button type="button" draggable="true" class="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-left hover:border-teal-300 hover:bg-teal-50/40 {animation_drag_index === index ? 'opacity-40' : ''}" ondragstart={() => (animation_drag_index = index)} ondragover={(event) => event.preventDefault()} ondrop={() => animation_drag_index !== null && reorder_animation(animation_drag_index, index)} onclick={() => shape.select?.()}><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-[10px] font-bold text-slate-500">{index + 1}</span><span class="min-w-0 flex-1 truncate text-xs font-semibold text-slate-700">{timeline_label(shape)}</span><select aria-label="Animation trigger" class="rounded border border-slate-200 bg-white px-1 py-1 text-[10px]" value={shape.node?.attrs?.animationTrigger ?? 'auto'} onchange={(event) => { event.stopPropagation(); shape.update({ animationTrigger: event.currentTarget.value } as any); record_history(); }}><option value="auto">Auto</option><option value="click">Click</option></select><select aria-label="Animation type" class="w-20 rounded border border-slate-200 bg-white px-1 py-1 text-[10px]" value={timeline_animation(shape)} onchange={(event) => { event.stopPropagation(); shape.update({ animation: event.currentTarget.value } as any); record_history(); }}><option value="none">None</option><option value="fade">Fade</option><option value="rise">Rise</option><option value="zoom">Zoom</option><option value="slide-left">Slide</option></select></button>{:else}<p class="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">Add animations from the formatting toolbar to build a sequence.</p>{/each}</div></div>
+	{/if}
+	{#if properties_open && !selected_el && layer_models.length}
+		<div class="absolute right-3 top-14 z-40 w-64 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur"><p class="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-600">Layer panel</p><div class="mt-2 max-h-64 space-y-1 overflow-y-auto">{#each layer_models as shape, index}<button type="button" class="flex w-full items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-left text-xs hover:bg-slate-50" onclick={() => select_layer(shape)}><span class="truncate">{shape.type === 'label' ? 'Text' : shape.type} {layer_models.length - index}</span><span class="text-[10px] text-slate-400">{shape.group ? 'Group' : ''}</span></button>{/each}</div></div>
+	{/if}
 	{#if selected_el}
 		<div class="absolute right-3 top-14 z-40 w-64 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl shadow-slate-900/10 backdrop-blur" class:hidden={!properties_open}>
 			<div class="flex items-start justify-between gap-3"><div><p class="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-600">Selected element</p><h3 class="mt-1 text-sm font-bold text-slate-900">{selected_el.type === 'label' ? 'Text box' : selected_el.type}</h3></div><button type="button" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100" aria-label="Close properties" onclick={() => (properties_open = false)}>×</button></div>
@@ -406,6 +528,11 @@ SPDX-License-Identifier: MPL-2.0
 				<label class="text-[11px] font-semibold text-slate-500">Opacity<input class="mt-2 w-full" type="range" min="0.1" max="1" step="0.05" value={selected_attrs?.opacity ?? 1} oninput={(e) => update_geometry('opacity', e.currentTarget.value)} /></label>
 			</div>
 			<label class="mt-3 block text-[11px] font-semibold text-slate-500">Fill / text colour<input class="mt-1 h-9 w-full rounded-lg border border-slate-200 p-1" type="color" value={selected_attrs?.fill ?? '#0f766e'} onchange={update_selected_fill} /></label>
+			<div class="mt-3 grid grid-cols-2 gap-2"><button type="button" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-teal-300" onclick={duplicate_selected}>Duplicate</button><button type="button" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-teal-300" onclick={toggle_lock}>{locked_elements.has(selected_el.node) ? 'Unlock' : 'Lock'}</button><button type="button" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-teal-300" onclick={group_selected}>Group selected</button><button type="button" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-teal-300" onclick={ungroup_selected} disabled={!selected_el.group}>Ungroup</button></div>
+			<div class="mt-3 border-t border-slate-100 pt-3"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Layout tools · multi-select with Shift</p><div class="mt-2 grid grid-cols-3 gap-1"><button type="button" class="rounded border border-slate-200 px-1 py-1 text-[10px] text-slate-600 hover:border-teal-300" onclick={() => align_selected('left')}>Align left</button><button type="button" class="rounded border border-slate-200 px-1 py-1 text-[10px] text-slate-600 hover:border-teal-300" onclick={() => align_selected('center')}>Centre</button><button type="button" class="rounded border border-slate-200 px-1 py-1 text-[10px] text-slate-600 hover:border-teal-300" onclick={() => align_selected('top')}>Align top</button><button type="button" class="rounded border border-slate-200 px-1 py-1 text-[10px] text-slate-600 hover:border-teal-300" onclick={() => distribute_selected('x')}>Space X</button><button type="button" class="rounded border border-slate-200 px-1 py-1 text-[10px] text-slate-600 hover:border-teal-300" onclick={() => distribute_selected('y')}>Space Y</button><button type="button" class="rounded border border-slate-200 px-1 py-1 text-[10px] text-slate-600 hover:border-teal-300" onclick={copy_format}>Copy style</button></div><button type="button" class="mt-1 w-full rounded border border-slate-200 px-1 py-1 text-[10px] text-slate-600 hover:border-teal-300 disabled:opacity-40" onclick={paste_format} disabled={!format_clipboard}>Paste style</button></div>
+			{#if selected_el.type === 'label'}<div class="mt-3 grid grid-cols-2 gap-2"><label class="text-[11px] font-semibold text-slate-500">Line spacing<input class="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs" type="number" min="0.5" max="3" step="0.1" value={selected_attrs?.lineHeight ?? 1.2} onchange={(e) => selected_el?.updateText({ lineHeight: Number(e.currentTarget.value) || 1.2 } as any)} /></label><label class="text-[11px] font-semibold text-slate-500">Text padding<input class="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs" type="number" min="0" max="80" value={selected_attrs?.padding ?? 0} onchange={(e) => selected_el?.updateText({ padding: Number(e.currentTarget.value) || 0 } as any)} /></label></div>{/if}
+			<div class="mt-3 grid grid-cols-2 gap-2"><label class="text-[11px] font-semibold text-slate-500">Border<input class="mt-1 h-8 w-full rounded-lg border border-slate-200 p-1" type="color" value={selected_attrs?.stroke ?? '#cbd5e1'} onchange={(e) => selected_el?.update({ stroke: e.currentTarget.value, strokeWidth: selected_attrs?.strokeWidth ?? 1 } as any)} /></label><label class="text-[11px] font-semibold text-slate-500">Border px<input class="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs" type="number" min="0" max="20" value={selected_attrs?.strokeWidth ?? 0} onchange={(e) => selected_el?.update({ strokeWidth: Number(e.currentTarget.value) || 0 } as any)} /></label></div>
+			<label class="mt-3 flex items-center gap-2 text-[11px] font-semibold text-slate-500"><input type="checkbox" checked={Boolean(selected_attrs?.shadowBlur)} onchange={(e) => selected_el?.update({ shadowBlur: e.currentTarget.checked ? 12 : 0, shadowColor: '#0f172a', shadowOpacity: 0.18 } as any)} /> Soft shadow</label>
 			<p class="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-5 text-slate-500">Drag the selected element on the canvas for quick positioning. Use these fields for precise layout.</p>
 		</div>
 		{#if !properties_open}<button type="button" class="absolute right-3 top-14 z-30 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-lg hover:border-teal-300 hover:text-teal-700" onclick={() => (properties_open = true)}>Properties</button>{/if}

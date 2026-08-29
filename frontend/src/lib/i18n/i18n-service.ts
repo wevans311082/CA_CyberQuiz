@@ -41,7 +41,6 @@ export class I18nService {
 	initialize(): void {
 		this.i18n.use(LanguageDetector).init({
 			// lng: INITIAL_LANGUAGE,
-			compatibilityJSON: 'v4',
 			fallbackLng: 'en',
 			debug: false,
 			defaultNS: 'translation',
@@ -54,7 +53,7 @@ export class I18nService {
 				order: ['querystring', 'cookie', 'localStorage', 'navigator'],
 				lookupQuerystring: 'lng',
 				lookupLocalStorage: 'language',
-				lookupSessionStorage: true
+				lookupSessionStorage: 'language'
 			}
 		});
 		this.i18n.addResourceBundle('en', 'translation', en);

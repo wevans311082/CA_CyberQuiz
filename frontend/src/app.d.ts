@@ -21,3 +21,12 @@ declare namespace App {
 interface Window {
 	plausible?: (eventName: string, options?: Record<string, unknown>) => void;
 }
+
+/** Plausible is loaded by the application shell in production. */
+declare const plausible: (eventName: string, options?: Record<string, unknown>) => void;
+
+interface Window {
+	hcaptcha?: any;
+}
+
+declare const grecaptcha: any;

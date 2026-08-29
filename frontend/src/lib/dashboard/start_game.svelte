@@ -12,6 +12,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { onMount } from 'svelte';
 	import { createTippy } from 'svelte-tippy';
 	import { getLocalization } from '$lib/i18n';
+	import { notify } from '$lib/notifications.svelte';
 
 	const { t } = getLocalization();
 	let { quiz_id = $bindable() } = $props();
@@ -64,7 +65,7 @@ SPDX-License-Identifier: MPL-2.0
 			/*alertModal.subscribe((_) => {
 				window.location.assign('/account/login?returnTo=/dashboard');
 			});*/
-			alert('Starting game failed');
+			notify('Starting the game failed. Please sign in again or try again.', 'error');
 			window.location.assign('/account/login?returnTo=/dashboard');
 		} else {
 			const data = await res.json();
@@ -96,8 +97,10 @@ SPDX-License-Identifier: MPL-2.0
 	class="fixed top-0 left-0 flex justify-center items-center w-screen h-screen bg-black/70 z-50"
 	transition:fade|global={{ duration: 100 }}
 	onclick={on_parent_click}
+	role="presentation"
+	onkeydown={(event) => event.key === 'Escape' && (quiz_id = null)}
 >
-	<div class="relative w-full max-w-2xl mx-4 rounded-[2rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_120px_rgba(15,23,42,0.7)] p-8 flex flex-col gap-6 text-white">
+	<div class="relative w-full max-w-2xl mx-4 rounded-[2rem] border border-slate-200 bg-white p-8 flex flex-col gap-6 text-slate-900 shadow-2xl">
 
 		<!-- Header -->
 		<div class="text-center">

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MPL-2.0
 	import Spinner from '$lib/Spinner.svelte';
 	import { onMount } from 'svelte';
 	import BrownButton from '$lib/components/buttons/brown.svelte';
+	import { confirmAction, notify } from '$lib/notifications.svelte';
 
 	const { t } = getLocalization();
 
@@ -60,10 +61,10 @@ SPDX-License-Identifier: MPL-2.0
 			})
 		});
 		if (res.status === 200) {
-			alert('Password changed');
+			notify('Password changed successfully.', 'success');
 			window.location.assign('/account/login');
 		} else {
-			alert('Password change failed');
+			notify('Password change failed. Check your current password and try again.', 'error');
 		}
 	};
 
@@ -104,7 +105,7 @@ SPDX-License-Identifier: MPL-2.0
 	};
 
 	const delete_api_key = async (key: string) => {
-		if (confirm('Do you really want to delete this API-Key?')) {
+		if (await confirmAction('Do you really want to delete this API key?', { title: 'Delete API key', confirmLabel: 'Delete key' })) {
 			await fetch(`/api/v1/users/api_keys?api_key=${key}`, { method: 'DELETE' });
 			api_keys = get_api_keys();
 		}
