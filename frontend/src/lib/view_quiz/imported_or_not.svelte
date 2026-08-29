@@ -5,18 +5,12 @@ SPDX-License-Identifier: MPL-2.0
 -->
 
 <script lang="ts">
-	import { createTippy } from 'svelte-tippy';
 
 	interface Props {
 		imported: boolean | undefined;
 	}
 
 	let { imported }: Props = $props();
-	const tippy = createTippy({
-		arrow: true,
-		animation: 'perspective-subtle',
-		placement: 'right'
-	});
 </script>
 
 {#if imported === true}
@@ -25,7 +19,7 @@ SPDX-License-Identifier: MPL-2.0
 		fill="none"
 		stroke="currentColor"
 		viewBox="0 0 24 24"
-		use:tippy={{ content: 'This quiz is imported from KAHOOT!' }}
+		aria-label="This quiz is imported from KAHOOT!"
 		xmlns="http://www.w3.org/2000/svg"
 	>
 		<path
@@ -41,7 +35,7 @@ SPDX-License-Identifier: MPL-2.0
 		fill="none"
 		stroke="currentColor"
 		viewBox="0 0 24 24"
-		use:tippy={{ content: 'This quiz was made by the creator themself!' }}
+		aria-label="This quiz was made by the creator themself!"
 		xmlns="http://www.w3.org/2000/svg"
 	>
 		<path
@@ -57,7 +51,7 @@ SPDX-License-Identifier: MPL-2.0
 		fill="none"
 		stroke="currentColor"
 		viewBox="0 0 24 24"
-		use:tippy={{ content: 'This quiz could be imported, it could be OC.' }}
+		aria-label="This quiz could be imported, it could be original content."
 		xmlns="http://www.w3.org/2000/svg"
 	>
 		<path

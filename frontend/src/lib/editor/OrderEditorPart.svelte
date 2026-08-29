@@ -21,7 +21,7 @@ SPDX-License-Identifier: MPL-2.0
 		data: EditorData;
 	}
 
-	let { selected_question, data = $bindable() }: Props = $props();
+	let { selected_question = $bindable(), data = $bindable() }: Props = $props();
 
 	let parent_el: HTMLDivElement = $state();
 

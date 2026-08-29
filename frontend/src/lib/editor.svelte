@@ -32,9 +32,10 @@ SPDX-License-Identifier: MPL-2.0
 	interface Props {
 		data: EditorData;
 		quiz_id: string | null;
+		submit_button_text?: string;
 	}
 
-	let { data = $bindable(), quiz_id }: Props = $props();
+	let { data = $bindable(), quiz_id = $bindable(), submit_button_text = 'Save' }: Props = $props();
 	let selected_question = $state(-1);
 	let scenarioIssues = $derived<ScenarioIssue[]>(validateScenario(data));
 	let scenarioErrors = $derived(scenarioIssues.filter((issue) => issue.level === 'error'));

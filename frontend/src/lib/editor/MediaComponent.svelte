@@ -67,16 +67,17 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 {#await media}
-	<img src={thumbhash_data} class={`${css_classes} ${added_thumbhash_classes}`} />
+	<img src={thumbhash_data} alt="Loading media preview" class={`${css_classes} ${added_thumbhash_classes}`} />
 {:then data}
 	{#if type === 'img'}
+		<button type="button" class="block" aria-label="Open image fullscreen" onclick={() => open_fullscreen()} onkeydown={(event) => event.key === 'Enter' && open_fullscreen()}>
 		<img
 			in:fade|global={{ duration: 300 }}
 			src={img_data.data}
 			alt={img_data.alt_text ?? 'Not available'}
 			class={css_classes}
-			onclick={() => open_fullscreen()}
 		/>
+		</button>
 	{:else if type === 'video'}
 		<video
 			class={css_classes}

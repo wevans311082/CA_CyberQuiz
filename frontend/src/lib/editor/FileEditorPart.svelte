@@ -148,7 +148,10 @@ SPDX-License-Identifier: MPL-2.0
 		}
 		const attachments = [...(q.file_attachments ?? [])];
 		attachments[index] = {
-			...(attachments[index] ?? {}),
+			filename: attachments[index]?.filename ?? '',
+			mime_type: attachments[index]?.mime_type ?? '',
+			url: attachments[index]?.url ?? '',
+			id: attachments[index]?.id ?? '',
 			...patch
 		};
 		commit_selected_question({

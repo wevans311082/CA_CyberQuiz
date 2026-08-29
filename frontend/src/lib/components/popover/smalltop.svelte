@@ -18,6 +18,8 @@ SPDX-License-Identifier: MPL-2.0
 	}
 
 	let { open = $bindable(false), type, data = undefined }: Props = $props();
+	const game_data = $derived(data && typeof data === 'object' ? data : undefined);
+	const generic_data = $derived(typeof data === 'string' ? data : '');
 </script>
 
 {#if open}
@@ -34,10 +36,10 @@ SPDX-License-Identifier: MPL-2.0
 					{$t('components.popover.copied_to_clipboard')}
 				{:else if type === PopoverTypes.GameInLobby}A game is currently in the lobby. Click <a
 						class="underline"
-						href="/remote?game_pin={data.game_pin}&game_id={data.game_id}&host_token={data.host_token}">here</a
+						 href="/remote?game_pin={game_data?.game_pin}&game_id={game_data?.game_id}&host_token={game_data?.host_token}">here</a
 					> to join as a remote.
 				{:else if type === PopoverTypes.Generic}
-					{@html data}
+					{@html generic_data}
 				{:else}
 					<p>Error!!!</p>
 				{/if}

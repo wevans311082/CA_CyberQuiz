@@ -162,7 +162,7 @@ SPDX-License-Identifier: MPL-2.0
 	});
 	let circular_progress = $derived.by(() => {
 		try {
-			return 1 - ((100 / question.time) * parseInt(timer_res)) / 100;
+			return 1 - ((100 / Number(question.time)) * parseInt(timer_res)) / 100;
 		} catch {
 			return 0;
 		}
@@ -325,7 +325,7 @@ SPDX-License-Identifier: MPL-2.0
 				</div>
 				<div class="flex justify-center">
 					<div class="w-1/2">
-						<BrownButton onclick={() => selectAnswer(slider_value[0])}
+						<BrownButton onclick={() => selectAnswer(String(slider_value[0]))}
 							>{$t('words.submit')}
 						</BrownButton>
 					</div>

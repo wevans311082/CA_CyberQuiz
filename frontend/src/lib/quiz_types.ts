@@ -181,6 +181,10 @@ export interface Answer {
 	answer: string;
 	color?: string;
 	next_question_id?: string;
+	username?: string;
+	tike_taken?: number;
+	time_taken?: number;
+	score?: number;
 }
 
 export interface VotingAnswer {

@@ -17,7 +17,7 @@ SPDX-License-Identifier: MPL-2.0
 		data: EditorData;
 	}
 
-	let { selected_question, data = $bindable() }: Props = $props();
+	let { selected_question = $bindable(), data = $bindable() }: Props = $props();
 
 	const { t } = getLocalization();
 
@@ -58,6 +58,7 @@ SPDX-License-Identifier: MPL-2.0
 				))}
 			>
 				<button
+					aria-label="Remove answer"
 					class="rounded-full absolute -top-2 -right-2 opacity-70 hover:opacity-100 transition"
 					type="button"
 					onclick={() => {

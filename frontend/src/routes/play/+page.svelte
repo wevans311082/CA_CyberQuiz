@@ -876,7 +876,7 @@ SPDX-License-Identifier: MPL-2.0
 		<SituationRoom
 			bind:open={situation_room_open}
 			{situation_status}
-			{injects_log}
+			injects_log={injects_log as Array<{ inject: Inject; triggered_by: string; timestamp: string }>}
 			{situation_log}
 			{event_log}
 			{socket}

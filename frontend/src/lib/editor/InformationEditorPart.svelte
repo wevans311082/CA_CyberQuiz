@@ -36,7 +36,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <div class="w-full max-w-3xl space-y-3">
 	<div>
-		<label class="block text-sm font-medium mb-1">Information Body</label>
+		<p class="block text-sm font-medium mb-1">Information Body</p>
 		<p class="text-xs text-gray-500 mb-2">Use this for facilitator context, briefings, or instructions shown to all viewers.</p>
 		<HoverRichTextEditor
 			bind:text={data.questions[selected_question].information_body}

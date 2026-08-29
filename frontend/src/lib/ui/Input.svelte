@@ -71,7 +71,7 @@ SPDX-License-Identifier: MPL-2.0
 		{required}
 		{maxlength}
 		aria-label={ariaLabel}
-		autocomplete={autocomplete}
+			autocomplete={autocomplete as any}
 		class={inputClass}
 		{oninput}
 		{onchange}
@@ -87,7 +87,7 @@ SPDX-License-Identifier: MPL-2.0
 		{required}
 		{maxlength}
 		aria-label={ariaLabel}
-		autocomplete={autocomplete}
+			autocomplete={autocomplete as any}
 		class={inputClass}
 		{oninput}
 		{onchange}
@@ -103,7 +103,7 @@ SPDX-License-Identifier: MPL-2.0
 		{required}
 		{maxlength}
 		aria-label={ariaLabel}
-		autocomplete={autocomplete}
+			autocomplete={autocomplete as any}
 		class={inputClass}
 		{oninput}
 		{onchange}
@@ -119,7 +119,7 @@ SPDX-License-Identifier: MPL-2.0
 		{required}
 		{maxlength}
 		aria-label={ariaLabel}
-		autocomplete={autocomplete}
+			autocomplete={autocomplete as any}
 		class={inputClass}
 		{oninput}
 		{onchange}

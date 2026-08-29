@@ -21,16 +21,11 @@ SPDX-License-Identifier: MPL-2.0
 		open?: boolean;
 		id: any;
 	}
+	interface Share { id: string; name?: string; expire_in?: number; quiztivity: { id: string }; user: { id: string } }
 
 	let { open = $bindable(false), id }: Props = $props();
 	let popover_open = $state(false);
-	const load_shares = async (): Promise<{
-		id: string;
-		name?: string;
-		expire_in?: number;
-		quiztivity: { id: string };
-		user: { id: string };
-	}> => {
+	const load_shares = async (): Promise<Share[]> => {
 		const res = await fetch(`/api/v1/quiztivity/${id}/shares`);
 		return await res.json();
 	};
@@ -79,7 +74,7 @@ SPDX-License-Identifier: MPL-2.0
 		document.body.addEventListener('keydown', close_start_game_if_esc_is_pressed);
 	});
 	let never_expires_checked = $state(true);
-	let selected_date = $state(undefined);
+	let selected_date = $state<string | undefined>(undefined);
 	const create_share = async (e: Event) => {
 		e.preventDefault();
 		if (!selected_date && !never_expires_checked) {
@@ -94,14 +89,14 @@ SPDX-License-Identifier: MPL-2.0
 			body: JSON.stringify({
 				name: undefined,
 				quiztivity: id,
-				expire_in: never_expires_checked
-					? undefined
-					: Math.floor(Math.abs(new Date() - new Date(selected_date)) / 1000 / 60)
+					expire_in: never_expires_checked
+						? undefined
+					: Math.floor(Math.abs(Date.now() - new Date(selected_date!).getTime()) / 1000 / 60)
 			})
 		});
 		loaded_shares = load_shares();
 	};
-	let loaded_shares = $state(load_shares());
+	let loaded_shares = $state<Promise<Share[]>>(load_shares());
 
 	const delete_share = async (id: string) => {
 		if (!(await confirmAction('Do you really want to delete this share?', { title: 'Delete share', confirmLabel: 'Delete share' }))) {
@@ -130,6 +125,7 @@ SPDX-License-Identifier: MPL-2.0
 <SmallPopover bind:open={popover_open} type={PopoverTypes.Copy} />
 <div
 	class="fixed w-full h-full top-0 flex bg-black/50 z-50"
+	role="presentation"
 	onclick={on_parent_click}
 	transition:fade={{ duration: 100 }}
 >

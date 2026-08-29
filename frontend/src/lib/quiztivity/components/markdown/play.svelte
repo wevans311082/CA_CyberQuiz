@@ -11,13 +11,13 @@ SPDX-License-Identifier: MPL-2.0
 	import { browser } from '$app/environment';
 
 	interface Props {
-		data: Markdown | undefined;
+		data: any;
 	}
 
 	let { data }: Props = $props();
 
 	let rendered_html = $derived(
-		browser ? DOMPurify.sanitize(marked.parse(data.markdown ?? '')) : ''
+		browser ? DOMPurify.sanitize(marked.parse(data.markdown ?? '') as string) : ''
 	);
 </script>
 

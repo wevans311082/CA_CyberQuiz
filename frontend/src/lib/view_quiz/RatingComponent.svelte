@@ -7,7 +7,6 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	import type { QuizData } from '$lib/quiz_types';
 	import Hoverable from '$lib/view_quiz/Hoverable.svelte';
-	import { createTippy } from 'svelte-tippy';
 	import { notify } from '$lib/notifications.svelte';
 
 	interface Props {
@@ -19,11 +18,6 @@ SPDX-License-Identifier: MPL-2.0
 	let FeedBackButtonsHovered = $state({
 		dislike: false,
 		like: false
-	});
-	const tippy = createTippy({
-		arrow: true,
-		animation: 'perspective-subtle',
-		placement: 'top'
 	});
 
 	const complete_action = async (positive: boolean) => {
@@ -54,7 +48,7 @@ SPDX-License-Identifier: MPL-2.0
 		<Hoverable bind:hovering={FeedBackButtonsHovered.like}>
 			<button
 				class="bg-green-500 rounded-full h-10 w-10 transition"
-				use:tippy={{ content: 'Like this quiz!' }}
+				aria-label="Like this quiz"
 				class:opacity-40={FeedBackButtonsHovered.dislike}
 				onclick={() => complete_action(true)}
 			>
@@ -78,7 +72,7 @@ SPDX-License-Identifier: MPL-2.0
 		<Hoverable bind:hovering={FeedBackButtonsHovered.dislike}>
 			<button
 				class="rounded-full bg-red-500 h-10 w-10 transition"
-				use:tippy={{ content: 'Dislike this quiz!' }}
+				aria-label="Dislike this quiz"
 				class:opacity-40={FeedBackButtonsHovered.like}
 				onclick={() => complete_action(false)}
 			>
@@ -108,7 +102,7 @@ SPDX-License-Identifier: MPL-2.0
 			<!-- heroicons/legacy-outline/Play -->
 			<svg
 				class="w-8 h-8"
-				use:tippy={{ content: 'How often the quiz was started' }}
+				aria-label="How often the quiz was started"
 				aria-hidden="true"
 				fill="none"
 				stroke="currentColor"
@@ -127,7 +121,7 @@ SPDX-License-Identifier: MPL-2.0
 					stroke-linejoin="round"
 				/>
 			</svg>
-			<p class="mx-auto" use:tippy={{ content: 'How often the quiz was started' }}>
+			<p class="mx-auto" title="How often the quiz was started">
 				{quiz.plays}
 			</p>
 		</div>
@@ -135,7 +129,7 @@ SPDX-License-Identifier: MPL-2.0
 			<!-- heroicons/legacy-outline/Eye -->
 			<svg
 				class="w-8 h-8 mx-auto"
-				use:tippy={{ content: 'Quiz views' }}
+				aria-label="Quiz views"
 				aria-hidden="true"
 				fill="none"
 				stroke="currentColor"
@@ -154,7 +148,7 @@ SPDX-License-Identifier: MPL-2.0
 					stroke-linejoin="round"
 				/>
 			</svg>
-			<p class="mx-auto" use:tippy={{ content: 'Quiz views' }}>{quiz.views}</p>
+			<p class="mx-auto" title="Quiz views">{quiz.views}</p>
 		</div>
 	</div>
 </div>

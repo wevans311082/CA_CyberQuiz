@@ -32,8 +32,8 @@ SPDX-License-Identifier: MPL-2.0
 		animation: 'perspective-subtle',
 		placement: 'right'
 	});
-	let arr_of_cards = $state(Array(data.questions.length));
-	let propertyCard = $state();
+	let arr_of_cards = $state<HTMLElement[]>([]);
+	let propertyCard: HTMLDivElement | undefined = $state();
 	let add_new_question_popup_open = $state(false);
 
 	const empy_slide: Question = {
@@ -58,11 +58,11 @@ SPDX-License-Identifier: MPL-2.0
 		}
 		selected_question = index;
 		if (index === -1) {
-			propertyCard.scrollIntoView({
+			propertyCard?.scrollIntoView({
 				behavior: 'smooth'
 			});
 		} else {
-			arr_of_cards[index].scrollIntoView({
+			(arr_of_cards[index] as HTMLElement | undefined)?.scrollIntoView({
 				behavior: 'smooth'
 			});
 		}
@@ -100,8 +100,11 @@ SPDX-License-Identifier: MPL-2.0
 		</button>
 	</div>
 	<div class="h-full overflow-scroll border-r border-slate-200 bg-[#f8fafc] px-3 pt-16 shadow-[4px_0_18px_rgba(15,23,42,0.03)] sm:px-4">
-		<div
-			bind:this={propertyCard}
+			<div
+				bind:this={propertyCard}
+				role="button"
+				tabindex="0"
+				onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && setSelectedQuestion(-1)}
 			class="mb-6 h-40 cursor-pointer rounded-xl border border-slate-200 bg-slate-50 p-2 shadow-sm transition-all hover:border-teal-300 dark:border-slate-700 dark:bg-slate-900/80 {selected_question === -1 ? 'ring-2 ring-brand-accent border-brand-accent/50 bg-brand-accent/10' : ''}"
 			onclick={() => setSelectedQuestion(-1)}
 		>
@@ -113,7 +116,6 @@ SPDX-License-Identifier: MPL-2.0
 				class:border-2={!((reach(dataSchema, 'title') as any).isValidSync(data.title))}
 			>
 				<p
-					type="text"
 					class="whitespace-nowrap truncate text-center w-full bg-transparent rounded-sm dark:text-white"
 					class:dark:text-black={selected_question === -1}
 				>
@@ -188,6 +190,9 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 		{#each data.questions as question, index}
 			<div
+				role="button"
+				tabindex="0"
+				onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && setSelectedQuestion(index)}
 				class="relative mb-6 h-40 cursor-pointer rounded-xl border border-slate-200/70 bg-white/90 p-2 shadow-sm transition-all hover:border-brand-accent/30 dark:border-slate-700 dark:bg-slate-900/80 {index === selected_question ? 'ring-2 ring-brand-accent border-brand-accent/50 bg-brand-accent/10' : ''}"
 				onclick={() => {
 					setSelectedQuestion(index);
@@ -203,7 +208,9 @@ SPDX-License-Identifier: MPL-2.0
 						<div
 							class="h-full"
 							role="button"
+							tabindex="0"
 							aria-label="Move card up"
+							onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && (data.questions = swapArrayElements(data.questions, index, index - 1))}
 							class:opacity-50={index === 0}
 							class:pointer-events-none={index === 0}
 							onclick={() =>
@@ -232,7 +239,9 @@ SPDX-License-Identifier: MPL-2.0
 						<div
 							class="h-full"
 							role="button"
+							tabindex="0"
 							aria-label="Move card down"
+							onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && (data.questions = swapArrayElements(data.questions, index, index + 1))}
 							class:opacity-50={index + 1 === data.questions.length}
 							class:pointer-events-none={index + 1 === data.questions.length}
 							onclick={() =>
@@ -264,6 +273,7 @@ SPDX-License-Identifier: MPL-2.0
 				<button
 					class="rounded-full absolute -top-3 -right-3 opacity-70 hover:opacity-100 transition"
 					type="button"
+					aria-label="Delete question"
 					onclick={(e) => delete_question(index, e)}
 				>
 					<svg
@@ -282,6 +292,9 @@ SPDX-License-Identifier: MPL-2.0
 					</svg>
 				</button>
 				<div
+					role="button"
+					tabindex="0"
+					onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && setSelectedQuestion(index)}
 					use:tippy={{
 						content: question.question === '' ? 'No title' : question.question
 					}}
@@ -324,10 +337,7 @@ SPDX-License-Identifier: MPL-2.0
 									class="whitespace-nowrap truncate rounded-lg p-0.5 text-sm text-center border border-gray-700"
 									class:bg-green-500={answer.right}
 									class:bg-red-500={!answer.right}
-									class:bg-yellow-500={!reach(
-										ABCDQuestionSchema,
-										'answer'
-									).isValidSync(answer.answer)}
+					class:bg-yellow-500={!((reach(ABCDQuestionSchema, 'answer') as any).isValidSync(answer.answer))}
 									use:tippy={{
 										content:
 											plain_answer === ''
@@ -358,10 +368,7 @@ SPDX-License-Identifier: MPL-2.0
 									class="whitespace-nowrap truncate rounded-lg p-0.5 text-sm text-center border border-gray-700"
 									class:dark:bg-gray-500={answer.answer}
 									class:bg-gray-300={answer.answer}
-									class:bg-yellow-500={!reach(
-										ABCDQuestionSchema,
-										'answer'
-									).isValidSync(answer.answer)}
+					class:bg-yellow-500={!((reach(ABCDQuestionSchema, 'answer') as any).isValidSync(answer.answer))}
 									use:tippy={{
 										content:
 											plain_answer === ''
@@ -387,7 +394,8 @@ SPDX-License-Identifier: MPL-2.0
 			</div>
 		{/each}
 		<div class="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-2 shadow-sm">
-			<button
+				<button
+					aria-label="Delete question"
 				type="button"
 				class="flex min-h-20 items-center justify-center gap-1 rounded-xl border-r border-slate-200 text-xs font-semibold text-slate-600 hover:bg-teal-50 hover:text-teal-700"
 				onclick={() => {

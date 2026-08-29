@@ -24,7 +24,7 @@ SPDX-License-Identifier: MPL-2.0
 	let { data } = $props();
 	let { verified } = data;
 
-	let session_data = $state({});
+	let session_data = $state<{ step_1: string[]; step_2: string[]; [key: string]: unknown }>({ step_1: [], step_2: [] });
 	let step = $state(0);
 	let selected_method = $state(null);
 	let done = $state(false);

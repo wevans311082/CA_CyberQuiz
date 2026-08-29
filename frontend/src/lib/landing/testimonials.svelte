@@ -5,10 +5,6 @@ SPDX-License-Identifier: MPL-2.0
 -->
 
 <script lang="ts">
-	import { Swiper, SwiperSlide } from 'swiper/svelte';
-	import { Autoplay } from 'swiper';
-	import 'swiper/css';
-	// import 'swiper/css/autoplay';
 
 	const testimotionals = [
 		{
@@ -23,17 +19,8 @@ I like it and would use it for my house parties next time!`,
 
 <div class="lg:grid lg:grid-cols-3">
 	<div class="lg:col-start-2">
-		<Swiper
-			centeredSlides={true}
-			modules={[Autoplay]}
-			autoplay={{
-				delay: 3500,
-				disableOnInteraction: false
-			}}
-			loop={true}
-		>
-			{#each testimotionals as testi}
-				<SwiperSlide>
+		{#each testimotionals as testi}
+				<div>
 					<div class="flex justify-center">
 						<div class="max-w-3xl p-4 text-gray-800 rounded-lg text-white">
 							<div class="mb-2">
@@ -51,8 +38,7 @@ I like it and would use it for my house parties next time!`,
 							</div>
 						</div>
 					</div>
-				</SwiperSlide>
-			{/each}
-		</Swiper>
+				</div>
+		{/each}
 	</div>
 </div>

@@ -8,7 +8,7 @@ SPDX-License-Identifier: MPL-2.0
 	import type { Abcd } from '$lib/quiztivity/types';
 
 	interface Props {
-		data: Abcd | undefined;
+		data: any;
 	}
 
 	let { data }: Props = $props();

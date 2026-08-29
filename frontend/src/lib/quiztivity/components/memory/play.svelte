@@ -10,7 +10,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	const { t } = getLocalization();
 	interface Props {
-		data: Memory | undefined;
+		data: any;
 	}
 
 	let { data }: Props = $props();

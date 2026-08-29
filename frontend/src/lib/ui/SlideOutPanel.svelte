@@ -13,7 +13,7 @@
 
 {#if open}
 	<div class="fixed inset-0 z-[80] flex justify-end bg-slate-950/30 backdrop-blur-[2px]" role="presentation" onclick={(event) => event.target === event.currentTarget && onclose?.()}>
-		<aside class={`h-full w-full ${width} overflow-y-auto border-l border-slate-200 bg-white p-5 text-slate-900 shadow-2xl sm:p-7`} role="dialog" aria-modal="true" aria-label={title}>
+		<div class={`h-full w-full ${width} overflow-y-auto border-l border-slate-200 bg-white p-5 text-slate-900 shadow-2xl sm:p-7`} role="dialog" aria-modal="true" aria-label={title}>
 			<header class="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
 				<div>
 					<h2 class="text-lg font-bold tracking-tight">{title}</h2>
@@ -24,6 +24,6 @@
 				</button>
 			</header>
 			<div class="py-6">{@render children?.()}</div>
-		</aside>
+		</div>
 	</div>
 {/if}

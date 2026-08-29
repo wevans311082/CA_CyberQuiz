@@ -28,6 +28,8 @@ SPDX-License-Identifier: MPL-2.0
 		newPassword: string;
 		newPasswordConfirm: string;
 	}
+	interface ApiKey { key: string }
+	interface Session { id: string; created_at: string; last_seen: string; user_agent: string }
 
 	let changePasswordData: ChangePasswordData = $state({
 		oldPassword: '',
@@ -36,7 +38,7 @@ SPDX-License-Identifier: MPL-2.0
 	});
 
 	let locationData;
-	let this_session = $state();
+	let this_session = $state<Session | undefined>();
 
 	let passwordChangeDataValid = $derived(
 		changePasswordData.newPassword === changePasswordData.newPasswordConfirm &&
@@ -86,14 +88,14 @@ SPDX-License-Identifier: MPL-2.0
 		api_keys = get_api_keys();
 	});
 
-	const get_api_keys = async (): Promise<Array<string>> => {
+	const get_api_keys = async (): Promise<ApiKey[]> => {
 		const res = await fetch('/api/v1/users/api_keys');
 		const api_keys_temp = await res.json();
 		console.log(api_keys_temp);
 		return api_keys_temp;
 	};
 
-	let api_keys = $state();
+	let api_keys = $state<Promise<ApiKey[]> | null>(null);
 
 	const add_api_key = async () => {
 		await fetch('/api/v1/users/api_keys', { method: 'POST' });
@@ -111,7 +113,7 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
-	const getSessions = async () => {
+	const getSessions = async (): Promise<Session[]> => {
 		const res = await fetch('/api/v1/users/sessions/list');
 		if (res.status === 200) {
 			const res2 = await fetch('/api/v1/users/session');
@@ -206,7 +208,7 @@ SPDX-License-Identifier: MPL-2.0
 		<div class="app-panel flex flex-col gap-5 p-6">
 			<div class="flex items-center justify-between">
 				<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">{$t('settings_page.add_api_key')}</p>
-				<button onclick={add_api_key} class="rounded-full bg-[#B07156] px-5 py-2 text-xs font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors">
+				<button onclick={add_api_key} class="rounded-xl bg-teal-600 px-5 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-teal-700">
 					+ {$t('settings_page.add_api_key')}
 				</button>
 			</div>
@@ -216,7 +218,7 @@ SPDX-License-Identifier: MPL-2.0
 				{#if keys && keys.length > 0}
 					<div class="flex flex-col gap-2">
 						{#each keys as key}
-							<div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+						<div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
 								<span class="font-mono text-xs truncate flex-1 mr-4">{key.key}</span>
 								<button onclick={() => delete_api_key(key.key)} class="rounded-full border border-red-500/40 px-3 py-1 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors">
 									{$t('words.delete')}
@@ -232,7 +234,7 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 
 		<!-- Sessions card -->
-		<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] p-6 flex flex-col gap-5">
+		<div class="app-panel flex flex-col gap-5 p-6">
 			<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">Active Sessions</p>
 			{#await getSessions()}
 				<Spinner />
@@ -240,7 +242,7 @@ SPDX-License-Identifier: MPL-2.0
 				<div class="overflow-x-auto">
 					<table class="w-full text-sm">
 						<thead>
-							<tr class="border-b border-white/8">
+							<tr class="border-b border-slate-200">
 								<th class="py-2 px-3 text-left text-xs uppercase tracking-[0.25em] text-slate-400/70 font-normal">{$t('overview_page.created_at')}</th>
 								<th class="py-2 px-3 text-left text-xs uppercase tracking-[0.25em] text-slate-400/70 font-normal">{$t('settings_page.last_seen')}</th>
 								<th class="py-2 px-3 text-left text-xs uppercase tracking-[0.25em] text-slate-400/70 font-normal">{$t('words.browser')}</th>
@@ -250,7 +252,7 @@ SPDX-License-Identifier: MPL-2.0
 						</thead>
 						<tbody>
 							{#each sessions as session}
-								<tr class="border-b border-white/5 hover:bg-white/3 transition-colors">
+								<tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
 									<td class="py-3 px-3 text-slate-400 whitespace-nowrap">{formatDate(session.created_at)}</td>
 									<td class="py-3 px-3 text-slate-400 whitespace-nowrap">{formatDate(session.last_seen)}</td>
 									<td class="py-3 px-3 text-slate-300 whitespace-nowrap">{getFormattedUserAgent(session.user_agent)}</td>

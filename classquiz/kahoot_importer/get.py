@@ -14,12 +14,11 @@ class _Response(BaseModel):
     kahoot: Kahoot
 
 
-async def get(game_id: str) -> _Response | int:
+async def get(game_id: str) -> _Response | None:
     async with (
         ClientSession() as session,
         session.get(f"https://create.kahoot.it/rest/kahoots/{game_id}/card/?includeKahoot=true") as response,
     ):
         if response.status == 200:
             return _Response(**await response.json())
-        else:
-            return response.status
+        return None

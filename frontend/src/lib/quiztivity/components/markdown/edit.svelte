@@ -10,7 +10,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { browser } from '$app/environment';
 
 	interface Props {
-		data: Markdown | undefined;
+		data: any;
 	}
 
 	let { data = $bindable() }: Props = $props();

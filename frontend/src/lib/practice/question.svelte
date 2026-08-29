@@ -118,6 +118,7 @@ SPDX-License-Identifier: MPL-2.0
 			<div>
 				{#each question.answers as answer, i}
 					<button
+						aria-label="Move answer up"
 						disabled
 						class:bg-green-500={question.answers[i].right}
 						class:bg-red-500={!question.answers[i].right}
@@ -132,6 +133,7 @@ SPDX-License-Identifier: MPL-2.0
 			<div>
 				{#each question.answers as answer, i}
 					<button
+						aria-label="Move answer down"
 						disabled={selected_answer !== undefined || timer_res === '0'}
 						type="button"
 						class="p-2 rounded-lg flex justify-center w-full transition bg-amber-300 my-5 disabled:grayscale text-black"
@@ -213,10 +215,10 @@ SPDX-License-Identifier: MPL-2.0
 		{/if}
 	{:else if question.type === QuizQuestionType.SLIDE}
 		{#await import('$lib/play/admin/slide.svelte')}
-			<Spinner my={false} />
+			<Spinner my_20={false} />
 		{:then c}
 			<div class="max-h-[90%] max-w-[90%]">
-				<c.default bind:question />
+				<c.default question={question} />
 			</div>
 		{/await}
 	{:else if question.type === QuizQuestionType.TEXT}

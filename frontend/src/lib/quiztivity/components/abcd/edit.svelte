@@ -10,7 +10,7 @@ SPDX-License-Identifier: MPL-2.0
 	import BrownButton from '$lib/components/buttons/brown.svelte';
 
 	interface Props {
-		data: Abcd | undefined;
+		data: any;
 	}
 
 	let { data = $bindable() }: Props = $props();

@@ -13,7 +13,7 @@ SPDX-License-Identifier: MPL-2.0
 		question: Question;
 	}
 
-	let { data, question }: Props = $props();
+	let { data = $bindable(), question = $bindable() }: Props = $props();
 
 	let quiz_answers = [];
 	let quiz_colors = [];

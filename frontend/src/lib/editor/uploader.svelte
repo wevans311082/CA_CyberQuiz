@@ -60,13 +60,13 @@ SPDX-License-Identifier: MPL-2.0
 		TheSVG
 	}
 
-	const uppy = new Uppy()
+	const uppy = new (Uppy as any)()
 		.use(DropTarget, {
 			target: document.body
 		})
-		.use(Dashboard)
+		.use(Dashboard as any)
 		.use(ImageEditor, {
-			target: Dashboard,
+			target: Dashboard as any,
 			quality: 0.8
 		})
 		.use(Compressor, {
@@ -202,7 +202,7 @@ SPDX-License-Identifier: MPL-2.0
 		{:else if selected_type === AvailableUploadTypes.Image}
 			<div class="m-auto w-full max-w-4xl" transition:fade={{ duration: 100 }}>
 				<div class="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-2xl">
-					<SvelteDashboard {uppy} width="100%" {properties} />
+					<SvelteDashboard {uppy} props={properties as any} />
 				</div>
 			</div>
 		{:else if selected_type === AvailableUploadTypes.Video}

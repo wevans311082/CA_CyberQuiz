@@ -23,10 +23,11 @@ SPDX-License-Identifier: MPL-2.0
 	}
 
 	let data_available = $state(false);
-	let winners_arr = $state();
+	type Winner = [username: string, score: number];
+	let winners_arr = $state<Winner[]>([]);
 
 	const getWinnersSorted = () => {
-		let winners = {};
+		const winners: Record<string, number> = {};
 		let q_count = question_count;
 		console.log(
 			JSON.stringify(final_results),
@@ -35,8 +36,8 @@ SPDX-License-Identifier: MPL-2.0
 			JSON.stringify(final_results) === JSON.stringify({})
 		);
 
-		function sortObjectbyValue(obj) {
-			const ret = {};
+		function sortObjectbyValue(obj: Record<string, number>): Record<string, number> {
+			const ret: Record<string, number> = {};
 			Object.keys(obj)
 				.sort((a, b) => obj[b] - obj[a])
 				.forEach((s) => (ret[s] = obj[s]));
@@ -46,14 +47,7 @@ SPDX-License-Identifier: MPL-2.0
 		try {
 			for (let i = 0; i < q_count; i++) {
 				let q_res = final_results[i];
-				if (!q_res) {
-					continue;
-				} else {
-					q_res = final_results[String(i)];
-					if (!q_res) {
-						continue;
-					}
-				}
+				if (!q_res) continue;
 				console.log(q_res);
 				for (let j = 0; j < q_res.length; j++) {
 					let res = q_res[j];

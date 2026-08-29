@@ -394,6 +394,7 @@ SPDX-License-Identifier: MPL-2.0
 		<div class="flex flex-col pl-2 rounded-t-lg z-40 pt-2">
 			<button
 				class="mr-auto"
+				aria-label="Open slide settings"
 				onclick={() => {
 					settings_menu_open = !settings_menu_open;
 				}}
@@ -474,13 +475,14 @@ SPDX-License-Identifier: MPL-2.0
 		<div class="col-start-2 col-end-6 transition bg-transparent pt-2">
 			<div class="mb-1 flex items-center justify-center gap-1"><button type="button" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 shadow-sm disabled:opacity-40" title="Undo" onclick={undo} disabled={history_index <= 0}>↶ Undo</button><button type="button" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 shadow-sm disabled:opacity-40" title="Redo" onclick={redo} disabled={history_index < 0 || history_index >= history_stack.length - 1}>Redo ↷</button><button type="button" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 shadow-sm" onclick={() => (history_open = !history_open)}>History</button></div>
 			<div class="mb-1 flex justify-center"><button type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 shadow-sm hover:border-teal-300 hover:text-teal-700" onclick={() => (animation_timeline_open = !animation_timeline_open)}>Animation timeline · {timeline_items.filter((shape: any) => timeline_animation(shape) !== 'none').length}</button></div>
-			<EditMenu bind:selected_el />
+			<EditMenu {selected_el} />
 			{#if history_open}<div class="mx-auto mt-1 max-w-xs rounded-xl border border-slate-200 bg-white p-2 text-[10px] shadow-lg"><p class="font-bold text-slate-500">Edit history · {history_stack.length} states</p><p class="mt-1 text-slate-400">Use Undo/Redo to move through the current slide history.</p></div>{/if}
 		</div>
 
 		<div class="flex flex-col pr-2 rounded-t-lg z-40 pt-2">
 			<button
 				class="ml-auto"
+				aria-label="Open element picker"
 				onclick={() => {
 					selected_element = selected_element === null ? undefined : null;
 				}}
@@ -537,5 +539,5 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 		{#if !properties_open}<button type="button" class="absolute right-3 top-14 z-30 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-lg hover:border-teal-300 hover:text-teal-700" onclick={() => (properties_open = true)}>Properties</button>{/if}
 	{/if}
-	<div bind:this={canvas_el} class="w-full h-full block" ondragover={(event) => event.preventDefault()} ondrop={drop_svg}></div>
+	<div role="application" aria-label="Slide canvas" bind:this={canvas_el} class="w-full h-full block" ondragover={(event) => event.preventDefault()} ondrop={drop_svg}></div>
 </div>

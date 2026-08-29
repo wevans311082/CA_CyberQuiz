@@ -13,12 +13,12 @@ SPDX-License-Identifier: MPL-2.0
 
 	let { data }: Props = $props();
 
-	const aar = data.aar;
+	const aar: any = data.aar;
 
 	// Tabs
 	type Tab = 'executive' | 'summary' | 'scores' | 'decisions' | 'timeline' | 'badges';
 	let active_tab = $state<Tab>('executive');
-	const executive = $derived(aar?.executive_metrics ?? {});
+	const executive = $derived<any>(aar?.executive_metrics ?? {});
 
 	// Replay state
 	let replay_step = $state(-1); // -1 = show all, 0..n = step through
@@ -130,7 +130,7 @@ SPDX-License-Identifier: MPL-2.0
 				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Missed decision points</h3>{#if executive.missed_decision_points?.length}<div class="mt-3 space-y-2">{#each executive.missed_decision_points as missed}<div class="rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-sm text-amber-200">Q{missed.question_index} · {missed.title}</div>{/each}</div>{:else}<p class="mt-3 text-sm text-emerald-300">No missed decision points detected.</p>{/if}</div>
 				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Improvement actions</h3><div class="mt-3 space-y-2">{#each executive.improvement_actions ?? [] as action}<div class="rounded-lg border border-white/10 bg-black/10 px-3 py-2"><p class="text-sm text-slate-200">{action.action}</p><p class="mt-1 text-xs text-slate-500">Owner: {action.owner}{action.due_date ? ` · Due ${action.due_date}` : ''}</p></div>{/each}</div></div>
 			</div>
-			<div class="mt-6 rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Role performance</h3>{#if Object.keys(executive.role_performance ?? {}).length}<div class="mt-4 grid gap-3 sm:grid-cols-2">{#each Object.entries(executive.role_performance ?? {}) as [role, performance]}<div class="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2"><span class="text-sm text-slate-300">{role}</span><span class="text-xs font-bold text-[#B07156]">{performance.average_score} avg · {performance.responses} responses</span></div>{/each}</div>{:else}<p class="mt-3 text-sm text-slate-500">Role performance becomes available when participants are assigned roles.</p>{/if}</div>
+			<div class="mt-6 rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Role performance</h3>{#if Object.keys(executive.role_performance ?? {}).length}<div class="mt-4 grid gap-3 sm:grid-cols-2">{#each (Object.entries(executive.role_performance ?? {}) as [string, any][]) as [role, performance]}<div class="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2"><span class="text-sm text-slate-300">{role}</span><span class="text-xs font-bold text-[#B07156]">{performance.average_score} avg · {performance.responses} responses</span></div>{/each}</div>{:else}<p class="mt-3 text-sm text-slate-500">Role performance becomes available when participants are assigned roles.</p>{/if}</div>
 		</div>
 
 		<!-- SUMMARY TAB -->
@@ -327,7 +327,7 @@ SPDX-License-Identifier: MPL-2.0
 			{#if Object.keys(aar.achievements ?? {}).length === 0}
 				<p class="text-center text-slate-400 mt-12">No badges were earned this session.</p>
 			{:else}
-				{@const badge_entries = Object.entries(aar.achievements ?? {})}
+				{@const badge_entries = Object.entries(aar.achievements ?? {}) as [string, string[]][]}
 				<div class="grid gap-4 sm:grid-cols-2">
 					{#each badge_entries as [player, badges]}
 						<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5">
@@ -378,6 +378,12 @@ SPDX-License-Identifier: MPL-2.0
 	:global(.aar-shell [class*="bg-black/10"]) { background-color: #f8fafc !important; }
 	:global(.aar-shell [class*="border-white/10"]) { border-color: #e2e8f0 !important; }
 	:global(.aar-shell [class*="border-white/15"]) { border-color: #e2e8f0 !important; }
+	:global(.aar-shell [class*="text-slate-400"]) { color: #64748b !important; }
+	:global(.aar-shell [class*="text-slate-300"]) { color: #475569 !important; }
+	:global(.aar-shell [class*="text-slate-200"]) { color: #334155 !important; }
+	:global(.aar-shell [class*="text-white"]) { color: #0f172a !important; }
+	:global(.aar-shell [class*="bg-[#B07156]"]) { background-color: #0f766e !important; }
+	:global(.aar-shell [class*="text-[#B07156]"]) { color: #0f766e !important; }
 	:global(.aar-shell .text-white) { color: #0f172a !important; }
 	:global(.aar-shell .text-slate-200) { color: #334155 !important; }
 	:global(.aar-shell .text-slate-300) { color: #475569 !important; }

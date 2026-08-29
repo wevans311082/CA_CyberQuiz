@@ -26,7 +26,7 @@ SPDX-License-Identifier: MPL-2.0
 		saving: boolean;
 	}
 
-	let { data = $bindable(), saving }: Props = $props();
+	let { data = $bindable(), saving = $bindable(false) }: Props = $props();
 
 	let selected_slide = $state(null);
 	let opened_slide = $state(null);

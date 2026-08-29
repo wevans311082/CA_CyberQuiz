@@ -53,7 +53,7 @@ SPDX-License-Identifier: MPL-2.0
 			data.questions[selected_question].time = '';
 			time = '';
 		}
-		if (data.questions[selected_question].time > 3) {
+		if (Number(data.questions[selected_question].time) > 999) {
 			data.questions[selected_question].time = data.questions[selected_question].time
 				.toString()
 				.slice(0, 3);
@@ -109,7 +109,8 @@ SPDX-License-Identifier: MPL-2.0
 				></span>
 				<button
 					class="ml-auto"
-					type="button"
+					 type="button"
+					aria-label="Open advanced settings"
 					use:tippy={{ content: $t('editor.advanced_settings') }}
 					onclick={() => (advanced_options_open = true)}
 				>
@@ -148,10 +149,7 @@ SPDX-License-Identifier: MPL-2.0
 				<div class="flex justify-center pt-10 w-full">
 					<div
 						class="w-full max-w-4xl rounded-lg placeholder:italic placeholder:font-normal dark:bg-gray-500"
-						class:bg-yellow-500={!reach(
-							dataSchema,
-							'questions[].question'
-						).isValidSync(data.questions[selected_question].question)}
+						class:bg-yellow-500={!((reach(dataSchema, 'questions[].question') as any).isValidSync(data.questions[selected_question].question))}
 					>
 						<HoverRichTextEditor
 							bind:text={data.questions[selected_question].question}
@@ -167,6 +165,7 @@ SPDX-License-Identifier: MPL-2.0
 							<button
 								class="rounded-full absolute -top-2 -right-2 opacity-70 hover:opacity-100 transition"
 								type="button"
+								aria-label="Remove image"
 								onclick={() => {
 									data.questions[selected_question].image = null;
 								}}
@@ -186,7 +185,7 @@ SPDX-License-Identifier: MPL-2.0
 									/>
 								</svg>
 							</button>
-							<MediaComponent bind:src={image_url} />
+							<MediaComponent src={image_url} />
 						</div>
 					</div>
 				{:else}
@@ -195,9 +194,8 @@ SPDX-License-Identifier: MPL-2.0
 					{:then c}
 						<c.default
 							bind:modalOpen={uppyOpen}
-							bind:edit_id
-							bind:data
-							bind:selected_question
+							data={data}
+							{selected_question}
 							video_upload={true}
 						/>
 					{/await}

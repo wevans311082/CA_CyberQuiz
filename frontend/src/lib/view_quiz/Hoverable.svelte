@@ -21,6 +21,6 @@ SPDX-License-Identifier: MPL-2.0
 	}
 </script>
 
-<div onmouseenter={enter} onmouseleave={leave}>
+	<div role="group" onmouseenter={enter} onmouseleave={leave}>
 	{@render children?.({ hovering, })}
 </div>

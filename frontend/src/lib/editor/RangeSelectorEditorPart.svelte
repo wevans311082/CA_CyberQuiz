@@ -15,7 +15,7 @@ SPDX-License-Identifier: MPL-2.0
 		data: EditorData;
 	}
 
-	let { selected_question, data = $bindable() }: Props = $props();
+	let { selected_question = $bindable(), data = $bindable() }: Props = $props();
 
 	let question = data.questions[selected_question];
 	if (question.answers.max === undefined || question.answers.min_correct === undefined) {

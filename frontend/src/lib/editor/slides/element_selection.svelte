@@ -79,7 +79,7 @@ SPDX-License-Identifier: MPL-2.0
 >
 	<ul>
 		{#each element_list as el}
-			<li
+			<button type="button"
 				class="flex flex-row mt-4 w-full bg-gray-200 shadow-xl rounded-lg p-2 hover:bg-gray-300 hover:shadow-2xl hover:cursor-pointer transition dark:bg-gray-800"
 				onclick={() => {
 					selected_element = el.type;
@@ -90,7 +90,7 @@ SPDX-License-Identifier: MPL-2.0
 					<p>{el.description}</p>
 				</div>
 				<kbd class="my-auto ml-auto">{el.shortcut}</kbd>
-			</li>
+			</button>
 		{/each}
 	</ul>
 </div>

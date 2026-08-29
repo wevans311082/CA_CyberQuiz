@@ -100,7 +100,7 @@ SPDX-License-Identifier: MPL-2.0
 	};
 </script>
 
-<div class="w-full h-full {animation_class}" style={effective_theme_style} onclick={play_next_click_animation}>
+<div class="w-full h-full {animation_class}" style={effective_theme_style} role="button" tabindex="0" onclick={play_next_click_animation} onkeydown={(event) => event.key === 'Enter' && play_next_click_animation()}>
 	{#if question.type === QuizQuestionType.INFORMATION || question.type === QuizQuestionType.FILE}
 		<div class="mx-auto mt-10 max-w-5xl px-6 space-y-4">
 			<h2 class="text-4xl text-center">{@html question.question}</h2>

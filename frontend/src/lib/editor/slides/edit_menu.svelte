@@ -8,14 +8,14 @@
 	let { selected_el }: Props = $props();
 	let open = $state<string | null>(null);
 	const is_text = $derived(selected_el?.type === 'label');
-	const text_node = $derived(selected_el?.node?.children?.[1] as any);
+	const text_node = $derived((selected_el?.node as any)?.children?.[1] as any);
 	const current_font = $derived(text_node?.attrs?.fontFamily ?? 'Inter');
 	const current_size = $derived(text_node?.attrs?.fontSize ?? 20);
 	const current_animation = $derived((selected_el?.node?.attrs?.animation ?? 'none') as ElementAnimation);
 	const current_delay = $derived(selected_el?.node?.attrs?.animationDelay ?? 0);
 	const current_duration = $derived(selected_el?.node?.attrs?.animationDuration ?? 520);
 	const current_trigger = $derived(selected_el?.node?.attrs?.animationTrigger ?? 'auto');
-	const update_text = (patch: Record<string, unknown>) => selected_el?.updateText(patch as any);
+	const update_text = (patch: Record<string, unknown>) => (selected_el as any)?.updateText(patch as any);
 	const update_shape = (patch: Record<string, unknown>) => selected_el?.update(patch as any);
 	const toggle = (name: string) => (open = open === name ? null : name);
 	const button_class = 'inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-semibold text-slate-600 transition hover:bg-teal-50 hover:text-teal-700 disabled:cursor-not-allowed disabled:opacity-35';

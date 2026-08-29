@@ -26,7 +26,7 @@ SPDX-License-Identifier: MPL-2.0
 		data: EditorData;
 	}
 
-	let { selected_question, check_choice = false, data = $bindable() }: Props = $props();
+	let { selected_question = $bindable(), check_choice = false, data = $bindable() }: Props = $props();
 	if (!Array.isArray(data.questions[selected_question].answers)) {
 		data.questions[selected_question].answers = [];
 	}
