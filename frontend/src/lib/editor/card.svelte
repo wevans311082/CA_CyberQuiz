@@ -93,18 +93,19 @@ SPDX-License-Identifier: MPL-2.0
      */
 </script>
 
-<div class="w-full max-h-full pb-10 px-10 h-full">
-	<div class="rounded-lg bg-white w-full h-full border-gray-500 dark:bg-gray-700 shadow-2xl">
-		<div class="h-12 bg-gray-300 rounded-t-lg dark:bg-gray-500">
-			<div class="flex align-middle p-4 gap-3">
+
+<div class="w-full max-h-full pb-10 px-2 sm:px-6 h-full">
+	<div class="rounded-2xl bg-white w-full h-full border border-slate-200 shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+		<div class="h-14 border-b border-slate-200 rounded-t-2xl bg-white">
+			<div class="flex items-center p-4 gap-2">
 				<span
-					class="inline-block bg-gray-600 w-4 h-4 rounded-full hover:bg-red-400 transition"
+					class="inline-block bg-red-400 w-2.5 h-2.5 rounded-full"
 				></span>
 				<span
-					class="inline-block bg-gray-600 w-4 h-4 rounded-full hover:bg-yellow-400 transition"
+					class="inline-block bg-amber-300 w-2.5 h-2.5 rounded-full"
 				></span>
 				<span
-					class="inline-block bg-gray-600 w-4 h-4 rounded-full hover:bg-green-400 transition"
+					class="inline-block bg-emerald-400 w-2.5 h-2.5 rounded-full"
 				></span>
 				<button
 					class="ml-auto"
@@ -139,7 +140,7 @@ SPDX-License-Identifier: MPL-2.0
 			{#await import('./slide.svelte')}
 				<Spinner my_20={false} />
 			{:then c}
-				<c.default bind:data={data.questions[selected_question]} />
+				<c.default bind:data={data.questions[selected_question]} master_theme={data.master_theme} />
 			{/await}
 		{:else}
 			{@const type = data.questions[selected_question].type}

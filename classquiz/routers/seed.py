@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from classquiz.auth import get_admin_user
+from classquiz.auth import get_current_user
 from classquiz.db.models import User
 from classquiz.seed.context import WizardContext
 from classquiz.seed.service import build_quiz_payload, create_seed_quiz, seed_all_templates, template_catalog
@@ -59,12 +59,12 @@ class PreviewSeedResponse(BaseModel):
 
 
 @router.get("/templates")
-async def get_templates(_: User = Depends(get_admin_user)):
+async def get_templates(_: User = Depends(get_current_user)):
     return {"templates": template_catalog()}
 
 
 @router.post("/preview", response_model=PreviewSeedResponse)
-async def preview_seed(payload: CreateSeedRequest, _: User = Depends(get_admin_user)):
+async def preview_seed(payload: CreateSeedRequest, _: User = Depends(get_current_user)):
     if payload.create_all:
         raise HTTPException(status_code=400, detail="Preview does not support create_all")
     if not payload.template_id:
@@ -99,7 +99,7 @@ async def preview_seed(payload: CreateSeedRequest, _: User = Depends(get_admin_u
 
 
 @router.post("/create", response_model=CreateSeedResponse)
-async def create_seed(payload: CreateSeedRequest, user: User = Depends(get_admin_user)):
+async def create_seed(payload: CreateSeedRequest, user: User = Depends(get_current_user)):
     ctx = payload.context.to_context()
 
     if not payload.create_all and not payload.template_id:

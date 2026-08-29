@@ -131,6 +131,7 @@ def file_q(
 def abcd_q(
     id: str,
     question: str,
+    prompt: str,
     options: list[tuple[str, str | None]],
     *,
     default_next: str | None = None,
@@ -165,7 +166,10 @@ def abcd_q(
         "facilitator_notes": notes,
         "discussion_time": discussion,
         "category": "INTERACTIVE",
-        "information_body": None,
+        # Tabletop templates use a short heading followed by a decision prompt.
+        # Keep both pieces so the facilitator/player views can present the
+        # scenario context without flattening the heading into the question.
+        "information_body": prompt,
         "file_attachments": None,
         "timer": {"enabled": True, "duration_seconds": 90},
         "theme_override": None,
@@ -177,6 +181,7 @@ def abcd_q(
 def voting_q(
     id: str,
     question: str,
+    prompt: str,
     options: list[str],
     *,
     next_id: str | None = None,
@@ -201,7 +206,7 @@ def voting_q(
         "facilitator_notes": notes,
         "discussion_time": discussion,
         "category": "INTERACTIVE",
-        "information_body": None,
+        "information_body": prompt,
         "file_attachments": None,
         "timer": {"enabled": False, "duration_seconds": None},
         "theme_override": None,

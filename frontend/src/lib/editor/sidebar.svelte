@@ -93,16 +93,12 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <div class="h-screen relative">
-	<div class="h-10 flex justify-center w-full p-1 absolute z-20">
-		<div>
-			<BrownButton onclick={() => (reorder_mode = !reorder_mode)}
-				>{#if reorder_mode}{$t('editor.disable_reorder')}{:else}{$t(
-						'editor.enable_reorder'
-					)}{/if}</BrownButton
-			>
-		</div>
+	<div class="absolute right-3 top-3 z-20">
+		<button type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 shadow-sm hover:border-teal-300 hover:text-teal-700" onclick={() => (reorder_mode = !reorder_mode)}>
+			<span>{reorder_mode ? 'Done' : 'Reorder'}</span>
+		</button>
 	</div>
-	<div class="h-full overflow-scroll border-r border-slate-200 bg-white px-3 pt-16 shadow-[4px_0_18px_rgba(15,23,42,0.03)] dark:border-slate-700 dark:bg-slate-950/40 sm:px-4">
+	<div class="h-full overflow-scroll border-r border-slate-200 bg-[#f8fafc] px-3 pt-16 shadow-[4px_0_18px_rgba(15,23,42,0.03)] sm:px-4">
 		<div
 			bind:this={propertyCard}
 			class="mb-6 h-40 cursor-pointer rounded-xl border border-slate-200 bg-slate-50 p-2 shadow-sm transition-all hover:border-teal-300 dark:border-slate-700 dark:bg-slate-900/80 {selected_question === -1 ? 'ring-2 ring-brand-accent border-brand-accent/50 bg-brand-accent/10' : ''}"
@@ -389,19 +385,17 @@ SPDX-License-Identifier: MPL-2.0
 				{/if}
 			</div>
 		{/each}
-		<div
-			class="bg-white shadow-smrounded-lg h-40 p-2 hover:cursor-pointer drop-shadow-2xl border border-gray-500 dark:bg-gray-600 grid grid-cols-2"
-		>
+		<div class="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-2 shadow-sm">
 			<button
 				type="button"
-				class="h-full flex justify-center w-full flex-col border-r border-black dark:text-white"
+				class="flex min-h-20 items-center justify-center gap-1 rounded-xl border-r border-slate-200 text-xs font-semibold text-slate-600 hover:bg-teal-50 hover:text-teal-700"
 				onclick={() => {
 					add_new_question_popup_open = true;
 				}}
 			>
 				<span class="w-full text-center">{$t('words.question')}</span>
 				<svg
-					class="w-5/6 m-auto"
+					class="h-5 w-5"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -417,14 +411,14 @@ SPDX-License-Identifier: MPL-2.0
 			</button>
 			<button
 				type="button"
-				class="h-full flex justify-center w-full dark:text-white flex-col"
+				class="flex min-h-20 items-center justify-center gap-1 rounded-xl text-xs font-semibold text-slate-600 hover:bg-teal-50 hover:text-teal-700"
 				onclick={() => {
 					data.questions = [...data.questions, { ...empy_slide, id: crypto.randomUUID() }];
 				}}
 			>
 				<span class="w-full text-center">{$t('words.slide')}</span>
 				<svg
-					class="w-5/6 m-auto"
+					class="h-5 w-5"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"

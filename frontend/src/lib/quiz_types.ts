@@ -98,6 +98,9 @@ export interface QuestionTimer {
 	duration_seconds?: number;
 }
 
+export type SlideAnimation = 'none' | 'fade' | 'rise' | 'zoom' | 'slide-left' | 'reveal';
+export type ElementAnimation = 'none' | 'fade' | 'rise' | 'zoom' | 'slide-left';
+
 export interface SlideThemeOverride {
 	enabled: boolean;
 	background_color?: string;
@@ -150,6 +153,7 @@ export interface Question {
 	file_attachments?: FileAttachment[];
 	timer?: QuestionTimer;
 	theme_override?: SlideThemeOverride;
+	animation?: SlideAnimation;
 	objective?: string; // Detection | Containment | Recovery | Communication
 	sla_checkpoints?: SLACheckpoint[];
 }

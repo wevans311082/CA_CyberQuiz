@@ -9,6 +9,8 @@ SPDX-License-Identifier: MPL-2.0
 	import { fade } from 'svelte/transition';
 	// import MediaComponent from '$lib/editor/MediaComponent.svelte';
 	import BrownButton from '$lib/components/buttons/brown.svelte';
+	import Button from '$lib/ui/Button.svelte';
+	import Icon from '$lib/ui/Icon.svelte';
 	import { onMount } from 'svelte';
 	import Uploader from './uploader.svelte';
 	import { getLocalization } from '$lib/i18n';
@@ -85,14 +87,16 @@ SPDX-License-Identifier: MPL-2.0
 	};
 </script>
 
-<div>
-	<h2 class="text-center text-4xl">
+<div class="min-h-screen bg-[#f4f7fb] px-4 py-8 text-slate-900 sm:px-8">
+	<div class="mx-auto max-w-7xl">
+	<h2 class="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
 		{$t('file_dashboard.storage_usage', {
 			used: (data.storage_usage.used / (1024 * 1024)).toFixed(2),
 			total: (data.storage_usage.limit / (1024 * 1024)).toFixed(0),
 			percent: ((data.storage_usage.used / data.storage_usage.limit) * 100).toFixed(0)
 		})}
 	</h2>
+	<p class="mt-2 text-sm text-slate-500">Manage the visual evidence and media used across your exercises.</p>
 	<Uploader />
 	<div class="grid grid-cols-1 md:grid-cols-4 gap-2 px-4 mt-4">
 		<input
@@ -116,10 +120,10 @@ SPDX-License-Identifier: MPL-2.0
 			Showing {filtered_images.length} of {images.length}
 		</div>
 	</div>
-	<div class="grid grid-cols-1 lg:grid-cols-2 p-4 gap-4">
+	<div class="grid grid-cols-1 gap-4 p-4 lg:grid-cols-2">
 		{#each filtered_images as image}
 			<div
-				class="border-2 border-[#B07156] rounded-sm p-2 grid grid-cols-2 hover:opacity-100 transition-all"
+				class="grid grid-cols-[minmax(0,1fr)_220px] gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-300 hover:shadow-md"
 				class:opacity-40={usage_count(image) === 0}
 			>
 				<img
@@ -128,7 +132,7 @@ SPDX-License-Identifier: MPL-2.0
 					loading="lazy"
 					alt={image.alt_text || $t('file_dashboard.not_available')}
 				/>
-				<div class="flex flex-col my-auto ml-4">
+				<div class="my-auto ml-1 flex min-w-0 flex-col gap-2">
 					<p>
 						{$t('file_dashboard.size', {
 							size: (image.size / (1024 * 1024)).toFixed(2)
@@ -155,30 +159,30 @@ SPDX-License-Identifier: MPL-2.0
 							yes_or_no: image.imported ? $t('words.yes') : $t('words.no')
 						})}
 					</p>
-					<div class="flex flex-col gap-2">
-						<BrownButton href={`/api/v1/storage/download/${image.id}`}>
+					<div class="mt-2 flex flex-wrap gap-2">
+						<Button size="sm" variant="secondary" href={`/api/v1/storage/download/${image.id}`} target="_blank"><Icon name="eye" size={14} />
 							Download/Open
-						</BrownButton>
-						<BrownButton onclick={() => copy_asset_url(image.id)}>
+						</Button>
+						<Button size="sm" variant="ghost" onclick={() => copy_asset_url(image.id)}><Icon name="file" size={14} />
 							Copy Link
-						</BrownButton>
-						<BrownButton
+						</Button>
+						<Button size="sm" variant="ghost"
 							onclick={() => {
 								edit_popup = image;
 							}}
-							>{$t('file_dashboard.edit_details')}
-						</BrownButton>
+							><Icon name="edit" size={14} />Edit</Button>
 						{#if usage_count(image) === 0}
-							<BrownButton
+							<Button size="sm" variant="danger"
 								onclick={() => {
 									delete_image(image.id);
-								}}>{$t('file_dashboard.delete_image')}</BrownButton
+								}}><Icon name="trash" size={14} />Delete</Button
 							>
 						{/if}
 					</div>
 				</div>
 			</div>
 		{/each}
+	</div>
 	</div>
 </div>
 

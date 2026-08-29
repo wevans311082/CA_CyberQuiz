@@ -89,10 +89,15 @@ SPDX-License-Identifier: MPL-2.0
 				onchange={(e) => update_theme({ font_family: e.currentTarget.value || undefined })}
 			>
 				<option value="">Default</option>
-				<option value="serif">Serif</option>
-				<option value="monospace">Monospace</option>
 				<option value="'Inter', sans-serif">Inter</option>
+				<option value="'Segoe UI', sans-serif">Segoe UI</option>
+				<option value="'Arial', sans-serif">Arial</option>
+				<option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
 				<option value="'Georgia', serif">Georgia</option>
+				<option value="'Times New Roman', serif">Times New Roman</option>
+				<option value="'Courier New', monospace">Courier New</option>
+				<option value="serif">System Serif</option>
+				<option value="monospace">System Monospace</option>
 			</select>
 		</label>
 	</div>

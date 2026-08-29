@@ -150,11 +150,11 @@ SPDX-License-Identifier: MPL-2.0
 		transition:fade={{ duration: 100 }}
 	>
 		{#if selected_type === null}
-			<div class="m-auto w-1/3 h-auto bg-white dark:bg-gray-700 p-4 rounded-sm">
+			<div class="m-auto w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:bg-slate-900">
 				<h1 class="text-3xl text-center mb-4">{$t('uploader.select_upload_type')}</h1>
-				<div class="flex flex-row gap-4">
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
 					<div class="w-full">
-						<BrownButton
+						<BrownButton flex={true}
 							onclick={() => {
 								selected_type = AvailableUploadTypes.Image;
 							}}
@@ -162,7 +162,7 @@ SPDX-License-Identifier: MPL-2.0
 						</BrownButton>
 					</div>
 					<div class="w-full">
-						<BrownButton
+						<BrownButton flex={true}
 							disabled={!video_upload}
 							onclick={() => {
 								selected_type = AvailableUploadTypes.Video;
@@ -172,7 +172,7 @@ SPDX-License-Identifier: MPL-2.0
 					</div>
 					{#if library_enabled}
 						<div class="w-full">
-							<BrownButton
+							<BrownButton flex={true}
 								onclick={() => {
 									selected_type = AvailableUploadTypes.Library;
 								}}
@@ -181,7 +181,7 @@ SPDX-License-Identifier: MPL-2.0
 						</div>
 					{/if}
 					<div class="w-full">
-						<BrownButton
+						<BrownButton flex={true}
 							onclick={() => {
 								selected_type = AvailableUploadTypes.Pixabay;
 							}}
@@ -189,7 +189,7 @@ SPDX-License-Identifier: MPL-2.0
 						</BrownButton>
 					</div>
 					<div class="w-full">
-						<BrownButton
+						<BrownButton flex={true}
 							onclick={() => {
 								selected_type = AvailableUploadTypes.TheSVG;
 							}}
@@ -200,8 +200,8 @@ SPDX-License-Identifier: MPL-2.0
 				</div>
 			</div>
 		{:else if selected_type === AvailableUploadTypes.Image}
-			<div class="m-auto w-1/3 h-5/6" transition:fade={{ duration: 100 }}>
-				<div>
+			<div class="m-auto w-full max-w-4xl" transition:fade={{ duration: 100 }}>
+				<div class="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-2xl">
 					<SvelteDashboard {uppy} width="100%" {properties} />
 				</div>
 			</div>

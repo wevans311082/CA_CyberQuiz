@@ -12,13 +12,14 @@ SPDX-License-Identifier: MPL-2.0
 	import ElementSelection from './slides/element_selection.svelte';
 	import SettingsMenu from './slides/settings_menu.svelte';
 	import { onMount } from 'svelte';
-	import Pikaso from 'pikaso';
+	import Pikaso, { createImageFromUrl } from 'pikaso';
 	import EditMenu from './slides/edit_menu.svelte';
 	import type { Konva, ShapeModel } from 'pikaso';
 	import { browser } from '$app/environment';
 
 	interface Props {
 		data?: Question;
+		master_theme?: import('$lib/quiz_types').MasterTheme;
 	}
 
 	let { data = $bindable({
@@ -27,11 +28,12 @@ SPDX-License-Identifier: MPL-2.0
 		question: '',
 		image: undefined,
 		answers: ''
-	}) }: Props = $props();
+	}), master_theme = undefined }: Props = $props();
 	let selected_element = $state(undefined);
 	let canvas_el: HTMLDivElement | undefined = $state();
 	let canvas: Pikaso;
 	let selected_el: null | ShapeModel<Konva.Shape | Konva.Group, Konva.ShapeConfig> = $state(null);
+	let properties_open = $state(false);
 
 	let elements_binds: Array<HTMLElement> | undefined = [];
 	let main_el: undefined | HTMLElement = $state();
@@ -40,6 +42,7 @@ SPDX-License-Identifier: MPL-2.0
 	let thesvg_search = $state('security');
 	let thesvg_icons = $state<any[]>([]);
 	let thesvg_loading = $state(false);
+	let image_input = $state<HTMLInputElement>();
 
 	const set_correct_height = new ResizeObserver((e) => {
 		for (const i of e) {
@@ -126,7 +129,7 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	};
 
-	const insert_thesvg = async (icon: any) => {
+	const insert_thesvg = async (icon: any, position = { x: 60, y: 60 }) => {
 		const url = thesvg_icon_url(icon);
 		if (!url) return;
 		const res = await fetch('/api/v1/storage/import-url', {
@@ -139,15 +142,47 @@ SPDX-License-Identifier: MPL-2.0
 		}
 		const json = await res.json();
 		const src = `/api/v1/storage/download/${json.id}`;
-		if (canvas?.shapes?.image?.insert) {
-			canvas.shapes.image.insert({
-				x: 60,
-				y: 60,
-				width: 120,
-				height: 120,
-				src
-			});
+		if (!canvas?.shapes?.image?.insert) return;
+		const image = await createImageFromUrl(src);
+		await canvas.shapes.image.insert(image, { ...position, width: 160, height: 160 });
+	};
+
+	const drop_svg = async (event: DragEvent) => {
+		event.preventDefault();
+		const dropped_file = event.dataTransfer?.files?.[0];
+		const rect = canvas_el?.getBoundingClientRect();
+		const position = rect ? { x: Math.max(20, event.clientX - rect.left - 80), y: Math.max(20, event.clientY - rect.top - 80) } : { x: 60, y: 60 };
+		if (dropped_file?.type.startsWith('image/')) {
+			await upload_image_file(dropped_file, position);
+			return;
 		}
+		const slug = event.dataTransfer?.getData('application/x-cyberask-svg');
+		if (slug) await insert_thesvg({ slug }, position);
+	};
+
+	const upload_image_file = async (file: File, position = { x: 60, y: 60 }) => {
+		if (!canvas?.shapes?.image?.insert) return;
+		const form = new FormData();
+		form.append('file', file);
+		const response = await fetch('/api/v1/storage/', { method: 'POST', body: form });
+		if (!response.ok) throw new Error('Unable to upload image');
+		const payload = await response.json();
+		const image = await createImageFromUrl(`/api/v1/storage/download/${payload.id}`);
+		await canvas.shapes.image.insert(image, { ...position, width: 220, height: 160 });
+	};
+
+	const selected_attrs = $derived(selected_el?.node?.attrs as Record<string, any> | undefined);
+	const update_geometry = (key: string, value: string) => {
+		if (!selected_el) return;
+		const numeric = Number(value);
+		if (!Number.isFinite(numeric)) return;
+		selected_el.update({ [key]: numeric } as any);
+	};
+
+	const update_selected_fill = (event: Event) => {
+		const value = (event.currentTarget as HTMLInputElement).value;
+		if (selected_el?.type === 'label') selected_el.updateText({ fill: value });
+		else selected_el?.update({ fill: value });
 	};
 
 	let filtered_thesvg_icons = $derived.by(() => {
@@ -242,7 +277,7 @@ SPDX-License-Identifier: MPL-2.0
 	});
 </script>
 
-<div class="flex h-full relative w-full" bind:this={main_el}>
+<div class="flex h-full relative w-full" bind:this={main_el} style:background-color={master_theme?.background_color ?? '#ffffff'} style:color={master_theme?.text_color ?? '#0f172a'} style:font-family={master_theme?.font_family ?? 'Inter, sans-serif'}>
 	<div class="absolute top-0 left-0 grid grid-cols-6 w-full">
 		<div class="flex flex-col pl-2 rounded-t-lg z-40 pt-2">
 			<button
@@ -276,8 +311,10 @@ SPDX-License-Identifier: MPL-2.0
 					/>
 				</svg>
 			</button>
+			<button type="button" class="mt-2 mr-auto rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 shadow-sm hover:border-teal-300 hover:text-teal-700" onclick={() => image_input?.click()}>Add image</button>
+			<input bind:this={image_input} class="hidden" type="file" accept="image/*" onchange={async (event) => { const file = event.currentTarget.files?.[0]; if (file) await upload_image_file(file); event.currentTarget.value = ''; }} />
 			{#if settings_menu_open}
-				<SettingsMenu bind:time={data.time} bind:title={data.question} />
+				<SettingsMenu bind:time={data.time} bind:title={data.question} bind:animation={data.animation} />
 			{/if}
 			<button
 				class="mt-2 mr-auto rounded border border-gray-500 bg-white/80 px-2 py-1 text-xs dark:bg-gray-700/80"
@@ -306,6 +343,8 @@ SPDX-License-Identifier: MPL-2.0
 							{#each filtered_thesvg_icons as icon}
 								<button
 									type="button"
+									draggable="true"
+									ondragstart={(event) => event.dataTransfer?.setData('application/x-cyberask-svg', icon?.slug ?? icon?.id ?? icon?.name ?? '')}
 									class="w-full rounded border border-gray-200 px-2 py-1 text-left text-xs hover:bg-gray-100 dark:border-gray-500 dark:hover:bg-gray-600"
 									onclick={() => insert_thesvg(icon)}
 								>
@@ -355,5 +394,21 @@ SPDX-License-Identifier: MPL-2.0
 			{/if}
 		</div>
 	</div>
-	<div bind:this={canvas_el} class="w-full h-full block"></div>
+	{#if selected_el}
+		<div class="absolute right-3 top-14 z-40 w-64 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl shadow-slate-900/10 backdrop-blur" class:hidden={!properties_open}>
+			<div class="flex items-start justify-between gap-3"><div><p class="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-600">Selected element</p><h3 class="mt-1 text-sm font-bold text-slate-900">{selected_el.type === 'label' ? 'Text box' : selected_el.type}</h3></div><button type="button" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100" aria-label="Close properties" onclick={() => (properties_open = false)}>×</button></div>
+			<div class="mt-4 grid grid-cols-2 gap-2">
+				<label class="text-[11px] font-semibold text-slate-500">X<input class="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs" type="number" value={selected_attrs?.x ?? 0} onchange={(e) => update_geometry('x', e.currentTarget.value)} /></label>
+				<label class="text-[11px] font-semibold text-slate-500">Y<input class="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs" type="number" value={selected_attrs?.y ?? 0} onchange={(e) => update_geometry('y', e.currentTarget.value)} /></label>
+				<label class="text-[11px] font-semibold text-slate-500">Width<input class="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs" type="number" min="1" value={selected_attrs?.width ?? ''} onchange={(e) => update_geometry('width', e.currentTarget.value)} /></label>
+				<label class="text-[11px] font-semibold text-slate-500">Height<input class="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs" type="number" min="1" value={selected_attrs?.height ?? ''} onchange={(e) => update_geometry('height', e.currentTarget.value)} /></label>
+				<label class="text-[11px] font-semibold text-slate-500">Rotation<input class="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs" type="number" min="-360" max="360" value={selected_attrs?.rotation ?? 0} onchange={(e) => update_geometry('rotation', e.currentTarget.value)} /></label>
+				<label class="text-[11px] font-semibold text-slate-500">Opacity<input class="mt-2 w-full" type="range" min="0.1" max="1" step="0.05" value={selected_attrs?.opacity ?? 1} oninput={(e) => update_geometry('opacity', e.currentTarget.value)} /></label>
+			</div>
+			<label class="mt-3 block text-[11px] font-semibold text-slate-500">Fill / text colour<input class="mt-1 h-9 w-full rounded-lg border border-slate-200 p-1" type="color" value={selected_attrs?.fill ?? '#0f766e'} onchange={update_selected_fill} /></label>
+			<p class="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-5 text-slate-500">Drag the selected element on the canvas for quick positioning. Use these fields for precise layout.</p>
+		</div>
+		{#if !properties_open}<button type="button" class="absolute right-3 top-14 z-30 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-lg hover:border-teal-300 hover:text-teal-700" onclick={() => (properties_open = true)}>Properties</button>{/if}
+	{/if}
+	<div bind:this={canvas_el} class="w-full h-full block" ondragover={(event) => event.preventDefault()} ondrop={drop_svg}></div>
 </div>
