@@ -43,7 +43,7 @@ SPDX-License-Identifier: MPL-2.0
 	}
 </script>
 
-<nav class="fixed top-0 z-30 w-screen border-b border-slate-200/70 bg-white/78 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-950/70">
+<nav class="fixed top-0 z-30 w-screen border-b border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-950/70 lg:pl-72">
 	<div class="hidden items-center justify-between lg:flex">
 		<div class="flex items-center gap-2">
 			<a
@@ -55,6 +55,7 @@ SPDX-License-Identifier: MPL-2.0
 			<a class="btn-nav" href="/">Enter PIN</a>
 			{#if $signedIn}
 				<a class="btn-nav" href="/dashboard">Dashboard</a>
+				<a class="btn-nav" href="/scenarios">Scenarios</a>
 			{/if}
 		</div>
 		<div class="flex items-center gap-2">

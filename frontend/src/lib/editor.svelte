@@ -97,13 +97,18 @@ SPDX-License-Identifier: MPL-2.0
 	<Spinner />
 {:then _}
 	<form onsubmit={saveQuiz}>
-		<div class="grid grid-cols-6 h-screen w-screen">
-			<div>
+		<div class="flex h-screen w-screen flex-col overflow-hidden bg-[#f7f9fc] text-slate-900">
+			<div class="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5 shadow-sm">
+				<div class="flex items-center gap-4"><a href="/dashboard" class="text-sm font-semibold text-slate-500 hover:text-teal-700">← Workspace</a><span class="h-5 w-px bg-slate-200"></span><span class="max-w-xs truncate text-sm font-bold text-slate-900">{@html data.title || 'Untitled exercise'}</span><span class="rounded-full bg-teal-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-teal-700">Editor</span></div>
+				<div class="flex items-center gap-3"><span class="hidden text-xs text-slate-400 sm:inline">{schemaInvalid ? 'Needs attention' : 'All changes saved locally'}</span><button type="submit" disabled={schemaInvalid} class="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"><span>{$t('words.save')}</span><span>↗</span></button></div>
+			</div>
+			<div class="grid min-h-0 flex-1 grid-cols-6">
+			<div class="min-h-0">
 				<Sidebar bind:data bind:selected_question />
 			</div>
 			<div class="col-span-5 flex flex-col">
 				<div
-					class="h-10 w-full bg-white mb-10 flex align-middle justify-center rounded-br-lg"
+					class="hidden"
 				>
 					{#if schemaInvalid}
 						<p class="text-center w-full text-red-600 h-full mt-0.5 font-semibold">
@@ -114,34 +119,15 @@ SPDX-License-Identifier: MPL-2.0
 							{@html data.title}
 						</p>
 					{/if}
-					<button
-						class="pr-2 align-middle bg-[#B07156] pl-2 ml-auto whitespace-nowrap disabled:opacity-60 rounded-br-lg"
-						disabled={schemaInvalid}
-					>
-						<span>{$t('words.save')}</span>
-						<svg
-							class="w-6 h-6 inline-block"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-							/>
-						</svg>
-					</button>
 				</div>
-				<div class="w-full h-full">
+				<div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
 					{#if selected_question === -1}
 						<SettingsCard bind:data bind:edit_id />
 					{:else}
 						<QuizCard bind:data bind:selected_question bind:edit_id />
 					{/if}
 				</div>
+			</div>
 			</div>
 		</div>
 	</form>

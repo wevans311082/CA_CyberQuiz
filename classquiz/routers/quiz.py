@@ -66,7 +66,7 @@ class PublicQuizResponse(Quiz.get_pydantic(exclude={"questions"})):
 
 @router.get("/get/public/{quiz_id}")
 async def get_public_quiz(quiz_id: uuid.UUID):
-    quiz = await Quiz.objects.select_related("user_id").get_or_none(id=quiz_id)
+    quiz = await Quiz.objects.select_related("user_id").get_or_none(id=quiz_id, public=True)
     if quiz is None:
         return JSONResponse(status_code=404, content={"detail": "quiz not found"})
     else:
@@ -245,12 +245,24 @@ async def delete_quiz(quiz_id: str, user: User = Depends(get_admin_user)):
 
 @router.get("/export_data/{export_token}", response_class=StreamingResponse)
 async def export_quiz_answers(export_token: str, game_pin: str):
-    data = await redis.get(f"export_token:{export_token}")
-    if data is None:
+    token_data = await redis.get(f"export_token:{export_token}")
+    if token_data is None:
         raise HTTPException(status_code=404, detail="export token not found")
-    data = json.loads(data)
+    try:
+        token_payload = json.loads(token_data)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=410, detail="export token invalid")
+    if token_payload.get("game_pin") != game_pin:
+        raise HTTPException(status_code=403, detail="export token is not valid for this game")
+    if "results" not in token_payload or "game_id" not in token_payload:
+        raise HTTPException(status_code=410, detail="export token invalid")
+    data = token_payload["results"]
     data2 = await redis.get(f"game:{game_pin}")
+    if data2 is None:
+        raise HTTPException(status_code=404, detail="game not found")
     game_data = PlayGame.model_validate_json(data2)
+    if token_payload.get("game_id") != str(game_data.game_id):
+        raise HTTPException(status_code=403, detail="export token is not valid for this game")
     quiz = await Quiz.objects.get_or_none(id=game_data.quiz_id)
     if quiz is None:
         raise HTTPException(status_code=404, detail="quiz not found")

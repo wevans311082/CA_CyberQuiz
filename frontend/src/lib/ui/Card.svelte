@@ -18,9 +18,9 @@ SPDX-License-Identifier: MPL-2.0
 
 	const variantClasses: Record<Variant, string> = {
 		glass:
-			'border-slate-200/70 bg-white/85 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-[0_20px_60px_rgba(0,0,0,0.35)]',
+			'border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)] dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-[0_20px_60px_rgba(0,0,0,0.35)]',
 		elevated:
-			'border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900',
+			'border-slate-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:bg-slate-900',
 		flat: 'border-slate-200/60 bg-slate-50/80 dark:border-slate-700/60 dark:bg-slate-900/40'
 	};
 

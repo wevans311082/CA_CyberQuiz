@@ -37,7 +37,7 @@ SPDX-License-Identifier: MPL-2.0
 	<title>{pageTitle(data.results?.title ?? 'Result')}</title>
 </svelte:head>
 
-<div class="mx-auto max-w-6xl px-4 py-8">
+	<div class="mx-auto max-w-7xl px-4 py-8 lg:px-10">
 	<PageHeader
 		eyebrow="Session Report"
 		title={data.results?.title ?? 'Result'}
@@ -52,6 +52,7 @@ SPDX-License-Identifier: MPL-2.0
 			</Button>
 		{/snippet}
 	</PageHeader>
+	<div class="mt-8 grid gap-4 sm:grid-cols-3"><Button href="/results" variant="ghost" size="sm">← All reports</Button><div class="hidden sm:block"></div><div class="flex items-center justify-end text-xs font-semibold uppercase tracking-wider text-slate-400">Report ready · {new Date(data.results.timestamp).toLocaleDateString()}</div></div>
 
 	<div class="mt-8">
 		<Tabs {tabs} bind:active={selected_tab} />

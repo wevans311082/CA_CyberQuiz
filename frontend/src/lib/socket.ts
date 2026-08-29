@@ -8,7 +8,7 @@ export const socket = io();
 
 const debugSocket = socket as typeof socket & { __verboseDebugAttached?: boolean };
 
-if (typeof window !== 'undefined' && !debugSocket.__verboseDebugAttached) {
+if (typeof window !== 'undefined' && import.meta.env.DEV && !debugSocket.__verboseDebugAttached) {
 	debugSocket.__verboseDebugAttached = true;
 
 	const now = () => new Date().toISOString();

@@ -1,0 +1,23 @@
+---
+pid: 10084
+cwd: "C:\ca_code\CA_CyberQuiz"
+command: "Set-Location C:\\ca_code\\CA_CyberQuiz\\frontend; npm run build 2>&1 | Select-Object -Last 8"
+started_at: 2026-07-01T10:15:23.684Z
+running_for_ms: 86400014 
+---
+.svelte-kit/output/server/chunks/index.js                                                                 351.57 kBCircular dependency: node_modules/.pnpm/es-toolkit@1.39.5/node_modules/es-toolkit/dist/compat/predicate/isMatch.mjs -> 
+node_modules/.pnpm/es-toolkit@1.39.5/node_modules/es-toolkit/dist/compat/predicate/isMatchWith.mjs -> 
+node_modules/.pnpm/es-toolkit@1.39.5/node_modules/es-toolkit/dist/compat/predicate/isMatch.mjs
+
+✓ built in 28.70s
+
+Run npm run preview to preview your production build locally.
+
+> Using @sveltejs/adapter-node
+  ✔ done
+
+---
+exit_code: -1
+elapsed_ms: 86400014
+ended_at: 2026-07-02T10:15:40.492Z
+---

@@ -37,7 +37,7 @@ class WizardContextInput(BaseModel):
 class CreateSeedRequest(BaseModel):
     template_id: str | None = Field(
         default=None,
-        description="ransomware | data_leak | insider_threat | disaster_recovery",
+		description="cloud_identity | ransomware | data_leak | insider_threat | disaster_recovery",
     )
     context: WizardContextInput = Field(default_factory=WizardContextInput)
     create_all: bool = False

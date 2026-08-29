@@ -89,6 +89,8 @@ SPDX-License-Identifier: MPL-2.0
 			if (!res.ok) throw new Error('Could not load templates');
 			const data = await res.json();
 			templates = data.templates ?? [];
+			const requested = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('template') : null;
+			if (requested && templates.some((template) => template.id === requested)) selected_template = requested;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load templates';
 		} finally {
@@ -210,8 +212,8 @@ SPDX-License-Identifier: MPL-2.0
 			<label class="mt-6 flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200/70 p-4 dark:border-slate-700">
 				<input type="checkbox" bind:checked={create_all} class="h-4 w-4 rounded border-slate-400" />
 				<span>
-					<span class="font-medium text-slate-900 dark:text-white">Create all four exercises</span>
-					<span class="block text-xs text-slate-500">Ransomware, data leak, insider threat, and disaster recovery</span>
+					<span class="font-medium text-slate-900 dark:text-white">Create all five exercises</span>
+					<span class="block text-xs text-slate-500">Cloud identity, ransomware, data leak, insider threat, and disaster recovery</span>
 				</span>
 			</label>
 
@@ -311,7 +313,7 @@ SPDX-License-Identifier: MPL-2.0
 			<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Preview & create</h2>
 			{#if create_all}
 				<p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
-					You are about to create <strong>four</strong> customised tabletop exercises for <strong>{context.company_name}</strong>.
+					You are about to create <strong>five</strong> customised tabletop exercises for <strong>{context.company_name}</strong>.
 				</p>
 			{:else if preview}
 				<p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{preview.description}</p>

@@ -1,0 +1,165 @@
+---
+pid: 9012
+cwd: "C:\ca_code\CA_CyberQuiz"
+command: "cd C:\\ca_code\\CA_CyberQuiz\\frontend; npm run check 2>&1 | Select-Object -First 150"
+started_at: 2026-07-01T10:07:47.540Z
+running_for_ms: 85003    
+---
+
+node.exe : npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major 
+> frontend@0.0.1 check
+> svelte-check --tsconfig ./tsconfig.json
+
+version of npm.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...version of npm.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Loading svelte-check in workspace: c:\ca_code\CA_CyberQuiz\frontend
+Getting Svelte diagnostics...
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please 
+update: `npm i baseline-browser-mapping@latest -D`
+Browserslist: browsers data (caniuse-lite) is 9 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+c:\ca_code\CA_CyberQuiz\frontend\node_modules\.pnpm\@sveltejs+kit@2.47.3_@svelt_b6f88636ebf98ec59560e92aa3b664a5\node_modules\@sveltejs\kit\types\index.d.ts:8:28
+Error: Cannot find module '@opentelemetry/api' or its corresponding type declarations. 
+import type { RouteId as AppRouteId, LayoutParams as AppLayoutParams, ResolvedPathname } from '$app/types';
+import type { Span } from '@opentelemetry/api';
+/**
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\hashcash.ts:57:2
+Error: Cannot find name 'plausible'. 
+// eslint-disable-next-line no-undef
+plausible('Hashcash', { props: { ms_taken: t2 - t1 } });
+return `${challenge}:${result}`;
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\socket.ts:115:32
+Error: Argument of type '"pollError"' is not assignable to parameter of type 'ReservedOrUserEventNames<TransportReservedEvents, Record<never, never>>'. 
+
+socket.io.engine.transport.on('pollError', (error: Error) => {
+log('POLLING', 'pollError', { message: error.message });
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\facilitator\inject_presets.ts:53:3
+Error: Type '"high"' is not assignable to type '"warning" | "info" | "critical"'. 
+'**Operations:** Customer-facing portal latency has increased 400%. Monitoring shows database connection pool exhaustion on the primary cluster.',
+severity: 'high',
+hint: 'Business impact'
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\i18n\i18n-service.ts:42:35
+Error: No overload matches this call.
+  Overload 1 of 2, '(callback?: Callback): Promise<TFunction<"translation", undefined>>', gave the following error.
+    Object literal may only specify known properties, and 'compatibilityJSON' does not exist in type 'Callback'.
+  Overload 2 of 2, '(options: InitOptions<unknown>, callback?: Callback): Promise<TFunction<"translation", undefined>>', gave the following error.
+    Type 'boolean' is not assignable to type 'string'. 
+initialize(): void {
+this.i18n.use(LanguageDetector).init({
+// lng: INITIAL_LANGUAGE,
+
+c:\ca_code\CA_CyberQuiz\frontend\src\tests\phase4.test.ts:12:54
+Error: Cannot find module 'vitest' or its corresponding type declarations. 
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { MasterTheme, SlideThemeOverride } from '$lib/quiz_types';
+
+c:\ca_code\CA_CyberQuiz\frontend\src\tests\phase4.test.ts:51:9
+Error: Property 'enabled' is missing in type '{ accent_color: string; }' but required in type 'SlideThemeOverride'. 
+
+const slideOverride: SlideThemeOverride = {
+accent_color: '#00ff00', // Override only accent
+
+c:\ca_code\CA_CyberQuiz\frontend\src\tests\phase4.test.ts:60:31
+Error: Property 'font_family' does not exist on type 'SlideThemeOverride'. 
+accent_color: slideOverride.accent_color || masterTheme.accent_color,
+font_family: slideOverride.font_family || masterTheme.font_family,
+};
+
+c:\ca_code\CA_CyberQuiz\frontend\src\tests\phase4.test.ts:220:15
+Error: Property 'master_theme' does not exist on type '{ title: string; questions: any[]; }'. 
+
+expect(quiz.master_theme).toBeUndefined();
+});
+
+c:\ca_code\CA_CyberQuiz\frontend\src\tests\phase4.test.ts:230:19
+Error: Property 'timer' does not exist on type '{ type: string; answers: any[]; }'. 
+
+expect(question.timer).toBeUndefined();
+});
+
+c:\ca_code\CA_CyberQuiz\frontend\src\tests\phase4.test.ts:240:19
+Error: Property 'file_attachments' does not exist on type '{ type: string; answers: any[]; }'. 
+
+expect(question.file_attachments).toBeUndefined();
+});
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\EmojiPanel.svelte:80:5
+Warn: A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control (svelte)
+<div>
+<label class="block text-xs font-semibold text-white/80 mb-2">Select Emoji</label>
+<div class="grid grid-cols-5 gap-2">
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\EmojiPanel.svelte:98:5
+Warn: A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control (svelte)
+<div>
+<label class="block text-xs font-semibold text-white/80 mb-1">Custom Message (optional)</label>
+<input
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\EmojiPanel.svelte:111:5
+Warn: A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control (svelte)
+<div>
+<label class="block text-xs font-semibold text-white/80 mb-2">Send To</label>
+<select
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:445:18
+Error: Property 'next_question_id' does not exist on type 'TextQuizAnswer | OrderQuizAnswer | Answer | VotingAnswer'.
+  Property 'next_question_id' does not exist on type 'TextQuizAnswer'. (ts)
+for (const answer of current.answers) {
+if (!answer?.next_question_id) continue;
+const target = find_question_by_id(answer.next_question_id);
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:446:47
+Error: Property 'next_question_id' does not exist on type 'TextQuizAnswer | OrderQuizAnswer | Answer | VotingAnswer'.
+  Property 'next_question_id' does not exist on type 'TextQuizAnswer'. (ts)
+if (!answer?.next_question_id) continue;
+const target = find_question_by_id(answer.next_question_id);
+if (!target) continue;
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:599:8
+Error: Type 'number' is not assignable to type 'string'. (ts)
+step="10"
+placeholder="{qtimer_effective_duration}"
+class="w-16 rounded border border-white/30 bg-white/10 px-1 py-0.5 text-xs text-white placeholder:text-white/40 outline-hidden"
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:631:7
+Error: Type 'number' is not assignable to type 'string'. (ts)
+step="30"
+placeholder="{disc_effective_duration}"
+class="w-16 rounded border border-white/30 bg-white/10 px-1 py-0.5 text-xs text-white placeholder:text-white/40 outline-hidden"
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\editor\MediaComponent.svelte:69:2
+Warn: `<img>` element should have an alt attribute
+https://svelte.dev/e/a11y_missing_attribute (svelte)
+{#await media}
+<img src={thumbhash_data} class={`${css_classes} ${added_thumbhash_classes}`} />
+{:then data}
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\editor\MediaComponent.svelte:72:3
+Warn: Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+https://svelte.dev/e/a11y_click_events_have_key_events (svelte)
+{#if type === 'img'}
+<img
+in:fade|global={{ duration: 300 }}
+src={img_data.data}
+alt={img_data.alt_text ?? 'Not available'}
+class={css_classes}
+onclick={() => open_fullscreen()}
+/>
+{:else if type === 'video'}
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\editor\MediaComponent.svelte:72:3

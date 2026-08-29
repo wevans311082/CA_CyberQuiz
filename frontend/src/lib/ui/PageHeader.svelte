@@ -19,12 +19,12 @@ SPDX-License-Identifier: MPL-2.0
 	<div class="max-w-2xl">
 		{#if eyebrow}
 			<p
-				class="mb-2 text-xs font-semibold uppercase tracking-[0.28em] text-teal-700 dark:text-cyan-300"
+				class="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-teal-700 dark:text-cyan-300"
 			>
 				{eyebrow}
 			</p>
 		{/if}
-		<h1 class="text-3xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
+		<h1 class="text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
 			{title}
 		</h1>
 		{#if description}

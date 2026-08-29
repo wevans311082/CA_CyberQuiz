@@ -1,0 +1,9 @@
+<script lang="ts">
+	type IconName = 'home' | 'library' | 'plus' | 'chart' | 'file' | 'settings' | 'help' | 'logout' | 'menu' | 'search' | 'arrow-right' | 'close' | 'command' | 'play' | 'eye' | 'edit' | 'trash' | 'download';
+	interface Props { name: IconName; size?: number; stroke?: number; }
+	let { name, size = 18, stroke = 1.8 }: Props = $props();
+	const paths: Record<IconName, string> = {
+		home: 'M3 10.5 12 3l9 7.5M5 9v11h14V9M9 20v-6h6v6', library: 'M4 5.5A2.5 2.5 0 0 1 6.5 3H20v14H6.5A2.5 2.5 0 0 0 4 19.5v-14ZM4 19.5A2.5 2.5 0 0 0 6.5 22H20', plus: 'M12 5v14M5 12h14', chart: 'M4 19V5M4 19h16M8 16v-5M12 16V7M16 16v-8', file: 'M6 3h8l4 4v14H6V3Zm8 0v5h4M9 13h6M9 17h6', settings: 'M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm0-5v2M12 18.5v2M3.5 12h2M18.5 12h2M5.9 5.9l1.4 1.4M16.7 16.7l1.4 1.4M18.1 5.9l-1.4 1.4M7.3 16.7l-1.4 1.4', help: 'M9.5 9a2.5 2.5 0 1 1 4.3 1.8c-1.1 1.1-1.8 1.4-1.8 3M12 17h.01M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z', logout: 'M10 5H5v14h5M14 8l4 4-4 4M18 12H9', menu: 'M4 6h16M4 12h16M4 18h16', search: 'm20 20-4.5-4.5M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z', 'arrow-right': 'M5 12h14M13 6l6 6-6 6', close: 'M6 6l12 12M18 6 6 18', command: 'M8 8h8v8H8zM4 8h4M16 8h4M8 4v4M8 16v4M16 4v4M16 16v4', play: 'm8 5 11 7-11 7V5Z', eye: 'M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', edit: 'm4 16.5-.8 3.8 3.8-.8L18.5 8a2.1 2.1 0 0 0-3-3L4 16.5ZM14.5 6.5l3 3', trash: 'M5 7h14M10 11v6M14 11v6M8 7l.7-2h6.6l.7 2m-10 0 .8 13h10.4L18.8 7', download: 'M12 4v11m0 0 4-4m-4 4-4-4M5 20h14'
+	};
+</script>
+<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width={stroke} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>

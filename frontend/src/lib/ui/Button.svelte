@@ -40,11 +40,11 @@ SPDX-License-Identifier: MPL-2.0
 
 	const variantClasses: Record<Variant, string> = {
 		primary:
-			'bg-brand-accent text-slate-950 hover:bg-brand-accent-hover border border-transparent shadow-sm',
+			'bg-slate-950 text-white hover:bg-slate-800 border border-transparent shadow-[0_6px_16px_rgba(15,23,42,0.14)] dark:bg-brand-accent dark:text-slate-950 dark:hover:bg-brand-accent-hover',
 		secondary:
-			'border border-slate-300/80 bg-white/90 text-slate-700 hover:border-teal-600 hover:text-teal-700 dark:border-slate-600 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:border-cyan-400 dark:hover:text-cyan-300',
+			'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-teal-500 hover:bg-teal-50 hover:text-teal-800 dark:border-slate-600 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:border-cyan-400 dark:hover:text-cyan-300',
 		ghost:
-			'border border-slate-200/80 bg-transparent text-slate-600 hover:bg-slate-100/80 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60',
+			'border border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60',
 		danger: 'bg-red-600 text-white hover:bg-red-700 border border-transparent',
 		icon: 'bg-brand-accent text-slate-950 hover:bg-brand-accent-hover border border-transparent p-2.5'
 	};

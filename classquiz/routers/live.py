@@ -135,9 +135,19 @@ async def get_live_game_data(
 @router.get("/user_count")
 async def get_game_user_count(game_pin: str, api_key: str, as_string: bool = False, as_array: bool = False):
     user_id = await check_api_key(api_key)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="API key not found")
     redis_res = await redis.get(f"game_session:{game_pin}")
     if redis_res is None:
         game_pin = await redis.get(f"game_pin:{user_id}:{game_pin}")
+        if game_pin is None:
+            raise HTTPException(status_code=404, detail="Game not found")
+    game_raw = await redis.get(f"game:{game_pin}")
+    if game_raw is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    game = PlayGame.model_validate_json(game_raw)
+    if game.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized for this game")
     player_count = await redis.scard(f"game_session:{game_pin}:players")
     if as_string:
         player_count = str(player_count)
@@ -193,6 +203,8 @@ async def set_next_question(game_pin: str, question_number: int, api_key: str):
     game_data = PlayGame.model_validate_json(redis_res)
     if game_data.user_id != user_id:
         raise HTTPException(status_code=404, detail="Game not found or API key not found")
+    if question_number < 0 or question_number >= len(game_data.questions):
+        raise HTTPException(status_code=400, detail="Question number out of range")
     game_data.current_question = question_number
     await redis.set(f"game:{game_pin}", game_data.model_dump_json(), ex=18000)
     await sio.emit(

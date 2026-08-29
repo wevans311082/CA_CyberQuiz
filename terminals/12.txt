@@ -1,0 +1,13 @@
+---
+pid: 38516
+cwd: "C:\ca_code\CA_CyberQuiz"
+command: "Set-Location C:\\ca_code\\CA_CyberQuiz\\frontend; npm run check 2>&1 | Select-String -Pattern \"play/\\+page|controls\\.svelte|projector|inject_presets|timeline\\.ts\""
+started_at: 2026-07-01T10:13:02.693Z
+running_for_ms: 86400001 
+---
+
+---
+exit_code: -1
+elapsed_ms: 86400001
+ended_at: 2026-07-02T10:13:19.473Z
+---

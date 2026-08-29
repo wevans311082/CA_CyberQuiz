@@ -23,6 +23,7 @@ const adminOnlyPrefixes = [
 	'/remote',
 	'/results',
 	'/search',
+	'/scenarios',
 	'/user',
 	'/view'
 ];

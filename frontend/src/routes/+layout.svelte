@@ -7,6 +7,7 @@ SPDX-License-Identifier: MPL-2.0
 <script lang="ts">
 	import '../app.css';
 	import Navbar from '$lib/navbar.svelte';
+	import PortalShell from '$lib/PortalShell.svelte';
 	import { pathname, signedIn } from '$lib/stores';
 	import { navbarVisible } from '$lib/stores.svelte';
 
@@ -21,11 +22,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	if (browser) {
 		pathname.set(window.location.pathname);
-		if (
-			localStorage.theme === 'dark' ||
-			(!('theme' in localStorage) &&
-				window.matchMedia('(prefers-color-scheme: dark)').matches)
-		) {
+		if (localStorage.theme === 'dark') {
 			document.documentElement.classList.add('dark');
 		} else {
 			document.documentElement.classList.remove('dark');
@@ -38,13 +35,12 @@ SPDX-License-Identifier: MPL-2.0
 	initLocalizationContext(start_language);
 </script>
 
-{#if navbarVisible.visible}
-	<Navbar />
-	<div class="pt-16">
-		<div class="z-40"></div>
-	</div>
+{#if navbarVisible.visible && $signedIn}
+	<PortalShell>{#snippet children()}{@render children?.()}{/snippet}</PortalShell>
+{:else}
+	{#if navbarVisible.visible}<Navbar /><div class="pt-16"><div class="z-40"></div></div>{/if}
+	{@render children?.()}
 {/if}
-{@render children?.()}
 {#if $signedIn}
 	<CommandPalette />
 {/if}

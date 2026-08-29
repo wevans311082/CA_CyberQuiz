@@ -1,0 +1,53 @@
+---
+pid: 35428
+cwd: "C:\ca_code\CA_CyberQuiz"
+command: "Set-Location C:\\ca_code\\CA_CyberQuiz\\frontend; npm run check 2>&1 | Select-Object -Last 40"
+started_at: 2026-07-01T10:10:41.540Z
+running_for_ms: 86400005 
+---
+.answers.min} and {question.answers.max} can be selected.
+
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\view\[quiz_id]\+page.svelte:312:18
+Error: Property 'min' does not exist on type 'Answer[]'. (ts)
+and {question.answers.max_correct} are correct, where numbers between {question
+.answers.min} and {question.answers.max} can be selected.
+</p>
+
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\view\[quiz_id]\+page.svelte:312:45
+Error: Property 'max' does not exist on type 'Answer[]'. (ts)
+and {question.answers.max_correct} are correct, where numbers between {question
+.answers.min} and {question.answers.max} can be selected.
+</p>
+
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\view\[quiz_id]\+page.svelte:314:25
+Error: Property 'type' does not exist on type 'Question'. (ts)
+</p>
+{:else if question.type === QuizQuestionType.ORDER}
+<ul class="flex flex-col gap-4 m-4 p-6">
+
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\view\[quiz_id]\+page.svelte:324:25
+Error: Property 'type' does not exist on type 'Question'. (ts)
+</ul>
+{:else if question.type === QuizQuestionType.VOTING || question.type === QuizQuestionType.TEXT}
+<div class="grid grid-cols-2 gap-4 m-4 p-6">
+
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\view\[quiz_id]\+page.svelte:324:70
+Error: Property 'type' does not exist on type 'Question'. (ts)
+</ul>
+{:else if question.type === QuizQuestionType.VOTING || question.type === QuizQuestionType.TEXT}
+<div class="grid grid-cols-2 gap-4 m-4 p-6">
+
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\view\[quiz_id]\+page.svelte:335:25
+Error: Property 'type' does not exist on type 'Question'. (ts)
+</div>
+{:else if question.type === QuizQuestionType.SLIDE}
+{#await import('$lib/play/admin/slide.svelte')}
+
+====================================
+svelte-check found 313 errors and 72 warnings in 74 files
+
+---
+exit_code: -1
+elapsed_ms: 86400005
+ended_at: 2026-07-02T10:10:58.365Z
+---

@@ -12,23 +12,29 @@ SPDX-License-Identifier: MPL-2.0
 @tailwind utilities;
 
 @theme {
-	--color-brand-accent: #b07156;
-	--color-brand-accent-hover: #c07d62;
-	--color-brand-primary: #0f766e;
-	--color-brand-primary-strong: #155e75;
-	--color-brand-surface: #0f172a;
-	--color-brand-ink: #0f172a;
+	--color-brand-accent: var(--brand-accent);
+	--color-brand-accent-hover: var(--brand-accent-hover);
+	--color-brand-primary: var(--brand-primary);
+	--color-brand-primary-strong: var(--brand-primary-strong);
+	--color-brand-surface: var(--brand-surface);
+	--color-brand-ink: var(--brand-ink);
 }
 
 :root {
-	--cyberask-ink: #0f172a;
-	--cyberask-surface: #f8fafc;
-	--cyberask-border: rgba(15, 23, 42, 0.12);
-	--cyberask-accent: #0f766e;
+	/* White-label surface: override these variables at the tenant/theme boundary. */
+	--brand-name: 'CyberAsk';
+	--brand-accent: #0f766e;
+	--brand-accent-hover: #0d9488;
+	--brand-primary: #0f766e;
+	--brand-primary-strong: #155e75;
 	--cyberask-accent-strong: #155e75;
-	--cyberask-copper: #b07156;
-	--cyberask-copper-hover: #c07d62;
-	--cyberask-panel: rgba(255, 255, 255, 0.78);
+	--brand-surface: #0b1220;
+	--brand-ink: #0f172a;
+	--cyberask-ink: #0f172a;
+	--cyberask-surface: #f7f9fc;
+	--cyberask-border: #e2e8f0;
+	--cyberask-panel: rgba(255, 255, 255, 0.92);
+	--cyberask-muted: #64748b;
 }
 
 .marck-script {
@@ -41,6 +47,51 @@ SPDX-License-Identifier: MPL-2.0
 
 .link-hover:hover {
 	color: var(--cyberask-accent-strong);
+}
+
+body {
+	font-family: Inter, 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+	background: #f7f9fc;
+	color: var(--cyberask-ink);
+	font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+	-webkit-font-smoothing: antialiased;
+}
+
+::selection {
+	background: rgba(20, 184, 166, 0.2);
+}
+
+@utility app-shell {
+	@apply min-h-screen bg-[#f7f9fc] text-slate-900;
+}
+
+@utility app-sidebar {
+	@apply border-r border-slate-200 bg-white;
+}
+
+@utility app-panel {
+	@apply rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)];
+}
+
+@utility eyebrow {
+	@apply text-[11px] font-bold uppercase tracking-[0.18em] text-teal-700;
+}
+
+@utility type-display {
+	@apply text-4xl font-bold tracking-[-0.035em] text-slate-950 sm:text-5xl;
+}
+
+@utility type-title {
+	@apply text-xl font-bold tracking-[-0.02em] text-slate-950;
+}
+
+@utility type-meta {
+	@apply text-xs font-semibold uppercase tracking-[0.12em] text-slate-400;
+}
+
+@utility numeric {
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.04em;
 }
 @layer base {
 	button:not(:disabled),

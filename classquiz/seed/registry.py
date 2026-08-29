@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from classquiz.seed.templates import data_leak, disaster_recovery, insider_threat, ransomware
+from classquiz.seed.templates import cloud_identity, data_leak, disaster_recovery, insider_threat, ransomware
 
 
 @dataclass(frozen=True)
@@ -24,6 +24,17 @@ class SeedTemplateMeta:
 
 
 TEMPLATES: dict[str, SeedTemplateMeta] = {
+	"cloud_identity": SeedTemplateMeta(
+		id="cloud_identity",
+		name="Cloud Identity Compromise",
+		summary="MFA fatigue, session theft, OAuth persistence, customer impact, and identity recovery.",
+		topic="Cloud Identity / IAM",
+		slide_count=13,
+		branch_count=7,
+		inject_count=5,
+		difficulty="Advanced",
+		builder=cloud_identity.build,
+	),
     "ransomware": SeedTemplateMeta(
         id="ransomware",
         name="Ransomware Response",

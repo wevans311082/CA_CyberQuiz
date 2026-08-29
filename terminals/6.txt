@@ -1,0 +1,42 @@
+---
+pid: 20772
+cwd: "C:\ca_code\CA_CyberQuiz"
+command: "Set-Location C:\\ca_code\\CA_CyberQuiz\\frontend; npm run preview -- --port 4175 2>&1"
+started_at: 2026-07-01T09:10:31.363Z
+running_for_ms: 86400012 
+---
+
+> frontend@0.0.1 preview
+> vite preview --port 4175
+
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm.
+10:10:33 [vite-plugin-svelte] The following packages have a svelte field in their package.json but no exports condition for svelte.
+
+svelte-tippy@1.3.2
+
+Please see https://github.com/sveltejs/vite-plugin-svelte/blob/main/docs/faq.md#missing-exports-condition for details.
+  ➜  Local:   http://localhost:4175/
+  ➜  Network: use --host to expose
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+Browserslist: browsers data (caniuse-lite) is 9 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+[500] GET /play
+ReferenceError: onEmojiPromptReceived is not defined
+    at file:///C:/ca_code/CA_CyberQuiz/frontend/.svelte-kit/output/server/entries/pages/play/_page.svelte.js:1:31790
+    at #f (file:///C:/ca_code/CA_CyberQuiz/frontend/.svelte-kit/output/server/chunks/vendor.js:80:3667)
+    at #r (file:///C:/ca_code/CA_CyberQuiz/frontend/.svelte-kit/output/server/chunks/vendor.js:80:3055)
+    at Object.get (file:///C:/ca_code/CA_CyberQuiz/frontend/.svelte-kit/output/server/chunks/vendor.js:80:2571)
+    at Object.get (file:///C:/ca_code/CA_CyberQuiz/frontend/.svelte-kit/output/server/chunks/vendor.js:80:5908)
+    at file:///C:/ca_code/CA_CyberQuiz/frontend/.svelte-kit/output/server/chunks/vendor.js:16:2023
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:63:14)
+    at with_request_store (file:///C:/ca_code/CA_CyberQuiz/frontend/node_modules/.pnpm/@sveltejs+kit@2.47.3_@svelt_b6f88636ebf98ec59560e92aa3b664a5/node_modules/@sveltejs/kit/src/exports/internal/event.js:77:20)
+    at Nr (file:///C:/ca_code/CA_CyberQuiz/frontend/.svelte-kit/output/server/chunks/vendor.js:16:1877)
+    at async ef (file:///C:/ca_code/CA_CyberQuiz/frontend/.svelte-kit/output/server/chunks/vendor.js:78:9037)
+
+---
+exit_code: -1
+elapsed_ms: 86400012
+ended_at: 2026-07-02T09:10:33.132Z
+---

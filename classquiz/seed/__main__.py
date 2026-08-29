@@ -20,7 +20,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Seed CyberAsk with premade tabletop exercise templates."
     )
     parser.add_argument("--list", action="store_true", help="List available templates and exit")
-    parser.add_argument("--template", "-t", help="Template id (ransomware, data_leak, insider_threat, disaster_recovery)")
+    parser.add_argument("--template", "-t", help="Template id (cloud_identity, ransomware, data_leak, insider_threat, disaster_recovery)")
     parser.add_argument("--all", action="store_true", help="Create all templates")
     parser.add_argument("--user-email", required=False, help="Admin user email to own created quizzes")
     parser.add_argument("--company", default=None, help="Company name")

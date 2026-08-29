@@ -151,13 +151,9 @@ async def finish_edit(edit_id: str, quiz_input: QuizInput):
     quiz_input.questions = ensure_question_ids(quiz_input.questions)
 
     if session_data.edit:
-        await arq.enqueue_job("quiz_update", old_quiz_data, old_quiz_data.id, _defer_by=2)
+        if old_quiz_data is None:
+            raise HTTPException(status_code=404, detail="Quiz not found")
         quiz = old_quiz_data
-        meilisearch.index(settings.meilisearch_index).update_documents([await get_meili_data(quiz)])
-        if not quiz_input.public:
-            meilisearch.index(settings.meilisearch_index).delete_document(str(quiz.id))
-        else:
-            meilisearch.index(settings.meilisearch_index).add_documents([await get_meili_data(quiz)])
         quiz.title = quiz_input.title
         quiz.public = quiz_input.public
         quiz.description = quiz_input.description
@@ -187,6 +183,11 @@ async def finish_edit(edit_id: str, quiz_input: QuizInput):
         await redis.delete(f"edit_session:{edit_id}")
         await redis.delete(f"edit_session:{edit_id}:images")
         await quiz.update()
+        await arq.enqueue_job("quiz_update", quiz, quiz.id, _defer_by=2)
+        if not quiz_input.public:
+            meilisearch.index(settings.meilisearch_index).delete_document(str(quiz.id))
+        else:
+            meilisearch.index(settings.meilisearch_index).update_documents([await get_meili_data(quiz)])
         return quiz
     else:
         quiz = Quiz(

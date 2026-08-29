@@ -361,10 +361,9 @@ class GamePlayer(BaseModel):
     avatar_params: dict | None = None  # Stores avatar parameters as dict for redis serialization
 
     async def to_player_stack(self, game_pin: str):
-        await redis.sadd(
-            f"game_session:{game_pin}:players",
-            self.model_dump_json(),
-        )
+        key = f"game_session:{game_pin}:players"
+        await redis.sadd(key, self.model_dump_json())
+        await redis.expire(key, 7200)
 
 
 class GameAnswer2(BaseModel):
@@ -393,7 +392,7 @@ class GameSession(BaseModel):
         await redis.set(
             f"game_session:{game_pin}",
             self.model_dump_json(),
-            ex=7200,
+            ex=ex,
         )
 
 

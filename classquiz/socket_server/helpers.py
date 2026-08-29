@@ -71,6 +71,8 @@ def check_answer(game_data: PlayGame, data: SubmitAnswerData) -> (bool, str):
         q_i = int(float(data.question_index))
     except (ValueError, TypeError):
         return (False, data.answer)
+    if q_i < 0 or q_i >= len(game_data.questions):
+        return (False, data.answer)
     q_type = game_data.questions[q_i].type
     q_answers = game_data.questions[q_i].answers
     q_answer = data.answer

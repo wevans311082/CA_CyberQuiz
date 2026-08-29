@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 
-from pydantic import BaseModel, field_validator, ValidationInfo
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 from classquiz.db.models import QuizQuestion, QuizQuestionType, VotingQuizAnswer
 from datetime import datetime
 
@@ -44,17 +44,17 @@ class SendChatMessageData(BaseModel):
 
 
 class JoinGameData(BaseModel):
-    username: str
-    game_pin: str
+    username: str = Field(min_length=1, max_length=64)
+    game_pin: str = Field(min_length=4, max_length=12)
     captcha: str | None = None
-    custom_field: str | None = None
+    custom_field: str | None = Field(default=None, max_length=256)
     avatar_params: AvatarParams | None = None
 
 
 class RejoinGameData(BaseModel):
-    old_sid: str
-    game_pin: str
-    username: str
+    old_sid: str = Field(min_length=1, max_length=256)
+    game_pin: str = Field(min_length=4, max_length=12)
+    username: str = Field(min_length=1, max_length=64)
     avatar_params: AvatarParams | None = None
 
 
@@ -80,30 +80,30 @@ class ReturnQuestion(QuizQuestion):
 
     @field_validator("answers")
     def answers_not_none_if_abcd_type(cls, v, info: ValidationInfo):
-        if info.data["type"] == QuizQuestionType.ABCD and type(v[0]) is not ABCDQuizAnswerWithoutSolution:
-            raise ValueError("Answers can't be none if type is ABCD")
-        if info.data["type"] == QuizQuestionType.RANGE and type(v) is not RangeQuizAnswerWithoutSolution:
+        question_type = info.data.get("type")
+        if question_type == QuizQuestionType.ABCD and (
+            not isinstance(v, list) or not v or not all(isinstance(item, ABCDQuizAnswerWithoutSolution) for item in v)
+        ):
+            raise ValueError("Answers must contain ABCD answers")
+        if question_type == QuizQuestionType.RANGE and not isinstance(v, RangeQuizAnswerWithoutSolution):
             raise ValueError("Answer must be from type RangeQuizAnswer if type is RANGE")
-        # skipcq: PTC-W0047
-        if info.data["type"] == QuizQuestionType.VOTING and type(v[0]) is not VotingQuizAnswer:
-            pass
-        if info.data["type"] == QuizQuestionType.SLIDE and type(v) is not str:
+        if question_type == QuizQuestionType.VOTING and (
+            not isinstance(v, list) or not v or not all(isinstance(item, VotingQuizAnswer) for item in v)
+        ):
+            raise ValueError("Answers must contain voting answers")
+        if question_type in {QuizQuestionType.SLIDE, QuizQuestionType.INFORMATION, QuizQuestionType.FILE} and not isinstance(v, str):
             raise ValueError("Answer must be from type str if type is SLIDE")
-        if info.data["type"] == QuizQuestionType.INFORMATION and type(v) is not str:
-            raise ValueError("Answer must be from type str if type is INFORMATION")
-        if info.data["type"] == QuizQuestionType.FILE and type(v) is not str:
-            raise ValueError("Answer must be from type str if type is FILE")
         return v
 
 
 class SubmitAnswerDataOrderType(BaseModel):
-    answer: str
+    answer: str = Field(min_length=1, max_length=512)
 
 
 class SubmitAnswerData(BaseModel):
-    question_index: int
-    answer: str | int
-    complex_answer: list[SubmitAnswerDataOrderType] | None = None
+    question_index: int = Field(ge=0)
+    answer: str | int = Field(max_length=4096)
+    complex_answer: list[SubmitAnswerDataOrderType] | None = Field(default=None, max_length=100)
     confidence: int | None = None  # 1 (low) | 2 (medium) | 3 (high) — tabletop only
 
 

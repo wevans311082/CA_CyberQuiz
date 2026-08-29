@@ -102,10 +102,10 @@ SPDX-License-Identifier: MPL-2.0
 			>
 		</div>
 	</div>
-	<div class="h-full overflow-scroll border-r border-slate-200/70 bg-slate-50/50 px-6 pt-6 dark:border-slate-700 dark:bg-slate-950/40">
+	<div class="h-full overflow-scroll border-r border-slate-200 bg-white px-3 pt-16 shadow-[4px_0_18px_rgba(15,23,42,0.03)] dark:border-slate-700 dark:bg-slate-950/40 sm:px-4">
 		<div
 			bind:this={propertyCard}
-			class="mb-6 h-40 cursor-pointer rounded-xl border border-slate-200/70 bg-white/90 p-2 shadow-sm transition-all hover:border-brand-accent/30 dark:border-slate-700 dark:bg-slate-900/80 {selected_question === -1 ? 'ring-2 ring-brand-accent border-brand-accent/50 bg-brand-accent/10' : ''}"
+			class="mb-6 h-40 cursor-pointer rounded-xl border border-slate-200 bg-slate-50 p-2 shadow-sm transition-all hover:border-teal-300 dark:border-slate-700 dark:bg-slate-900/80 {selected_question === -1 ? 'ring-2 ring-brand-accent border-brand-accent/50 bg-brand-accent/10' : ''}"
 			onclick={() => setSelectedQuestion(-1)}
 		>
 			<div

@@ -54,6 +54,7 @@ async def get_all_player_roles(game_pin: str) -> dict[str, str]:
 async def set_player_role(game_pin: str, username: str, role: str) -> None:
     """Assign a role to a player in Redis."""
     await redis.hset(f"game_session:{game_pin}:player_roles", username, role)
+    await redis.expire(f"game_session:{game_pin}:player_roles", 7200)
 
 
 async def get_eligible_player_count(game_pin: str, allowed_roles: list[str] | None) -> int:

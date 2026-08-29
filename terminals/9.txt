@@ -1,0 +1,31 @@
+---
+pid: 26728
+cwd: "C:\ca_code\CA_CyberQuiz"
+command: "cd C:\\ca_code\\CA_CyberQuiz\\frontend; npx svelte-check --tsconfig ./tsconfig.json 2>&1 | Select-String -Pattern \"play\\\\\\+page|admin\\\\\\+page|projector|controls\\.svelte|admin\\.svelte|game_not_started|join\\.svelte|title\\.svelte|inject_presets|SituationRoom|timeline\\.ts\""
+started_at: 2026-07-01T10:08:18.508Z
+running_for_ms: 54990    
+---
+
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\facilitator\inject_presets.ts:53:3
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:445:18
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:446:47
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:599:8
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:631:7
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\join.svelte:75:22
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\join.svelte:279:5
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\join.svelte:281:6
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\game_not_started.svelte:195:3
+c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\game_not_started.svelte:195:3
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\admin\+page.svelte:363:2
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:323:3
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:569:4
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:783:21
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:784:15
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:785:26
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:825:37
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:839:32
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\quiztivity\play\+page.svelte:33:16
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\quiztivity\play\+page.svelte:37:16
+c:\ca_code\CA_CyberQuiz\frontend\src\routes\quiztivity\play\+page.svelte:41:16
+
+

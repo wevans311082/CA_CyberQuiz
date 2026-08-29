@@ -1,0 +1,82 @@
+---
+pid: 14372
+cwd: "C:\ca_code\CA_CyberQuiz"
+command: "cd C:\\ca_code\\CA_CyberQuiz\\frontend; npx svelte-check --tsconfig ./tsconfig.json --output human 2>&1 | Select-String -Pattern \"play\\\\\\+page\\.svelte|join\\.svelte|game_not_started|admin\\\\\\+page|projector|controls\\.svelte|admin\\.svelte|inject_presets\" -Context 0,2"
+started_at: 2026-07-01T10:08:42.348Z
+running_for_ms: 30009    
+---
+
+> c:\ca_code\CA_CyberQuiz\frontend\src\lib\facilitator\inject_presets.ts:53:3
+  Error: Type '"high"' is not assignable to type '"warning" | "info" | "critical"'. 
+  
+> c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:445:18
+  Error: Property 'next_question_id' does not exist on type 'TextQuizAnswer | OrderQuizAnswer | Answer | VotingAnswer'.
+    Property 'next_question_id' does not exist on type 'TextQuizAnswer'. (ts)
+> c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:446:47
+  Error: Property 'next_question_id' does not exist on type 'TextQuizAnswer | OrderQuizAnswer | Answer | VotingAnswer'.
+    Property 'next_question_id' does not exist on type 'TextQuizAnswer'. (ts)
+> c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:599:8
+  Error: Type 'number' is not assignable to type 'string'. (ts)
+  
+> c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\controls.svelte:631:7
+  Error: Type 'number' is not assignable to type 'string'. (ts)
+  
+> c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\join.svelte:75:22
+  Error: Property 'hcaptcha' does not exist on type 'Window & typeof globalThis'. (ts)
+  
+> c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\join.svelte:279:5
+  Error: Cannot find name 'grecaptcha'. Did you mean 'hcaptcha'? (ts)
+  
+> c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\join.svelte:281:6
+  Error: Cannot find name 'grecaptcha'. Did you mean 'hcaptcha'? (ts)
+  
+> c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\game_not_started.svelte:195:3
+  Warn: Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider 
+whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+  https://svelte.dev/e/a11y_click_events_have_key_events (svelte)
+> c:\ca_code\CA_CyberQuiz\frontend\src\lib\play\admin\game_not_started.svelte:195:3
+  Warn: Non-interactive element `<img>` should not be assigned mouse or keyboard event listeners
+  https://svelte.dev/e/a11y_no_noninteractive_element_interactions (svelte)
+> c:\ca_code\CA_CyberQuiz\frontend\src\routes\admin\+page.svelte:363:2
+  Warn: '#' is not a valid href attribute
+  https://svelte.dev/e/a11y_invalid_attribute (svelte)
+> c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:323:3
+  Error: Type 'Question' has no properties in common with type '{ $on?(type: string, callback: (e: any) => void): () 
+=> void; $set?(props: Partial<Props>): void; }'. (ts)
+  
+> c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:569:4
+  Error: Type 'InjectLogEntry[]' is not assignable to type '{ inject: Inject; triggered_by: string; timestamp: string; 
+}[]'.
+    Type 'InjectLogEntry' is not assignable to type '{ inject: Inject; triggered_by: string; timestamp: string; }'.
+> c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:783:21
+  Error: Property 'type' does not exist on type '{ $on?(type: string, callback: (e: any) => void): () => void; 
+$set?(props: Partial<Props>): void; }'. (ts)
+  
+> c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:784:15
+  Error: Type '{ $on?(type: string, callback: (e: any) => void): () => void; $set?(props: Partial<Props>): void; }' is 
+missing the following properties from type 'Question': time, question, answers (ts)
+  
+> c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:785:26
+  Error: Property 'type' does not exist on type '{ $on?(type: string, callback: (e: any) => void): () => void; 
+$set?(props: Partial<Props>): void; }'. (ts)
+  
+> c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:825:37
+  Error: Type '{ $on?(type: string, callback: (e: any) => void): () => void; $set?(props: Partial<Props>): void; }' is 
+missing the following properties from type 'Question': time, question, answers (ts)
+  
+> c:\ca_code\CA_CyberQuiz\frontend\src\routes\play\+page.svelte:839:32
+  Error: Type 'Answer[]' is not assignable to type '{ username: string; answer: string; right: boolean; time_taken: 
+number; score: number; }[]'.
+    Type 'Answer' is missing the following properties from type '{ username: string; answer: string; right: boolean; 
+time_taken: number; score: number; }': username, time_taken, score (ts)
+> c:\ca_code\CA_CyberQuiz\frontend\src\routes\quiztivity\play\+page.svelte:33:16
+  Error: Type 'Pdf | Memory | Markdown' is not assignable to type 'Markdown'.
+    Property 'markdown' is missing in type 'Pdf' but required in type 'Markdown'. (ts)
+> c:\ca_code\CA_CyberQuiz\frontend\src\routes\quiztivity\play\+page.svelte:37:16
+  Error: Type 'Pdf | Memory | Markdown' is not assignable to type 'Memory'.
+    Property 'cards' is missing in type 'Pdf' but required in type 'Memory'. (ts)
+> c:\ca_code\CA_CyberQuiz\frontend\src\routes\quiztivity\play\+page.svelte:41:16
+  Error: Type 'Pdf | Memory | Markdown' is not assignable to type 'Abcd'.
+    Type 'Pdf' is missing the following properties from type 'Abcd': question, answers (ts)
+
+

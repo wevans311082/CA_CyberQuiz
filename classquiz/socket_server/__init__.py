@@ -80,9 +80,14 @@ from classquiz.socket_server.branching import (
 
 from classquiz.socket_server.export_helpers import save_quiz_to_storage
 from classquiz.socket_server.session import get_session, save_session
+from socketio.exceptions import ConnectionRefusedError
 
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=[])
 settings = settings()
+sio = socketio.AsyncServer(
+    async_mode="asgi",
+    cors_allowed_origins=[],
+    manager=socketio.AsyncRedisManager(str(settings.redis)),
+)
 
 
 def get_fernet_key() -> bytes:
@@ -267,6 +272,11 @@ async def emit_lobby_state(game_pin: str, room: str | None = None):
     )
 
 
+async def claim_transition(game_pin: str, action: str, ttl: int = 3) -> bool:
+    """Suppress duplicate facilitator commands during the same transition window."""
+    return bool(await redis.set(f"game_session:{game_pin}:transition:{action}", "1", nx=True, ex=ttl))
+
+
 async def _sla_checkpoint_task(game_pin: str, q_index: int, q_start: datetime, checkpoint: dict):
     """Background task: after deadline_seconds, check if question is still active and apply SLA outcome."""
     deadline = int(checkpoint.get("deadline_seconds", 60))
@@ -282,7 +292,11 @@ async def _sla_checkpoint_task(game_pin: str, q_index: int, q_start: datetime, c
         game_data = PlayGame.model_validate_json(game_data_raw)
     except Exception:
         return
-    if game_data.current_question != q_index or not game_data.question_show:
+    current_start_raw = await redis.get(f"game:{game_pin}:current_time")
+    if current_start_raw != q_start.isoformat():
+        return
+    answers = await AnswerDataList.get_redis_or_empty(game_pin, str(q_index))
+    if len(answers) > 0:
         # Question already advanced — team answered in time; award bonus
         delta = bonus if bonus else 0
         outcome = "met"
@@ -449,35 +463,37 @@ def _recompute_review_totals(sheet: dict) -> dict:
 
 def calculate_score(z: float, t: int) -> int:
     t = t * 1000
+    if t <= 0:
+        return 0
     res = (t - z) / t
     return int(res * 1000)
 
 
 async def set_answer(answers, game_pin: str, q_index: int, data: AnswerData) -> AnswerDataList:
-    if answers is None:
-        answers = AnswerDataList([data])
-    else:
-        answers = AnswerDataList.model_validate_json(answers)
-        answers.append(data)
-    await redis.set(
-        f"game_session:{game_pin}:{q_index}",
-        answers.model_dump_json(),
-        ex=7200,
-    )
-    return answers
+    key = f"game_session:{game_pin}:{q_index}"
+    lock = redis.lock(f"{key}:write_lock", timeout=10, blocking_timeout=5)
+    async with lock:
+        current = await redis.get(key)
+        if current is None:
+            answer_list = AnswerDataList([data])
+        else:
+            answer_list = AnswerDataList.model_validate_json(current)
+            answer_list.append(data)
+        await redis.set(key, answer_list.model_dump_json(), ex=7200)
+        return answer_list
 
 
 @sio.event
 async def rejoin_game(sid: str, data: dict):
-    redis_res = await redis.get(f"game:{data['game_pin']}")
+    try:
+        data = RejoinGameData(**data)
+    except ValidationError:
+        await sio.emit("error", {"message": "invalid_rejoin_data"}, room=sid)
+        return
+    redis_res = await redis.get(f"game:{data.game_pin}")
     if redis_res is None:
         await sio.emit("game_not_found", room=sid)
         return
-    try:
-        data = RejoinGameData(**data)
-    except ValidationError as e:
-        await sio.emit("error", room=sid)
-        print(e)
     redis_sid_key = f"game_session:{data.game_pin}:players:{data.username}"
     old_sid = await redis.get(redis_sid_key)
     if old_sid != data.old_sid:
@@ -521,15 +537,14 @@ async def rejoin_game(sid: str, data: dict):
 
 @sio.event
 async def join_game(sid: str, data: dict):
-    redis_res = await redis.get(f"game:{data['game_pin']}")
-    if redis_res is None:
-        await sio.emit("game_not_found", room=sid)
-        return
     try:
         data = JoinGameData(**data)
-    except ValidationError as e:
-        await sio.emit("error", room=sid)
-        print(e)
+    except ValidationError:
+        await sio.emit("error", {"message": "invalid_join_data"}, room=sid)
+        return
+    redis_res = await redis.get(f"game:{data.game_pin}")
+    if redis_res is None:
+        await sio.emit("game_not_found", room=sid)
         return
     game_data = PlayGame.model_validate_json(redis_res)
     if contains_blocked_language(data.username):
@@ -586,6 +601,7 @@ async def join_game(sid: str, data: dict):
             data.username,
             data.custom_field,
         )
+        await redis.expire(f"game:{data.game_pin}:players:custom_fields", 7200)
 
     await sio.emit(
         "player_joined",
@@ -608,7 +624,11 @@ async def start_game(sid: str, _data: dict):
     session = await get_session(sid, sio)
     if not session["admin"]:
         return
+    if not await claim_transition(session["game_pin"], "start"):
+        return
     game_data = await PlayGame.get_from_redis(session["game_pin"])
+    if game_data.started:
+        return
     if len(game_data.questions) == 0:
         return
 
@@ -616,6 +636,10 @@ async def start_game(sid: str, _data: dict):
     if is_tabletop(game_data):
         game_data.questions = ensure_question_ids(game_data.questions)
         game_data.injects = ensure_inject_ids(game_data.injects)
+        first_roles = get_allowed_roles(game_data.questions[0])
+        if first_roles is not None and await get_eligible_player_count(session["game_pin"], first_roles) == 0:
+            await sio.emit("error", {"message": "no_eligible_players"}, room=sid)
+            return
 
     game_data.started = True
     game_data.current_question = 0
@@ -658,6 +682,8 @@ async def start_game(sid: str, _data: dict):
     await asyncio.sleep(COUNTDOWN_DURATION_SECONDS)
 
     game_data = await PlayGame.get_from_redis(session["game_pin"])
+    if not game_data.started or game_data.current_question != 0 or game_data.question_show:
+        return
     game_data.question_show = True
     await game_data.save(session["game_pin"])
     await redis.set(f"game:{session['game_pin']}:current_time", datetime.now().isoformat(), ex=7200)
@@ -765,8 +791,16 @@ async def get_question_results(sid: str, data: dict):
     if not session["admin"]:
         return
     game_pin = session["game_pin"]
-    answer_data_list = await AnswerDataList.get_redis_or_empty(game_pin, data["question_number"])
     game_data = await PlayGame.get_from_redis(game_pin)
+    try:
+        question_number = int(data["question_number"])
+    except (KeyError, TypeError, ValueError):
+        await sio.emit("error", {"message": "invalid_question_number"}, room=sid)
+        return
+    if question_number < 0 or question_number >= len(game_data.questions):
+        await sio.emit("error", {"message": "question_number_out_of_range"}, room=sid)
+        return
+    answer_data_list = await AnswerDataList.get_redis_or_empty(game_pin, question_number)
     game_data.question_show = False
     await game_data.save(game_pin)
     await sio.emit("question_results", answer_data_list.model_dump(), room=game_pin)
@@ -787,21 +821,37 @@ async def set_question_number(sid: str, data: str):
     if not session["admin"]:
         return
     game_pin = session["game_pin"]
+    if not await claim_transition(game_pin, "set_question"):
+        return
     game_data = await PlayGame.get_from_redis(session["game_pin"])
-    game_data.current_question = int(float(data))
+    try:
+        question_number = int(float(data))
+    except (TypeError, ValueError):
+        await sio.emit("error", {"message": "invalid_question_number"}, room=sid)
+        return
+    if question_number < 0 or question_number >= len(game_data.questions):
+        await sio.emit("error", {"message": "question_number_out_of_range"}, room=sid)
+        return
+    game_data.current_question = question_number
     game_data.question_show = True
     await game_data.save(session["game_pin"])
     q_start_time = datetime.now()
     await redis.set(f"game:{session['game_pin']}:current_time", q_start_time.isoformat(), ex=7200)
 
     # SLA checkpoint tracking: schedule background tasks for each checkpoint
-    current_q = game_data.questions[int(float(data))]
+    current_q = game_data.questions[question_number]
+    if is_tabletop(game_data) and get_allowed_roles(current_q) is not None:
+        if await get_eligible_player_count(game_pin, get_allowed_roles(current_q)) == 0:
+            game_data.question_show = False
+            await game_data.save(game_pin)
+            await sio.emit("error", {"message": "no_eligible_players"}, room=sid)
+            return
     if current_q.sla_checkpoints:
         for cp in current_q.sla_checkpoints:
             asyncio.ensure_future(
                 _sla_checkpoint_task(
                     game_pin=session["game_pin"],
-                    q_index=int(float(data)),
+                    q_index=question_number,
                     q_start=q_start_time,
                     checkpoint=cp,
                 )
@@ -821,8 +871,11 @@ async def submit_answer(sid: str, data: dict):
         return
     data.answer = str(data.answer)
     session = await get_session(sid, sio)
-    question_index = int(float(data.question_index))
+    question_index = data.question_index
     game_data = await PlayGame.get_from_redis(session["game_pin"])
+    if question_index >= len(game_data.questions):
+        await sio.emit("answer_rejected", {"reason": "question_not_found"}, room=sid)
+        return
 
     # Prevent out-of-sequence answers.
     if question_index != game_data.current_question or not game_data.question_show:
@@ -853,10 +906,19 @@ async def submit_answer(sid: str, data: dict):
     if not await redis.set(answer_lock_key, "1", nx=True, ex=7200):
         await sio.emit("already_replied", room=sid)
         return
+    current_time_raw = await redis.get(f"game:{session['game_pin']}:current_time")
+    if current_time_raw is None:
+        await sio.emit("answer_rejected", {"reason": "question_timer_unavailable"}, room=sid)
+        return
+    q_started = datetime.fromisoformat(current_time_raw)
+    elapsed_ms = max(0.0, (now - q_started).total_seconds() * 1000)
+    q_time_seconds = _safe_int(game_data.questions[question_index].time, 0)
+    if q_time_seconds > 0 and elapsed_ms > q_time_seconds * 1000:
+        await sio.emit("answer_rejected", {"reason": "question_time_expired"}, room=sid)
+        return
     answer_right, answer = check_answer(game_data, data)
     latency = int(float(session.get("ping", 0)))
-    time_q_started = datetime.fromisoformat(await redis.get(f"game:{session['game_pin']}:current_time"))
-    diff = (time_q_started - now).total_seconds() * 1000  # - timedelta(milliseconds=latency)
+    diff = elapsed_ms
 
     # --- Tabletop flat scoring vs speed-based ---
     if is_tabletop(game_data):
@@ -926,13 +988,23 @@ async def submit_answer(sid: str, data: dict):
         time_taken=abs(diff) - latency,
         score=score,
     )
-    answers = await redis.get(f"game_session:{session['game_pin']}:{data.question_index}")
-    answers = await set_answer(
-        answers,
-        game_pin=session["game_pin"],
-        data=answer_data,
-        q_index=int(float(data.question_index)),
-    )
+    try:
+        answers = await set_answer(
+            None,
+            game_pin=session["game_pin"],
+            data=answer_data,
+            q_index=question_index,
+        )
+    except Exception:
+        await redis.hincrby(f"game_session:{session['game_pin']}:player_scores", session["username"], -score)
+        if game_data.teams and score > 0:
+            for team_name, members in game_data.teams.items():
+                if session["username"] in members:
+                    await redis.hincrbyfloat(f"game:{session['game_pin']}:team_scores", team_name, -score)
+                    break
+        await redis.delete(answer_lock_key)
+        await sio.emit("error", {"message": "answer_persistence_failed"}, room=sid)
+        return
 
     # --- Eligible player count (role-aware for tabletop) ---
     if is_tabletop(game_data):
@@ -1200,9 +1272,7 @@ async def set_teams(sid: str, data: dict):
     game_data.teams = sanitized
     await game_data.save(game_pin)
     # Reset team scores in Redis
-    existing_team_keys = await redis.keys(f"game:{game_pin}:team_scores")
-    if existing_team_keys:
-        await redis.delete(*existing_team_keys)
+    await redis.delete(f"game:{game_pin}:team_scores")
     await sio.emit("teams_updated", {"teams": sanitized}, room=game_pin)
 
 
@@ -1214,7 +1284,11 @@ async def get_export_token(sid: str):
     game_data = await PlayGame.get_from_redis(session["game_pin"])
     results = await generate_final_results(game_data, session["game_pin"])
     token = os.urandom(32).hex()
-    await redis.set(f"export_token:{token}", json.dumps(results), ex=7200)
+    await redis.set(
+        f"export_token:{token}",
+        json.dumps({"game_pin": session["game_pin"], "game_id": str(game_data.game_id), "results": results}),
+        ex=7200,
+    )
     await sio.emit("export_token", token, room=sid)
 
 
@@ -1224,9 +1298,12 @@ async def show_solutions(sid: str, _data: dict):
     game_data = await PlayGame.get_from_redis(session["game_pin"])
     if not session["admin"]:
         return
+    solution = game_data.questions[game_data.current_question].model_dump()
+    for private_field in ("facilitator_notes", "default_next_question_id", "allowed_roles"):
+        solution.pop(private_field, None)
     await sio.emit(
         "solutions",
-        game_data.questions[game_data.current_question].model_dump(),
+        solution,
         room=session["game_pin"],
     )
 
@@ -1362,6 +1439,33 @@ async def connect(sid: str, _environ, _auth):
 
 
 @sio.event
+async def disconnect(sid: str):
+    """Remove a disconnected player without deleting a newer replacement session."""
+    try:
+        session = await get_session(sid, sio, disconnect_on_error=False)
+    except (ConnectionRefusedError, KeyError, TypeError):
+        return
+    game_pin = session.get("game_pin")
+    username = session.get("username")
+    if game_pin and session.get("admin"):
+        try:
+            game_session = await GameSession.get_from_redis(game_pin)
+            if game_session.admin == sid:
+                await redis.delete(f"game_session:{game_pin}")
+        except (TypeError, ValidationError):
+            pass
+    if not game_pin or not username:
+        return
+    sid_key = f"game_session:{game_pin}:players:{username}"
+    if await redis.get(sid_key) == sid:
+        await redis.delete(sid_key)
+        await remove_player_record(game_pin, username)
+        await redis.hdel(f"game:{game_pin}:players:custom_fields", username)
+        await sio.emit("player_left", {"username": username}, room=game_pin)
+        await emit_lobby_state(game_pin)
+
+
+@sio.event
 async def debug_status(sid: str):
     server_session = await sio.get_session(sid)
     custom_session = None
@@ -1439,6 +1543,10 @@ async def assign_role(sid: str, data: dict):
         return
 
     game_pin = session["game_pin"]
+    game_data = await PlayGame.get_from_redis(game_pin)
+    if game_data.roles is not None and data.role not in game_data.roles:
+        await sio.emit("error", {"message": "role_not_defined"}, room=sid)
+        return
     # Verify the player exists
     player = await get_player_record(game_pin, data.username)
     if player is None:
@@ -1469,6 +1577,12 @@ async def bulk_assign_roles(sid: str, data: dict):
         return
 
     game_pin = session["game_pin"]
+    game_data = await PlayGame.get_from_redis(game_pin)
+    allowed_roles = set(game_data.roles or [])
+    invalid = [role for username, role in data.assignments.items() if role not in allowed_roles or await get_player_record(game_pin, username) is None]
+    if invalid:
+        await sio.emit("error", {"message": "invalid_role_assignment"}, room=sid)
+        return
     for username, role in data.assignments.items():
         await set_player_role(game_pin, username, role)
 
@@ -1569,6 +1683,8 @@ async def force_next_question(sid: str, data: dict):
         return
 
     game_pin = session["game_pin"]
+    if not await claim_transition(game_pin, "force_next"):
+        return
     game_data = await PlayGame.get_from_redis(game_pin)
 
     result = find_question_by_id(game_data.questions, data.question_id)
@@ -1615,6 +1731,8 @@ async def resolve_tie(sid: str, data: dict):
         return
 
     game_pin = session["game_pin"]
+    if not await claim_transition(game_pin, "resolve_tie"):
+        return
     game_data = await PlayGame.get_from_redis(game_pin)
     current_q = game_data.questions[game_data.current_question]
 
@@ -1671,6 +1789,8 @@ async def advance_tabletop(sid: str, _data: dict):
         return
 
     game_pin = session["game_pin"]
+    if not await claim_transition(game_pin, "advance_tabletop"):
+        return
     game_data = await PlayGame.get_from_redis(game_pin)
 
     if not is_tabletop(game_data):

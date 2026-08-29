@@ -22,14 +22,17 @@ from classquiz.socket_server.branching import (
 
 
 async def save_quiz_to_storage(game_pin: str):
-    game = PlayGame.model_validate_json(await redis.get(f"game:{game_pin}"))
+    raw_game = await redis.get(f"game:{game_pin}")
+    if raw_game is None:
+        raise ValueError("game session not found")
+    game = PlayGame.model_validate_json(raw_game)
     player_count = await redis.scard(f"game_session:{game_pin}:players")
     answers = []
     for i in range(len(game.questions)):
         redis_res = await redis.get(f"game_session:{game_pin}:{i}")
         try:
             answers.append(json.loads(redis_res))
-        except (ValidationError, TypeError):
+        except (ValidationError, TypeError, json.JSONDecodeError):
             answers.append([])
     player_scores = await redis.hgetall(f"game_session:{game_pin}:player_scores")
     custom_field_data = await redis.hgetall(f"game:{game_pin}:players:custom_fields")
@@ -109,4 +112,8 @@ async def save_quiz_to_storage(game_pin: str):
         company_score_timeline=json.dumps(company_score_timeline_val) if company_score_timeline_val else None,
         score_visibility_policy=score_visibility_policy_val,
     )
-    await data.save()
+    existing = await GameResults.objects.get_or_none(id=game.game_id)
+    if existing is None:
+        await data.save()
+    else:
+        await data.update()

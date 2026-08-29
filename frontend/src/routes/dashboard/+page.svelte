@@ -111,7 +111,7 @@ SPDX-License-Identifier: MPL-2.0
 			<Spinner size="lg" />
 		</div>
 	{:else}
-		<div class="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8">
+		<div class="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 lg:max-w-none lg:px-10">
 			<PageHeader
 				eyebrow="Facilitator Hub"
 				title="Dashboard"
@@ -119,6 +119,7 @@ SPDX-License-Identifier: MPL-2.0
 			>
 				{#snippet actions()}
 					<Button href="/create" variant="primary">{$t('dashboard.create_quiz')}</Button>
+					<Button href="/scenarios" variant="secondary">Scenario library</Button>
 					<Button href="/seed" variant="secondary">Exercise wizard</Button>
 					<Button href="/import" variant="secondary">{$t('words.import')}</Button>
 				{/snippet}

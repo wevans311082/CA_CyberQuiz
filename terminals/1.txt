@@ -1,0 +1,45 @@
+---
+pid: 25596
+cwd: "C:\ca_code\CA_CyberQuiz"
+command: "Set-Location C:\\ca_code\\CA_CyberQuiz\\frontend; if (Test-Path node_modules) { npm run build 2>&1 | Select-Object -Last 30 } else { Write-Output \"no node_modules\" }"
+started_at: 2026-07-01T08:59:39.785Z
+running_for_ms: 86400009 
+---
+.svelte-kit/output/server/entries/pages/dashboard/_page.svelte.js                                           4.11 kB
+.svelte-kit/output/server/entries/pages/import/_page.svelte.js                                              4.53 kB
+.svelte-kit/output/server/chunks/join.js                                                                    4.71 kB
+.svelte-kit/output/server/entries/pages/account/settings/security/_page.svelte.js                           4.84 kB
+.svelte-kit/output/server/chunks/AvatarPicker.js                                                            5.43 kB
+.svelte-kit/output/server/entries/pages/edit/files/_page.svelte.js                                          5.57 kB
+.svelte-kit/output/server/entries/pages/remote/_page.svelte.js                                              5.85 kB
+.svelte-kit/output/server/chunks/slide2.js                                                                  5.91 kB
+.svelte-kit/output/server/entries/pages/results/aar/_game_id_/_page.svelte.js                               6.10 kB
+.svelte-kit/output/server/entries/pages/docs/self-host/_page.svelte.js                                      6.11 kB
+.svelte-kit/output/server/entries/pages/account/settings/_page.svelte.js                                    7.85 kB
+.svelte-kit/output/server/entries/pages/account/register/_page.svelte.js                                    9.58 kB
+.svelte-kit/output/server/entries/pages/results/_result_id_/_page.svelte.js                                 9.84 kB
+.svelte-kit/output/server/chunks/uploader.js                                                               10.54 kB
+.svelte-kit/output/server/entries/pages/account/login/_page.svelte.js                                      12.32 kB
+.svelte-kit/output/server/chunks/editor.js                                                                 13.77 kB
+.svelte-kit/output/server/entries/pages/view/_quiz_id_/_page.svelte.js                                     17.32 kB
+.svelte-kit/output/server/chunks/countdown_overlay.js                                                      21.14 kB
+.svelte-kit/output/server/chunks/_page.js                                                                  37.62 kB
+.svelte-kit/output/server/entries/pages/play/_page.svelte.js                                               45.03 kB
+.svelte-kit/output/server/entries/pages/admin/_page.svelte.js                                              60.65 kB
+.svelte-kit/output/server/chunks/vendor.js                                                                175.94 kB
+.svelte-kit/output/server/chunks/index.js                                                                 351.57 kB
+✓ built in 21.15s
+
+Run npm run preview to preview your production build locally.
+
+> Using @sveltejs/adapter-node
+Circular dependency: node_modules/.pnpm/es-toolkit@1.39.5/node_modules/es-toolkit/dist/compat/predicate/isMatch.mjs -> 
+  ✔ done
+node_modules/.pnpm/es-toolkit@1.39.5/node_modules/es-toolkit/dist/compat/predicate/isMatchWith.mjs -> 
+node_modules/.pnpm/es-toolkit@1.39.5/node_modules/es-toolkit/dist/compat/predicate/isMatch.mjs
+
+---
+exit_code: -1
+elapsed_ms: 86400009
+ended_at: 2026-07-02T08:59:56.583Z
+---

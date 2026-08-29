@@ -24,12 +24,13 @@ SPDX-License-Identifier: MPL-2.0
 	<title>{pageTitle('Results')}</title>
 </svelte:head>
 
-<div class="mx-auto max-w-6xl px-4 py-8">
+	<div class="mx-auto max-w-7xl px-4 py-8 lg:px-10">
 	<PageHeader
 		eyebrow="Session History"
 		title={$t('words.results')}
 		description="Review past game sessions, player counts, and open detailed reports."
-	/>
+	/> 
+	<div class="mt-8 grid gap-4 sm:grid-cols-3"><Card variant="elevated" padding="md"><p class="eyebrow">Sessions</p><p class="mt-2 text-3xl font-bold text-slate-950">{data.results.length}</p><p class="mt-1 text-sm text-slate-500">Completed reports</p></Card><Card variant="elevated" padding="md"><p class="eyebrow">Participants</p><p class="mt-2 text-3xl font-bold text-slate-950">{data.results.reduce((total, result) => total + Object.keys(result.player_scores).length, 0)}</p><p class="mt-1 text-sm text-slate-500">Across all sessions</p></Card><Card variant="elevated" padding="md"><p class="eyebrow">Workspace</p><p class="mt-2 text-3xl font-bold text-teal-700">Live</p><p class="mt-1 text-sm text-slate-500">Analytics are ready</p></Card></div>
 
 	{#if data.results.length === 0}
 		<Card variant="glass" padding="lg" class="mt-8 text-center">

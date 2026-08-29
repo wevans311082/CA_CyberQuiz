@@ -147,10 +147,10 @@ SPDX-License-Identifier: MPL-2.0
 {#await getUser()}
 	<Spinner />
 {:then user}
-	<div class="min-h-screen text-white px-4 py-8 max-w-4xl mx-auto flex flex-col gap-8">
+	<div class="min-h-screen px-4 py-8 sm:px-6 lg:px-10"><div class="mx-auto flex max-w-7xl flex-col gap-8 text-slate-900">
 
 		<!-- Profile card -->
-		<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] p-6 flex flex-col sm:flex-row gap-6 items-start">
+		<div class="app-panel flex flex-col gap-6 p-6 sm:flex-row sm:items-start">
 			<div class="flex flex-col items-center gap-3 shrink-0">
 				<img class="rounded-2xl w-24 h-24 object-cover border border-white/15" src="/api/v1/users/avatar" alt="Profile image of {user.username}" />
 				<a href="/account/settings/avatar" class="rounded-full border border-white/15 px-4 py-1.5 text-xs font-semibold text-white/90 hover:bg-white/6 transition-colors">
@@ -159,8 +159,8 @@ SPDX-License-Identifier: MPL-2.0
 			</div>
 			<div class="flex-1 flex flex-col gap-4">
 				<div>
-					<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80 mb-1">Account</p>
-					<h1 class="text-2xl font-semibold text-white">{user.username}</h1>
+					<p class="eyebrow mb-1">Account</p>
+					<h1 class="text-2xl font-bold text-slate-950">{user.username}</h1>
 					<p class="text-sm text-slate-400 mt-0.5">{user.email}</p>
 				</div>
 				<div class="flex flex-wrap gap-2">
@@ -178,7 +178,7 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 
 		<!-- Change password card -->
-		<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] p-6 flex flex-col gap-5">
+		<div class="app-panel flex flex-col gap-5 p-6">
 			<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">{$t('settings_page.change_password_submit')}</p>
 			<form class="flex flex-col sm:flex-row gap-4 flex-wrap" onsubmit={changePassword}>
 				<div class="flex flex-col gap-1 flex-1 min-w-[160px]">
@@ -202,7 +202,7 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 
 		<!-- API Keys card -->
-		<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] p-6 flex flex-col gap-5">
+		<div class="app-panel flex flex-col gap-5 p-6">
 			<div class="flex items-center justify-between">
 				<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">{$t('settings_page.add_api_key')}</p>
 				<button onclick={add_api_key} class="rounded-full bg-[#B07156] px-5 py-2 text-xs font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors">
@@ -272,5 +272,5 @@ SPDX-License-Identifier: MPL-2.0
 			{/await}
 		</div>
 
-	</div>
+	</div></div>
 {/await}

@@ -1,0 +1,30 @@
+---
+pid: 37508
+cwd: "C:\ca_code\CA_CyberQuiz"
+command: "Set-Location C:\\ca_code\\CA_CyberQuiz\\frontend; $env:SKIP_MINIFY='true'; npm run build 2>&1 | Select-Object -Last 15"
+started_at: 2026-07-01T09:04:23.942Z
+running_for_ms: 86400016 
+---
+.svelte-kit/output/server/chunks/editor.js                                                                 26.81 kBCircular dependency: node_modules/.pnpm/es-toolkit@1.39.5/node_modules/es-toolkit/dist/compat/predicate/isMatch.mjs -> 
+
+.svelte-kit/output/server/entries/pages/view/_quiz_id_/_page.svelte.js                                     27.72 kB
+.svelte-kit/output/server/chunks/countdown_overlay.js                                                      28.81 kB
+.svelte-kit/output/server/chunks/_page.js                                                                  65.49 kB
+.svelte-kit/output/server/entries/pages/play/_page.svelte.js                                               84.88 kB
+.svelte-kit/output/server/entries/pages/admin/_page.svelte.js                                             109.35 kB
+.svelte-kit/output/server/chunks/index.js                                                                 405.89 kB
+.svelte-kit/output/server/chunks/vendor.js                                                                414.23 kB
+✓ built in 19.11s
+
+Run npm run preview to preview your production build locally.
+
+> Using @sveltejs/adapter-node
+  ✔ done
+node_modules/.pnpm/es-toolkit@1.39.5/node_modules/es-toolkit/dist/compat/predicate/isMatchWith.mjs -> 
+node_modules/.pnpm/es-toolkit@1.39.5/node_modules/es-toolkit/dist/compat/predicate/isMatch.mjs
+
+---
+exit_code: -1
+elapsed_ms: 86400016
+ended_at: 2026-07-02T09:04:40.785Z
+---
