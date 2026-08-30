@@ -222,6 +222,7 @@ SPDX-License-Identifier: MPL-2.0
 			const elapsed = (Date.now() - serverStart) / 1000;
 			const rem = Math.max(0, data.duration - elapsed);
 			qtimer_remaining = rem;
+			timer_res = Math.ceil(rem).toString();
 			if (rem <= 0) {
 				qtimer_running = false;
 				if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
@@ -231,12 +232,14 @@ SPDX-License-Identifier: MPL-2.0
 	const onQuestionTimerPaused = (data: { remaining: number }) => {
 		qtimer_running = false;
 		qtimer_remaining = data.remaining;
+		timer_res = Math.ceil(data.remaining).toString();
 		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
 	};
 	const onQuestionTimerStopped = () => {
 		qtimer_running = false;
 		qtimer_remaining = 0;
 		qtimer_total = 0;
+		timer_res = '0';
 		if (qtimer_interval) { clearInterval(qtimer_interval); qtimer_interval = null; }
 	};
 

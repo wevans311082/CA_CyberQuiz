@@ -6,6 +6,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <script lang="ts">
 	import { page } from '$app/state';
+	import { onMount } from 'svelte';
 	import { socket } from '$lib/socket';
 	import type { QuizData } from '$lib/quiz_types';
 	import { QuizQuestionType } from '$lib/quiz_types.js';
@@ -15,9 +16,9 @@ SPDX-License-Identifier: MPL-2.0
 	import { navbarVisible } from '$lib/stores.svelte.ts';
 
 	const data = {
-		game_pin: page.url.searchParams.get('game_pin'),
+		game_pin: page.url.searchParams.get('game_pin') ?? page.url.searchParams.get('pin'),
 		game_id: page.url.searchParams.get('game_id'),
-		host_token: page.url.searchParams.get('host_token')
+		host_token: page.url.searchParams.get('host_token') ?? page.url.searchParams.get('token')
 	};
 
 	navbarVisible.visible = false;
@@ -38,11 +39,7 @@ SPDX-License-Identifier: MPL-2.0
 	let shown_question_now: number;
 	let control_visible = $state(false);
 
-	if (!data.game_id || !data.game_pin || !data.host_token) {
-		console.log('Error!');
-	} else {
-		socket.emit('register_as_remote', data);
-	}
+
 
 	const timer = (time: string) => {
 		let seconds = Number(time);
@@ -125,7 +122,11 @@ SPDX-License-Identifier: MPL-2.0
 	});
 	socket.on('registered_as_admin', (data) => {
 		game_data = JSON.parse(data.game);
+		game_started = Boolean(game_data?.started);
+		const current = (game_data as QuizData & { current_question?: number })?.current_question;
+		if (current != null) selected_question = current;
 	});
+	socket.on('admin_registration_denied', () => console.error('Remote registration denied'));
 
 	socket.on('start_game', (_) => {
 		game_started = true;
@@ -144,13 +145,24 @@ SPDX-License-Identifier: MPL-2.0
 		}
 	});
 	socket.on('set_question_number', (data) => {
-		timer_res = '0';
 		clearInterval(timer_interval);
 		question_results = null;
 		shown_question_now = data.question_index;
-		timer_res = game_data.questions[data.question_index].time;
 		selected_question = data.question_index;
-		timer(timer_res);
+	});
+	socket.on('question_timer_started', (data) => {
+		clearInterval(timer_interval);
+		const started = new Date(data.server_timestamp).getTime();
+		const tick = () => {
+			timer_res = Math.max(0, data.duration - (Date.now() - started) / 1000).toFixed(0);
+			if (timer_res === '0') clearInterval(timer_interval);
+		};
+		tick();
+		timer_interval = setInterval(tick, 250);
+	});
+	socket.on('question_timer_stopped', () => {
+		timer_res = '0';
+		clearInterval(timer_interval);
 	});
 
 	socket.on('final_results', (data) => {
@@ -179,6 +191,10 @@ SPDX-License-Identifier: MPL-2.0
 
 	socket.on('player_joined', (data) => {
 		players = [...players, data];
+	});
+
+	onMount(() => {
+	if (data.game_id && data.game_pin && data.host_token) socket.emit('register_as_remote', data);
 	});
 </script>
 

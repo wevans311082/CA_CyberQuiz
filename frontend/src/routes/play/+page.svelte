@@ -513,9 +513,18 @@ SPDX-License-Identifier: MPL-2.0
 
 	const onRoleProposed = (data: { username: string; role: string }) => {
 		// Only show the modal if this proposal is for me
-		if (data?.username === username) {
+		if (data?.username === username || !username) {
 			pending_role_proposal = { role: data.role };
 		}
+	};
+	const onRoleResponseSuccess = (data: { username?: string; role?: string; accepted?: boolean }) => {
+		if (data?.username && username && data.username !== username) return;
+		if (data.accepted !== false && data.role) my_role = data.role;
+		pending_role_proposal = null;
+	};
+	const onRoleResponseError = (data: { message?: string }) => {
+		pending_role_proposal = null;
+		notify(data?.message === 'role_not_defined' ? 'That role is no longer available.' : 'Role response failed. Please try again.', 'error');
 	};
 
 	const accept_role = () => {
@@ -625,6 +634,8 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('roles_updated', onRolesUpdated);
 		socket.on('role_not_allowed', onRoleNotAllowed);
 		socket.on('role_proposed', onRoleProposed);
+		socket.on('role_response_success', onRoleResponseSuccess);
+		socket.on('role_response_error', onRoleResponseError);
 		socket.on('branch_resolved', onBranchResolved);
 		socket.on('scenario_complete', onScenarioComplete);
 		socket.on('tie_detected', onTieDetected);
@@ -670,6 +681,8 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('roles_updated', onRolesUpdated);
 		socket.off('role_not_allowed', onRoleNotAllowed);
 		socket.off('role_proposed', onRoleProposed);
+		socket.off('role_response_success', onRoleResponseSuccess);
+		socket.off('role_response_error', onRoleResponseError);
 		socket.off('branch_resolved', onBranchResolved);
 		socket.off('scenario_complete', onScenarioComplete);
 		socket.off('tie_detected', onTieDetected);

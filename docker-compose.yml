@@ -9,8 +9,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     depends_on:
-      - redis
-      - api
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
     environment:
       REDIS_URL: redis://redis:6379/0?decode_responses=True
       API_URL: http://api:80
@@ -20,8 +22,10 @@ services:
       dockerfile: Dockerfile
     restart: &restart always
     depends_on: &depends
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
     environment: &env_vars
       # --- DON'T CHANGE FROM HERE ---
@@ -70,6 +74,13 @@ services:
       #CUSTOM_OPENID_PROVIDER__CLIENT_SECRET: "" # Adjust if needed
       #CUSTOM_OPENID_PROVIDER__SERVER_METADATA_URL: "/.well-known/openid-configuration" # Adjust if needed
 
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:80/openapi.json', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
     volumes: # Only needed if you chose the "local" storage-backend
       - ./uploads:/app/data
 
@@ -98,7 +109,7 @@ services:
     volumes:
       - ./Caddyfile-docker:/etc/caddy/Caddyfile
     ports:
-      - "8000:8080" # The 8000 can be changed.
+      - "8011:8080" # The 8000 can be changed.
   meilisearch:
     image: getmeili/meilisearch:v0.28.0
     restart: always

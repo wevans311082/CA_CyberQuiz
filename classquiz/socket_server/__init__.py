@@ -370,6 +370,38 @@ async def emit_current_question(room: str, game_data: PlayGame):
             payload["discussion_time"] = current_q.discussion_time
         await sio.emit("set_question_number", payload, room=room)
 
+    # Keep every live view on the same server-owned timer. Previously only
+    # the facilitator UI started a countdown, while players and projector
+    # screens inferred their own timers from stale question data.
+    timer_seconds = _safe_int(
+        getattr(current_q, "timer", None)
+        and getattr(current_q.timer, "duration_seconds", None),
+        0,
+    )
+    if timer_seconds <= 0:
+        timer_seconds = _safe_int(getattr(current_q, "time", 0), 0)
+    await redis.delete(f"game:{game_pin}:question_timer")
+    await sio.emit("question_timer_stopped", {}, room=room)
+    if timer_seconds > 0 and current_q.type not in [
+        QuizQuestionType.SLIDE,
+        QuizQuestionType.INFORMATION,
+        QuizQuestionType.FILE,
+        QuizQuestionType.SCOREBOARD,
+    ]:
+        timer_seconds = max(1, min(timer_seconds, 7200))
+        timer_state = {
+            "running": True,
+            "duration": timer_seconds,
+            "started_at": datetime.now().isoformat(),
+            "paused_remaining": None,
+        }
+        await redis.set(f"game:{game_pin}:question_timer", json.dumps(timer_state), ex=7200)
+        await sio.emit(
+            "question_timer_started",
+            {"duration": timer_seconds, "server_timestamp": timer_state["started_at"]},
+            room=room,
+        )
+
     # Send facilitator notes to admin only
     if is_tabletop(game_data) and current_q.facilitator_notes:
         await sio.emit(
@@ -803,6 +835,8 @@ async def get_question_results(sid: str, data: dict):
     answer_data_list = await AnswerDataList.get_redis_or_empty(game_pin, question_number)
     game_data.question_show = False
     await game_data.save(game_pin)
+    await redis.delete(f"game:{game_pin}:question_timer")
+    await sio.emit("question_timer_stopped", {}, room=game_pin)
     await sio.emit("question_results", answer_data_list.model_dump(), room=game_pin)
     # Also emit anonymous answer summary for all players
     from collections import Counter
@@ -913,6 +947,20 @@ async def submit_answer(sid: str, data: dict):
     q_started = datetime.fromisoformat(current_time_raw)
     elapsed_ms = max(0.0, (now - q_started).total_seconds() * 1000)
     q_time_seconds = _safe_int(game_data.questions[question_index].time, 0)
+    # Prefer the shared answer-timer state. This makes pause/resume semantics
+    # identical for the facilitator, players, and projector. The legacy
+    # current_time remains the fallback for older sessions.
+    timer_raw = await redis.get(f"game:{session['game_pin']}:question_timer")
+    if timer_raw is not None:
+        timer_state = json.loads(timer_raw)
+        if timer_state.get("running"):
+            timer_started = datetime.fromisoformat(timer_state["started_at"])
+            elapsed_ms = max(0.0, (now - timer_started).total_seconds() * 1000)
+            q_time_seconds = _safe_int(timer_state.get("duration"), q_time_seconds)
+        else:
+            paused_remaining = max(0.0, _to_float(timer_state.get("paused_remaining"), 0.0))
+            q_time_seconds = _safe_int(timer_state.get("duration"), q_time_seconds)
+            elapsed_ms = max(0.0, (q_time_seconds - paused_remaining) * 1000)
     if q_time_seconds > 0 and elapsed_ms > q_time_seconds * 1000:
         await sio.emit("answer_rejected", {"reason": "question_time_expired"}, room=sid)
         return
@@ -962,8 +1010,8 @@ async def submit_answer(sid: str, data: dict):
         score = 0
         if answer_right:
             score = calculate_score(
-                abs(diff) - latency,
-                int(float(game_data.questions[question_index].time)),
+                max(0.0, abs(diff) - latency),
+                _safe_int(game_data.questions[question_index].time, 0),
             )
             if score < 0:
                 score = 0
@@ -985,7 +1033,7 @@ async def submit_answer(sid: str, data: dict):
         username=session["username"],
         answer=answer,
         right=answer_right,
-        time_taken=abs(diff) - latency,
+        time_taken=max(0.0, abs(diff) - latency),
         score=score,
     )
     try:
@@ -1298,6 +1346,8 @@ async def show_solutions(sid: str, _data: dict):
     game_data = await PlayGame.get_from_redis(session["game_pin"])
     if not session["admin"]:
         return
+    await redis.delete(f"game:{session['game_pin']}:question_timer")
+    await sio.emit("question_timer_stopped", {}, room=session["game_pin"])
     solution = game_data.questions[game_data.current_question].model_dump()
     for private_field in ("facilitator_notes", "default_next_question_id", "allowed_roles"):
         solution.pop(private_field, None)
@@ -1610,6 +1660,10 @@ async def propose_role(sid: str, data: dict):
         return
 
     game_pin = session["game_pin"]
+    game_data = await PlayGame.get_from_redis(game_pin)
+    if game_data.roles is not None and data.role not in game_data.roles:
+        await sio.emit("error", {"message": "role_not_defined"}, room=sid)
+        return
     player = await get_player_record(game_pin, data.username)
     if player is None:
         await sio.emit("error", {"message": "player_not_found"}, room=sid)
@@ -1625,10 +1679,11 @@ async def propose_role(sid: str, data: dict):
             room=game_pin,
         )
     else:
+        target_sid = player_sid.decode() if isinstance(player_sid, bytes) else player_sid
         await sio.emit(
             "role_proposed",
             {"username": data.username, "role": data.role, "from_admin": True},
-            room=player_sid.decode() if isinstance(player_sid, bytes) else player_sid,
+            room=target_sid,
         )
     # Notify admin the proposal was sent
     await sio.emit("role_proposal_sent", {"username": data.username, "role": data.role}, room=sid)
@@ -1656,12 +1711,24 @@ async def respond_to_role(sid: str, data: dict):
         return
 
     if data.accepted:
+        game_data = await PlayGame.get_from_redis(game_pin)
+        if game_data.roles is not None and data.role not in game_data.roles:
+            await sio.emit(
+                "role_response_error",
+                {"message": "role_not_defined", "role": data.role},
+                room=sid,
+            )
+            return
         await set_player_role(game_pin, username, data.role)
         roles = await get_all_player_roles(game_pin)
         await sio.emit("roles_updated", {"player_roles": roles}, room=game_pin)
-        await sio.emit("role_accepted_ack", {"username": username, "role": data.role}, room=game_pin)
+        acknowledgement = {"username": username, "role": data.role}
+        await sio.emit("role_accepted_ack", acknowledgement, room=game_pin)
+        await sio.emit("role_response_success", acknowledgement, room=sid)
     else:
-        await sio.emit("role_declined", {"username": username, "role": data.role}, room=game_pin)
+        response = {"username": username, "role": data.role}
+        await sio.emit("role_declined", response, room=game_pin)
+        await sio.emit("role_response_success", {**response, "accepted": False}, room=sid)
 
 
 class _ForceNextQuestionInput(BaseModel):
