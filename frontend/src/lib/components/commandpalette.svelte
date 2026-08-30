@@ -234,7 +234,7 @@ This should be okay, right?
 		tabindex="0"
 		transition:fade|global={{ duration: 60 }}
 	>
-		<div class="w-full max-w-xl mx-4 rounded-[1.75rem] border border-white/15 bg-[#0f172a]/97 backdrop-blur-2xl shadow-[0_30px_100px_rgba(15,23,42,0.8)] flex flex-col overflow-hidden text-white">
+		<div class="w-full max-w-xl mx-4 rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_30px_100px_rgba(15,23,42,0.18)] flex flex-col overflow-hidden text-slate-900">
 			<!-- Search input area -->
 			<div class="relative border-b border-white/8">
 				<div class="pointer-events-none absolute inset-0 flex items-center px-4">
@@ -246,7 +246,6 @@ This should be okay, right?
 					bind:value={input}
 					oninput={() => search(input)}
 					placeholder="Search or type /command…"
-					autofocus
 				/>
 			</div>
 
@@ -255,7 +254,7 @@ This should be okay, right?
 				{#each visible_items as vi, i}
 					<div
 						transition:fade={{ duration: 40 }}
-						class="{selected === i ? 'bg-[#B07156]/15 border-[#B07156]/30' : 'border-transparent hover:bg-white/5'} rounded-xl border px-4 py-3 transition-colors cursor-pointer"
+						class="{selected === i ? 'bg-teal-50 border-teal-200' : 'border-transparent hover:bg-slate-50'} rounded-xl border px-4 py-3 transition-colors cursor-pointer"
 						onmouseenter={() => (selected = i)}
 						onmousedown={execute_action}
 						tabindex="-2"

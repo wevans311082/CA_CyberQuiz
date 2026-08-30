@@ -5,7 +5,7 @@ SPDX-License-Identifier: MPL-2.0
 -->
 
 <script lang="ts">
-	export type FacilitatorTab = 'situation' | 'injects' | 'hands' | 'roles' | 'timeline';
+	export type FacilitatorTab = 'situation' | 'injects' | 'references' | 'rehearsal' | 'hands' | 'roles' | 'timeline' | 'rewards';
 
 	interface Props {
 		open?: boolean;
@@ -19,9 +19,12 @@ SPDX-License-Identifier: MPL-2.0
 		onopenprojector?: () => void;
 		situation?: import('svelte').Snippet;
 		injects?: import('svelte').Snippet;
+		references?: import('svelte').Snippet;
+		rehearsal?: import('svelte').Snippet;
 		hands?: import('svelte').Snippet;
 		roles?: import('svelte').Snippet;
 		timeline?: import('svelte').Snippet;
+		rewards?: import('svelte').Snippet;
 	}
 
 	let {
@@ -36,17 +39,23 @@ SPDX-License-Identifier: MPL-2.0
 		onopenprojector,
 		situation,
 		injects,
+		references,
+		rehearsal,
 		hands,
 		roles,
-		timeline
+		timeline,
+		rewards
 	}: Props = $props();
 
 	const tabs = $derived(
 		[
 			{ id: 'situation' as FacilitatorTab, label: 'Situation', accent: 'text-purple-300' },
 			{ id: 'injects' as FacilitatorTab, label: 'Injects', accent: 'text-orange-300' },
+			{ id: 'references' as FacilitatorTab, label: 'References', accent: 'text-teal-300' },
+			{ id: 'rehearsal' as FacilitatorTab, label: 'Rehearsal', accent: 'text-violet-300' },
 			{ id: 'hands' as FacilitatorTab, label: 'Hands', accent: 'text-amber-300', badge: handsCount },
 			{ id: 'timeline' as FacilitatorTab, label: 'Timeline', accent: 'text-slate-300', badge: timelineCount },
+			{ id: 'rewards' as FacilitatorTab, label: 'Rewards', accent: 'text-amber-300' },
 			...(showRoles ? [{ id: 'roles' as FacilitatorTab, label: 'Roles', accent: 'text-cyan-300' }] : [])
 		]
 	);
@@ -140,12 +149,18 @@ SPDX-License-Identifier: MPL-2.0
 				{@render situation()}
 			{:else if activeTab === 'injects' && injects}
 				{@render injects()}
+			{:else if activeTab === 'references' && references}
+				{@render references()}
+			{:else if activeTab === 'rehearsal' && rehearsal}
+				{@render rehearsal()}
 			{:else if activeTab === 'hands' && hands}
 				{@render hands()}
 			{:else if activeTab === 'roles' && roles}
 				{@render roles()}
 			{:else if activeTab === 'timeline' && timeline}
 				{@render timeline()}
+			{:else if activeTab === 'rewards' && rewards}
+				{@render rewards()}
 			{/if}
 		</div>
 	</aside>

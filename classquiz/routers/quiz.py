@@ -136,6 +136,7 @@ async def start_quiz(
         teams=getattr(quiz, "teams", None),
         injects=[inj if isinstance(inj, dict) else inj for inj in quiz.injects] if getattr(quiz, "injects", None) else None,
         master_theme=getattr(quiz, "master_theme", None),
+        reference_documents=getattr(quiz, "reference_documents", []) or [],
     )
     code = None
     if cqcs_enabled:

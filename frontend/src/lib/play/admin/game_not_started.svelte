@@ -13,6 +13,7 @@ SPDX-License-Identifier: MPL-2.0
 	import PlayerAvatarChip from '$lib/play/player_avatar_chip.svelte';
 	import { fade } from 'svelte/transition';
 	import type { QuizData } from '$lib/quiz_types';
+	import { onDestroy, onMount } from 'svelte';
 
 	interface Props {
 		game_pin: string;
@@ -73,9 +74,9 @@ SPDX-License-Identifier: MPL-2.0
 
 	// Hands up state
 	let raised_hands = $state<string[]>([]);
-	socket.on('hands_updated', (data: { hands: string[] }) => {
+	const on_hands_updated = (data: { hands: string[] }) => {
 		raised_hands = data?.hands ?? [];
-	});
+	};
 
 	const dismiss_hand = (username: string) => socket.emit('dismiss_hand', { username });
 	const dismiss_all_hands = () => socket.emit('dismiss_all_hands', {});
@@ -88,15 +89,15 @@ SPDX-License-Identifier: MPL-2.0
 		)
 	);
 
-	socket.on('role_accepted_ack', (data: { username: string; role: string }) => {
+	const on_role_accepted_ack = (data: { username: string; role: string }) => {
 		if (data?.username) {
 			accepted_roles = { ...accepted_roles, [data.username]: data.role };
 			const pending = { ...pending_proposals };
 			delete pending[data.username];
 			pending_proposals = pending;
 		}
-	});
-	socket.on('role_declined', (data: { username: string; role: string }) => {
+	};
+	const on_role_declined = (data: { username: string; role: string }) => {
 		if (data?.username) {
 			const pending = { ...pending_proposals };
 			delete pending[data.username];
@@ -106,6 +107,16 @@ SPDX-License-Identifier: MPL-2.0
 				declined_set = new Set([...declined_set].filter(u => u !== data.username));
 			}, 4000);
 		}
+	};
+	onMount(() => {
+		socket.on('hands_updated', on_hands_updated);
+		socket.on('role_accepted_ack', on_role_accepted_ack);
+		socket.on('role_declined', on_role_declined);
+	});
+	onDestroy(() => {
+		socket.off('hands_updated', on_hands_updated);
+		socket.off('role_accepted_ack', on_role_accepted_ack);
+		socket.off('role_declined', on_role_declined);
 	});
 
 	// Drag handlers

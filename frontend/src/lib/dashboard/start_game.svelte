@@ -113,14 +113,14 @@ SPDX-License-Identifier: MPL-2.0
 			<p class="text-xs uppercase tracking-[0.3em] text-slate-400/70 mb-3">Game Mode</p>
 			<div class="grid grid-cols-2 gap-4">
 				<button
-					class="{selected_game_mode === 'kahoot' ? 'border-[#B07156] bg-[#B07156]/10' : 'border-white/10 bg-white/5 opacity-60'} rounded-2xl border p-4 text-left transition-all cursor-pointer hover:opacity-100"
+					class="{selected_game_mode === 'kahoot' ? 'border-teal-600 bg-teal-50' : 'border-slate-200 bg-slate-50 opacity-60'} rounded-2xl border p-4 text-left text-slate-900 transition-all cursor-pointer hover:opacity-100"
 					onclick={() => { selected_game_mode = 'kahoot'; }}
 				>
 					<h3 class="text-base font-semibold mb-1">{$t('words.normal')}</h3>
 					<p class="text-sm text-slate-400">{$t('start_game.normal_mode_description')}</p>
 				</button>
 				<button
-					class="{selected_game_mode === 'normal' ? 'border-[#B07156] bg-[#B07156]/10' : 'border-white/10 bg-white/5 opacity-60'} rounded-2xl border p-4 text-left transition-all cursor-pointer hover:opacity-100"
+					class="{selected_game_mode === 'normal' ? 'border-teal-600 bg-teal-50' : 'border-slate-200 bg-slate-50 opacity-60'} rounded-2xl border p-4 text-left text-slate-900 transition-all cursor-pointer hover:opacity-100"
 					onclick={() => { selected_game_mode = 'normal'; }}
 				>
 					<h3 class="text-base font-semibold mb-1">{$t('start_game.old_school_mode')}</h3>
@@ -135,7 +135,7 @@ SPDX-License-Identifier: MPL-2.0
 			<input
 				id="custom-field-input"
 				bind:value={custom_field}
-				class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors"
+				class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-teal-600 transition-colors"
 				placeholder="Phone Number or Email"
 			/>
 		</div>
@@ -146,10 +146,10 @@ SPDX-License-Identifier: MPL-2.0
 				<label class="flex items-center gap-3 cursor-pointer group">
 					<div class="relative">
 						<input type="checkbox" bind:checked={captcha_selected} id="large-toggle" class="sr-only peer" />
-						<div class="w-10 h-5 rounded-full bg-white/10 peer-checked:bg-[#B07156] transition-colors"></div>
+						<div class="w-10 h-5 rounded-full bg-slate-200 peer-checked:bg-teal-600 transition-colors"></div>
 						<div class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></div>
 					</div>
-					<span class="text-sm text-slate-300 group-hover:text-white transition-colors">Captcha {captcha_selected ? 'enabled' : 'disabled'}</span>
+					<span class="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">Captcha {captcha_selected ? 'enabled' : 'disabled'}</span>
 				</label>
 				{#if captcha_selected}
 					<p class="text-xs text-slate-400 pl-13 -mt-1" in:fade|global>{$t('start_game.captcha_message')}</p>
@@ -159,10 +159,10 @@ SPDX-License-Identifier: MPL-2.0
 			<label class="flex items-center gap-3 cursor-pointer group">
 				<div class="relative">
 					<input type="checkbox" bind:checked={cqcs_enabled} id="cqc-toggle" class="sr-only peer" />
-					<div class="w-10 h-5 rounded-full bg-white/10 peer-checked:bg-[#B07156] transition-colors"></div>
+						<div class="w-10 h-5 rounded-full bg-slate-200 peer-checked:bg-teal-600 transition-colors"></div>
 					<div class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></div>
 				</div>
-				<span class="text-sm text-slate-300 group-hover:text-white transition-colors">
+				<span class="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
 					<a
 						href="/controller"
 						target="_blank"
@@ -175,23 +175,23 @@ SPDX-License-Identifier: MPL-2.0
 			<label class="flex items-center gap-3 cursor-pointer group">
 				<div class="relative">
 					<input type="checkbox" bind:checked={randomized_answers} id="randomized-answers-toggle" class="sr-only peer" />
-					<div class="w-10 h-5 rounded-full bg-white/10 peer-checked:bg-[#B07156] transition-colors"></div>
+						<div class="w-10 h-5 rounded-full bg-slate-200 peer-checked:bg-teal-600 transition-colors"></div>
 					<div class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></div>
 				</div>
-				<span class="text-sm text-slate-300 group-hover:text-white transition-colors">Randomize answers</span>
+				<span class="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">Randomize answers</span>
 			</label>
 		</div>
 
 		<!-- Action buttons -->
 		<div class="flex gap-3 pt-2">
 			<button
-				class="flex-1 rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white/90 hover:bg-white/6 transition-colors"
+				class="flex-1 rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
 				onclick={() => { quiz_id = null; }}
 			>
 				Cancel
 			</button>
 			<button
-				class="flex-1 rounded-full bg-[#B07156] px-6 py-3 text-sm font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors flex items-center justify-center gap-2"
+				class="flex-1 rounded-full bg-teal-700 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-800 transition-colors flex items-center justify-center gap-2"
 				onclick={() => { start_game(quiz_id); }}
 			>
 				{#if loading}

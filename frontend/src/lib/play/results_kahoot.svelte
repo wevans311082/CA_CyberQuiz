@@ -26,20 +26,13 @@ SPDX-License-Identifier: MPL-2.0
 	}
 
 	let { scores = $bindable(), question_results, username }: Props = $props();
-	let score_by_username = $state({});
-
-	if (JSON.stringify(scores) === '{}') {
-		for (const i of question_results) {
-			scores[i.username] = 0;
-		}
-	}
-	for (const i of question_results) {
-		score_by_username[i.username] = i.score;
-	}
-	for (const username of Object.keys(score_by_username)) {
-		scores[username] = (score_by_username[username] ?? 0) + (scores[username] ?? 0);
-	}
-	scores = scores;
+	let score_by_username = $derived(Object.fromEntries(question_results.map((result) => [result.username, result.score])));
+	$effect(() => {
+		const next_scores = { ...scores };
+		if (Object.keys(next_scores).length === 0) for (const result of question_results) next_scores[result.username] = 0;
+		for (const player of Object.keys(score_by_username)) next_scores[player] = (score_by_username[player] ?? 0) + (next_scores[player] ?? 0);
+		scores = next_scores;
+	});
 	let sorted_scores = $derived(sortObjectbyValue(scores));
 </script>
 

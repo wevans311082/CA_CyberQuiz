@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from classquiz.auth import get_admin_user
-from classquiz.db.models import Quiz, ScenarioVersion, User
+from classquiz.db.models import Quiz, ScenarioVersion, StorageItem, User
 
 router = APIRouter()
 
@@ -24,6 +24,7 @@ class ScenarioMetadataInput(BaseModel):
     reusable_roles: list[dict] = Field(default_factory=list)
     reusable_injects: list[dict] = Field(default_factory=list)
     evidence_packs: list[dict] = Field(default_factory=list)
+    reference_documents: list[dict] = Field(default_factory=list)
 
 
 class VersionInput(BaseModel):
@@ -53,6 +54,7 @@ def _content(quiz: Quiz) -> dict:
         "reusable_roles": quiz.reusable_roles or [],
         "reusable_injects": quiz.reusable_injects or [],
         "evidence_packs": quiz.evidence_packs or [],
+        "reference_documents": quiz.reference_documents or [],
     }
 
 
@@ -68,16 +70,49 @@ async def _next_version(quiz: Quiz) -> int:
     return max((version.version_number for version in versions), default=0) + 1
 
 
+async def _owned_reference_documents(documents: list[dict], user: User) -> list[dict]:
+    """Keep only safe, owned storage references in scenario metadata."""
+    if len(documents) > 50:
+        raise HTTPException(status_code=422, detail="A scenario can have at most 50 reference documents")
+    normalised: list[dict] = []
+    seen: set[str] = set()
+    for document in documents:
+        if not isinstance(document, dict):
+            raise HTTPException(status_code=422, detail="Invalid reference document")
+        try:
+            document_id = uuid.UUID(str(document.get("id")))
+        except (TypeError, ValueError, AttributeError):
+            raise HTTPException(status_code=422, detail="Invalid reference document id")
+        key = str(document_id)
+        if key in seen:
+            continue
+        item = await StorageItem.objects.get_or_none(id=document_id, user=user.id, deleted_at=None)
+        if item is None:
+            raise HTTPException(status_code=404, detail="Reference document not found")
+        seen.add(key)
+        normalised.append({
+            "id": key,
+            "title": str(document.get("title") or item.filename or "Company reference")[:200],
+            "category": str(document.get("category") or "Company policy")[:80],
+            "filename": item.filename,
+            "mime_type": item.mime_type,
+            "description": str(document.get("description") or "")[:500],
+        })
+    return normalised
+
+
 @router.get("/{quiz_id}/metadata")
 async def get_metadata(quiz_id: uuid.UUID, user: User = Depends(get_admin_user)):
     quiz = await _owned_quiz(quiz_id, user)
-    return {key: getattr(quiz, key) for key in ("tags", "difficulty", "duration_minutes", "framework_mappings", "reusable_roles", "reusable_injects", "evidence_packs")}
+    return {key: getattr(quiz, key) for key in ("tags", "difficulty", "duration_minutes", "framework_mappings", "reusable_roles", "reusable_injects", "evidence_packs", "reference_documents")}
 
 
 @router.put("/{quiz_id}/metadata")
 async def update_metadata(quiz_id: uuid.UUID, payload: ScenarioMetadataInput, user: User = Depends(get_admin_user)):
     quiz = await _owned_quiz(quiz_id, user)
-    for key, value in payload.model_dump().items():
+    values = payload.model_dump()
+    values["reference_documents"] = await _owned_reference_documents(values["reference_documents"], user)
+    for key, value in values.items():
         setattr(quiz, key, value)
     quiz.updated_at = datetime.now()
     await quiz.update()

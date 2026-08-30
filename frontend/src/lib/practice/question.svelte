@@ -42,9 +42,9 @@ SPDX-License-Identifier: MPL-2.0
 		}, 1000);
 	};
 	let slider_value = $state([0]);
-	if (question.type === QuizQuestionType.RANGE) {
-		slider_value[0] = (question.answers.max - question.answers.min) / 2 + question.answers.min;
-	}
+	$effect(() => {
+		if (question.type === QuizQuestionType.RANGE) slider_value = [(question.answers.max - question.answers.min) / 2 + question.answers.min];
+	});
 	let slider_values = $state([
 		question.answers.min_correct ?? 0,
 		question.answers.max_correct ?? 0
@@ -187,7 +187,7 @@ SPDX-License-Identifier: MPL-2.0
 				<div class="flex justify-center">
 					<button
 						type="button"
-						class="w-1/3 text-3xl bg-[#B07156] my-2 disabled:opacity-60 rounded-lg p-1 transition"
+						class="w-1/3 text-3xl bg-teal-700 text-white my-2 disabled:opacity-60 rounded-lg p-1 transition"
 						disabled={selected_answer !== undefined}
 						onclick={() => {
 							selected_answer = slider_value[0];
@@ -242,7 +242,7 @@ SPDX-License-Identifier: MPL-2.0
 				<button
 					type="button"
 					disabled={!text_input}
-					class="w-1/3 text-3xl bg-[#B07156] my-2 disabled:opacity-60 rounded-lg p-1 transition"
+					class="w-1/3 text-3xl bg-teal-700 text-white my-2 disabled:opacity-60 rounded-lg p-1 transition"
 					onclick={() => {
 						selected_answer = text_input;
 						timer_res = '0';
@@ -262,7 +262,8 @@ SPDX-License-Identifier: MPL-2.0
 						onclick={() => {
 							question.answers = swapArrayElements(question.answers, i, i - 1);
 						}}
-						class="disabled:opacity-50 transition shadow-lg bg-black/30 w-full flex justify-center rounded-lg p-2 hover:bg-black/20 transition"
+						aria-label="Move answer up"
+						class="disabled:opacity-50 transition shadow-lg bg-slate-100 text-slate-700 w-full flex justify-center rounded-lg p-2 hover:bg-slate-200 transition"
 						type="button"
 						disabled={i === 0 || order_corrected}
 					>
@@ -289,7 +290,8 @@ SPDX-License-Identifier: MPL-2.0
 						onclick={() => {
 							question.answers = swapArrayElements(question.answers, i, i + 1);
 						}}
-						class="disabled:opacity-50 transition shadow-lg bg-black/30 w-full flex justify-center rounded-lg p-2 hover:bg-black/20 transition"
+						aria-label="Move answer down"
+						class="disabled:opacity-50 transition shadow-lg bg-slate-100 text-slate-700 w-full flex justify-center rounded-lg p-2 hover:bg-slate-200 transition"
 						type="button"
 						disabled={i === question.answers.length - 1 || order_corrected}
 					>
@@ -313,7 +315,7 @@ SPDX-License-Identifier: MPL-2.0
 				</div>
 			{/each}
 			<button
-				class="bg-[#B07156] hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-lg mt-2 transition w-full"
+				class="bg-teal-700 hover:bg-teal-800 text-white font-bold py-2 px-4 rounded-lg mt-2 transition w-full"
 				type="button"
 				disabled={timer_res === '0'}
 				onclick={() => {

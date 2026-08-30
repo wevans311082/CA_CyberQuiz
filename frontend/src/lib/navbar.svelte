@@ -8,6 +8,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { signedIn, pathname } from '$lib/stores';
 	import { browser } from '$app/environment';
 	import { beforeNavigate } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { draw, slide } from 'svelte/transition';
 
 	let menuIsClosed = $state(true);
@@ -20,12 +21,6 @@ SPDX-License-Identifier: MPL-2.0
 	});
 
 	let darkMode = $state(false);
-	if (browser) {
-		darkMode =
-			localStorage.theme === 'dark' ||
-			(!('theme' in localStorage) &&
-				window.matchMedia('(prefers-color-scheme: dark)').matches);
-	}
 
 	const applyTheme = (isDark: boolean) => {
 		document.documentElement.classList.toggle('dark', isDark);
@@ -38,9 +33,10 @@ SPDX-License-Identifier: MPL-2.0
 		applyTheme(nextDark);
 	};
 
-	if (browser) {
+	onMount(() => {
+		darkMode = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
 		applyTheme(darkMode);
-	}
+	});
 </script>
 
 <nav class="fixed top-0 z-30 w-screen border-b border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-950/70 lg:pl-72">

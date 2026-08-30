@@ -213,6 +213,7 @@ class QuizQuestion(BaseModel):
     theme_override: SlideThemeOverride | None = None
     objective: str | None = None  # Detection | Containment | Recovery | Communication
     sla_checkpoints: list[dict] | None = None  # [{deadline_seconds, bonus_points, penalty_points, description}]
+    decision_rubric: list[dict] | None = None  # [{id, label, keywords, max_points}]
 
     @field_validator("answers")
     def answers_not_none_if_abcd_type(cls, v, info: ValidationInfo):
@@ -258,6 +259,7 @@ class QuizInput(BaseModel):
     reusable_roles: list[dict] = []
     reusable_injects: list[dict] = []
     evidence_packs: list[dict] = []
+    reference_documents: list[dict] = []
 
 
 class Quiz(ormar.Model):
@@ -292,6 +294,7 @@ class Quiz(ormar.Model):
     reusable_roles: Json[list[dict]] = ormar.JSON(nullable=False, default=[])
     reusable_injects: Json[list[dict]] = ormar.JSON(nullable=False, default=[])
     evidence_packs: Json[list[dict]] = ormar.JSON(nullable=False, default=[])
+    reference_documents: Json[list[dict]] = ormar.JSON(nullable=False, default=[])
 
     ormar_config = ormar.OrmarConfig(
         tablename="quiz",
@@ -431,6 +434,7 @@ class PlayGame(BaseModel):
     master_theme: dict | None = None
     roles_config: dict[str, float] | None = None  # {role_name: score_multiplier}
     teams: dict[str, list[str]] | None = None  # {team_name: [username, ...]}
+    reference_documents: list[dict] = []
 
     @classmethod
     async def get_from_redis(self, game_pin: str) -> Self:
@@ -500,6 +504,7 @@ class AnswerData(BaseModel):
     right: bool
     time_taken: float  # In milliseconds
     score: int
+    decision_quality: dict = {}
 
 
 class AnswerDataList(RootModel):

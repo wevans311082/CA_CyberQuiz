@@ -8,7 +8,8 @@ SPDX-License-Identifier: MPL-2.0
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import { QuizQuestionType } from '$lib/quiz_types';
-	import type { QuizData, Inject, SituationStatus, TimelineEvent } from '$lib/quiz_types';
+	import type { QuizData, Inject, SituationStatus, TimelineEvent, ReferenceDocument } from '$lib/quiz_types';
+	import type { Player } from '$lib/admin';
 	import type { Socket } from 'socket.io-client';
 	import { getLocalization } from '$lib/i18n';
 	import RolesPanel from '$lib/play/RolesPanel.svelte';
@@ -24,6 +25,7 @@ SPDX-License-Identifier: MPL-2.0
 	} from '$lib/facilitator/timeline';
 
 	import EmojiPanel from './EmojiPanel.svelte';
+	import RehearsalPlayerSimulator from './RehearsalPlayerSimulator.svelte';
 
 	interface Props {
 		bg_color: string;
@@ -44,6 +46,7 @@ SPDX-License-Identifier: MPL-2.0
 		situation_status?: SituationStatus;
 		raised_hands?: string[];
 		player_roles?: Record<string, string>;
+		players?: Player[];
 		scoreboard_data?: { ranked: [string, number][]; scores: Record<string, number> } | null;
 	}
 
@@ -66,21 +69,31 @@ SPDX-License-Identifier: MPL-2.0
 		situation_status = $bindable({ severity: 'low', phase: 'Detection', affected_systems: [], summary: '' }),
 		raised_hands = [],
 		player_roles = {},
+		players = [],
 		scoreboard_data = null
 	}: Props = $props();
 
 	let is_tabletop = $derived(scenario_type === 'tabletop');
 	let override_question_id = $state('');
 	let facilitator_dock_open = $state(false);
-	let facilitator_dock_tab = $state<'situation' | 'injects' | 'hands' | 'roles' | 'timeline'>('situation');
+	let facilitator_dock_tab = $state<'situation' | 'injects' | 'references' | 'rehearsal' | 'hands' | 'roles' | 'timeline' | 'rewards'>('situation');
+	let bonus_target = $state('');
+	let bonus_amount = $state(25);
+	let bonus_reason = $state('Great participation');
 	let injects_log = $state<InjectLogEntry[]>([]);
 	let situation_log = $state<SituationLogEntry[]>([]);
 	let inject_preview_open = $state(false);
 	let inject_preview_payload = $state<InjectPreviewPayload | null>(null);
+	let rehearsal_active = $state(false);
+	let rehearsal_question = $state(0);
+	let rehearsal_clock_speed = $state(1);
+	let rehearsal_snapshot = $state<{ question: number; speed: number } | null>(null);
+	let rehearsal_snapshots = $state<Array<{ question: number; speed: number; created_at: string }>>([]);
+	let rehearsal_answers = $state<Record<string, string>>({});
 
 	const timeline_events = $derived(buildFacilitatorTimeline(injects_log, situation_log));
 
-	const open_facilitator_tab = (tab: 'situation' | 'injects' | 'hands' | 'roles' | 'timeline') => {
+	const open_facilitator_tab = (tab: 'situation' | 'injects' | 'references' | 'rehearsal' | 'hands' | 'roles' | 'timeline' | 'rewards') => {
 		facilitator_dock_tab = tab;
 		facilitator_dock_open = true;
 		refresh_situation_data();
@@ -97,6 +110,18 @@ SPDX-License-Identifier: MPL-2.0
 		if (!token || !game_id || !pin) return;
 		window.open(`/projector?token=${encodeURIComponent(token)}&game_id=${encodeURIComponent(game_id)}&pin=${encodeURIComponent(pin)}&connect=1`, '_blank', 'noopener,noreferrer');
 	};
+	const spotlight_policy = (document: ReferenceDocument) => socket.emit('spotlight_policy', { document_id: document.id });
+	const start_rehearsal = () => { rehearsal_active = true; facilitator_dock_tab = 'rehearsal'; socket.emit('create_rehearsal', {}); };
+	const reset_rehearsal = () => socket.emit('reset_rehearsal', {});
+	const exit_rehearsal = () => { socket.emit('exit_rehearsal', {}); rehearsal_active = false; rehearsal_snapshot = null; rehearsal_snapshots = []; };
+	const rehearsal_next = () => { const next = Math.min(quiz_data.questions.length - 1, rehearsal_question + 1); rehearsal_question = next; socket.emit('update_rehearsal', { question: next, speed: rehearsal_clock_speed }); };
+	const rehearsal_previous = () => { const previous = Math.max(0, rehearsal_question - 1); rehearsal_question = previous; socket.emit('update_rehearsal', { question: previous, speed: rehearsal_clock_speed }); };
+	const save_rehearsal_snapshot = () => socket.emit('snapshot_rehearsal', {});
+	const restore_rehearsal_snapshot = (index: number) => socket.emit('restore_rehearsal', { index });
+	const submit_rehearsal_answer = (answer: string) => socket.emit('submit_rehearsal_answer', { question: rehearsal_question, answer });
+	const update_rehearsal_speed = () => socket.emit('update_rehearsal', { question: rehearsal_question, speed: rehearsal_clock_speed });
+	const onRehearsalState = (state: { active?: boolean; question?: number; speed?: number; answers?: Record<string, { answer?: string }>; snapshots?: Array<{ question: number; speed: number; created_at: string }> }) => { rehearsal_active = Boolean(state?.active); if (typeof state?.question === 'number') rehearsal_question = state.question; if (typeof state?.speed === 'number') rehearsal_clock_speed = state.speed; rehearsal_answers = Object.fromEntries(Object.entries(state?.answers ?? {}).map(([key, value]) => [key, value.answer ?? ''])); rehearsal_snapshots = state?.snapshots ?? []; };
+	$effect(() => { if (!rehearsal_active && selected_question >= 0) rehearsal_question = selected_question; });
 	const on_local_console_request = (event: Event) => {
 		const tab = (event as CustomEvent<{ tab?: 'situation' | 'injects' | 'hands' | 'roles' | 'timeline' }>).detail?.tab;
 		open_facilitator_tab(tab ?? 'situation');
@@ -157,6 +182,11 @@ SPDX-License-Identifier: MPL-2.0
 				if (disc_interval) { clearInterval(disc_interval); disc_interval = null; }
 			}
 		}, 250);
+	};
+	const award_bonus = () => {
+		if (!bonus_target || bonus_amount < 1) return;
+		socket.emit('award_bonus', { target: bonus_target, amount: bonus_amount, reason: bonus_reason });
+		bonus_target = '';
 	};
 	const onDiscussionTimerPaused = (data: { remaining: number }) => {
 		disc_running = false;
@@ -425,6 +455,7 @@ SPDX-License-Identifier: MPL-2.0
 	onMount(() => {
 		socket.on('situation_room_data', onSituationRoomData);
 		socket.on('inject_received', onInjectReceived);
+		socket.on('rehearsal_state', onRehearsalState);
 		socket.on('situation_updated', onSituationUpdated);
 		socket.on('discussion_timer_started', onDiscussionTimerStarted);
 		socket.on('discussion_timer_paused', onDiscussionTimerPaused);
@@ -440,6 +471,7 @@ SPDX-License-Identifier: MPL-2.0
 	onDestroy(() => {
 		socket.off('situation_room_data', onSituationRoomData);
 		socket.off('inject_received', onInjectReceived);
+		socket.off('rehearsal_state', onRehearsalState);
 		socket.off('situation_updated', onSituationUpdated);
 		socket.off('discussion_timer_started', onDiscussionTimerStarted);
 		socket.off('discussion_timer_paused', onDiscussionTimerPaused);
@@ -751,6 +783,7 @@ SPDX-License-Identifier: MPL-2.0
 							</div>
 							<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 								{#each Object.entries(row.scores ?? {}) as [uname, rawScore]}
+									{@const quality = row.decision_quality?.[uname]}
 									<div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
 										<span class="text-sm text-slate-300">{uname}</span>
 										<input
@@ -762,6 +795,7 @@ SPDX-License-Identifier: MPL-2.0
 											onchange={(e) => update_review_score(row.question_index, uname, e.currentTarget.value)}
 										/>
 									</div>
+									{#if quality}<div class="col-span-full -mt-1 rounded-xl border border-teal-500/20 bg-teal-500/5 px-3 py-2 text-[11px] text-slate-400"><span class="font-semibold text-teal-300">Decision quality:</span> {quality.rubric_score != null ? `${quality.rubric_score}% rubric` : 'No rubric'} · {quality.confidence_score}% confidence · {quality.time_score}% timing{#if quality.criteria?.length}<span class="ml-2">· {quality.criteria.filter((criterion: { matched: boolean }) => criterion.matched).length}/{quality.criteria.length} criteria matched</span>{/if}</div>{/if}
 								{/each}
 							</div>
 						</div>
@@ -796,6 +830,12 @@ SPDX-License-Identifier: MPL-2.0
 			showRoles={is_tabletop}
 			onopenprojector={open_projector_display}
 		>
+			{#snippet rehearsal()}
+				<div class="space-y-4"><div class="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3"><p class="text-sm font-bold text-violet-200">Safe rehearsal mode</p><p class="mt-1 text-xs leading-5 text-violet-100/70">This simulation is private to you. It does not broadcast, score players, or change the live exercise.</p></div>
+					{#if !rehearsal_active}<button type="button" class="host-btn-accent w-full" onclick={start_rehearsal}>Start private rehearsal</button>{:else}<div class="space-y-3"><div class="flex items-center justify-between"><span class="host-label mb-0">Simulated node</span><span class="text-xs font-bold text-violet-300">{rehearsal_question + 1} / {quiz_data.questions.length}</span></div><select bind:value={rehearsal_question} class="host-field w-full">{#each quiz_data.questions as rehearsal_q, index}<option value={index}>Q{index + 1} · {rehearsal_q.question?.replace(/<[^>]*>/g, '').slice(0, 55) || 'Untitled'}</option>{/each}</select><div class="rounded-xl border border-slate-700 bg-slate-900/60 p-3"><p class="text-xs font-bold uppercase tracking-wider text-slate-500">Player-view content</p><p class="mt-2 text-sm font-semibold text-slate-100">{quiz_data.questions[rehearsal_question]?.question?.replace(/<[^>]*>/g, '') || 'No question content'}</p><p class="mt-2 text-xs text-slate-400">Type: {quiz_data.questions[rehearsal_question]?.type ?? 'ABCD'} · Objective: {quiz_data.questions[rehearsal_question]?.objective ?? 'Not set'}</p></div><div class="flex gap-2"><button type="button" class="host-btn flex-1" onclick={rehearsal_previous} disabled={rehearsal_question <= 0}>Previous</button><button type="button" class="host-btn flex-1" onclick={rehearsal_next} disabled={rehearsal_question >= quiz_data.questions.length - 1}>Next</button></div><label class="block"><span class="host-label">Clock speed</span><select bind:value={rehearsal_clock_speed} class="host-field mt-1 w-full"><option value={0.5}>0.5× slower</option><option value={1}>1× normal</option><option value={2}>2× faster</option><option value={4}>4× faster</option></select></label><div class="flex gap-2"><button type="button" class="host-btn-warn flex-1" onclick={reset_rehearsal}>Reset rehearsal</button><button type="button" class="host-btn flex-1" onclick={exit_rehearsal}>Exit mode</button></div></div>{/if}
+					</div>
+					{#if rehearsal_active}<div class="mt-3 border-t border-slate-700 pt-3"><button type="button" class="host-btn-accent w-full" onclick={save_rehearsal_snapshot}>Save server snapshot</button>{#if rehearsal_snapshots.length}<div class="mt-2 space-y-1"><p class="host-label">Saved snapshots</p>{#each rehearsal_snapshots as snapshot, index}<button type="button" class="flex w-full items-center justify-between rounded-lg border border-slate-700 px-3 py-2 text-left text-xs text-slate-300 hover:bg-slate-800" onclick={() => restore_rehearsal_snapshot(index)}><span>Snapshot {index + 1} · Q{snapshot.question + 1}</span><span class="text-violet-300">Restore</span></button>{/each}</div>{/if}</div>{/if}
+				{/snippet}
 			{#snippet situation()}
 				{#if facilitator_notes}
 					<div class="mb-4 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3">
@@ -885,6 +925,13 @@ SPDX-License-Identifier: MPL-2.0
 				</div>
 			{/snippet}
 
+			{#snippet references()}
+				<div class="mb-4"><p class="text-sm font-bold text-teal-300">Player reference shelf</p><p class="mt-1 text-xs leading-5 text-slate-400">Open a policy for everyone and send a clear notification to player screens.</p></div>
+				{#if quiz_data.reference_documents?.length}
+					<div class="space-y-2">{#each quiz_data.reference_documents as document}<div class="flex items-center justify-between gap-3 rounded-xl border border-slate-700 bg-slate-900/60 p-3"><div class="min-w-0"><p class="truncate text-sm font-semibold text-slate-100">{document.title}</p><p class="mt-1 truncate text-[10px] uppercase tracking-wider text-slate-500">{document.filename ?? document.category ?? 'Company reference'}</p></div><button type="button" class="host-btn-accent shrink-0 px-3 py-1.5 text-xs" onclick={() => spotlight_policy(document)}>Open for players</button></div>{/each}</div>
+				{:else}<p class="rounded-xl border border-dashed border-slate-700 p-4 text-xs text-slate-500">No policies are attached to this scenario. Add them from Scenario management before starting.</p>{/if}
+			{/snippet}
+
 			{#snippet injects()}
 				<div class="mb-4">
 					<span class="host-label">Quick presets</span>
@@ -972,6 +1019,27 @@ SPDX-License-Identifier: MPL-2.0
 				/>
 			{/snippet}
 
+			{#snippet rewards()}
+				<div class="space-y-4">
+					<div>
+						<p class="text-sm font-bold text-amber-300">Participation bonus</p>
+						<p class="mt-1 text-xs leading-5 text-slate-400">Recognise a strong decision, helpful contribution, or excellent teamwork. The recipient sees the award immediately.</p>
+					</div>
+					<div>
+						<label class="host-label" for="bonus-target">Player</label>
+						<select id="bonus-target" bind:value={bonus_target} class="host-field mt-1 w-full">
+							<option value="">Choose a player</option>
+							{#each players as player}<option value={player.username}>{player.username}</option>{/each}
+						</select>
+					</div>
+					<div class="grid grid-cols-[1fr,2fr] gap-2">
+						<div><label class="host-label" for="bonus-amount">Points</label><input id="bonus-amount" type="number" min="1" max="10000" bind:value={bonus_amount} class="host-field mt-1 w-full" /></div>
+						<div><label class="host-label" for="bonus-reason">Reason</label><input id="bonus-reason" bind:value={bonus_reason} maxlength="200" class="host-field mt-1 w-full" /></div>
+					</div>
+					<button type="button" class="host-btn-accent w-full" disabled={!bonus_target || bonus_amount < 1} onclick={award_bonus}>Award +{bonus_amount || 0} points</button>
+				</div>
+			{/snippet}
+
 			{#snippet timeline()}
 				<div class="mb-3 flex items-center justify-between">
 					<p class="host-label mb-0">Session timeline</p>
@@ -980,6 +1048,7 @@ SPDX-License-Identifier: MPL-2.0
 				<FacilitatorTimeline events={timeline_events} />
 			{/snippet}
 		</FacilitatorDock>
+		<RehearsalPlayerSimulator active={rehearsal_active} {quiz_data} question={rehearsal_question} answers={rehearsal_answers} {socket} />
 
 		<InjectPreviewModal
 			bind:open={inject_preview_open}

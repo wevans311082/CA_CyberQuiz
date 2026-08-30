@@ -1,4 +1,4 @@
-﻿<!--
+<!--
 SPDX-FileCopyrightText: 2023 Marlon W (Mawoka)
 
 SPDX-License-Identifier: MPL-2.0
@@ -13,7 +13,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	let { data }: Props = $props();
 
-	const aar: any = data.aar;
+	const aar: any = $derived(data.aar);
 
 	// Tabs
 	type Tab = 'executive' | 'summary' | 'scores' | 'decisions' | 'timeline' | 'badges';
@@ -63,11 +63,11 @@ SPDX-License-Identifier: MPL-2.0
 {:else}
 <div class="aar-shell min-h-screen bg-slate-50 text-slate-900">
 	<!-- Header -->
-	<div class="border-b border-white/10 bg-[#0f172a]/80 px-6 py-5 backdrop-blur-xl">
+	<div class="border-b border-slate-200 bg-white/90 px-6 py-5 shadow-sm backdrop-blur-xl">
 		<div class="mx-auto max-w-5xl">
-			<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">After-Action Report</p>
-			<h1 class="mt-1 text-2xl font-bold">{aar.metadata.title}</h1>
-			<div class="mt-1 flex flex-wrap items-center gap-4 text-sm text-slate-400">
+			<p class="text-xs uppercase tracking-[0.35em] text-teal-700">After-Action Report</p>
+			<h1 class="mt-1 text-2xl font-bold text-slate-950">{aar.metadata.title}</h1>
+			<div class="mt-1 flex flex-wrap items-center gap-4 text-sm text-slate-500">
 				<span>{fmt_date(aar.metadata.timestamp)}</span>
 				<span>{aar.metadata.player_count} players</span>
 				{#if aar.metadata.scenario_type}
@@ -85,7 +85,7 @@ SPDX-License-Identifier: MPL-2.0
 				<a
 					href="/results/{aar.metadata.game_id}"
 					class="rounded-full border border-white/15 px-4 py-1.5 text-xs font-semibold hover:bg-white/5 transition-colors"
-				>â† Back to Results</a>
+				>← Back to Results</a>
 				<a
 					href="/api/v1/results/aar/{aar.metadata.game_id}"
 					download="aar-{aar.metadata.game_id}.json"
@@ -102,12 +102,12 @@ SPDX-License-Identifier: MPL-2.0
 	</div>
 
 	<!-- Tab bar -->
-	<div class="border-b border-white/10 bg-[#0f172a]/60 px-6">
+	<div class="border-b border-slate-200 bg-white px-6">
 		<div class="mx-auto max-w-5xl flex gap-1">
 			{#each ([['executive','Executive'],['summary','Summary'],['scores','Scores'],['decisions','Decisions'],['timeline','Timeline'],['badges','Badges']] as const) as [tab, label]}
 				<button
 					onclick={() => { active_tab = tab; }}
-					class="{active_tab === tab ? 'border-b-2 border-[#B07156] text-white' : 'text-slate-400 hover:text-slate-200'} px-4 py-3 text-sm font-medium transition-colors"
+					class="{active_tab === tab ? 'border-b-2 border-teal-600 text-teal-700' : 'text-slate-500 hover:text-slate-900'} px-4 py-3 text-sm font-medium transition-colors"
 				>{label}</button>
 			{/each}
 		</div>
@@ -119,18 +119,18 @@ SPDX-License-Identifier: MPL-2.0
 		<div in:fade={{ duration: 150 }}>
 			<div class="mb-6"><p class="text-xs uppercase tracking-[0.25em] text-[#B07156]">Executive debrief</p><h2 class="mt-2 text-3xl font-bold">What the team demonstrated</h2><p class="mt-2 max-w-3xl text-sm leading-6 text-slate-400">A decision-focused view of exercise outcomes, branch behaviour, team performance, and recommended follow-up actions.</p></div>
 			<div class="grid gap-4 sm:grid-cols-4">
-				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><p class="text-xs uppercase tracking-widest text-slate-400">Decision quality</p><p class="mt-2 text-3xl font-bold text-[#B07156]">{executive.decision_quality?.score ?? '—'}</p><p class="mt-1 text-xs text-slate-500">out of {executive.decision_quality?.scale ?? 1000}</p></div>
-				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><p class="text-xs uppercase tracking-widest text-slate-400">Avg decision time</p><p class="mt-2 text-3xl font-bold">{executive.time_to_decision_seconds ? `${Math.round(executive.time_to_decision_seconds)}s` : '—'}</p></div>
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><p class="text-xs uppercase tracking-widest text-slate-400">Decision quality</p><p class="mt-2 text-3xl font-bold text-[#B07156]">{executive.decision_quality?.score ?? '�'}</p><p class="mt-1 text-xs text-slate-500">out of {executive.decision_quality?.scale ?? 1000}</p></div>
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><p class="text-xs uppercase tracking-widest text-slate-400">Avg decision time</p><p class="mt-2 text-3xl font-bold">{executive.time_to_decision_seconds ? `${Math.round(executive.time_to_decision_seconds)}s` : '�'}</p></div>
 				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><p class="text-xs uppercase tracking-widest text-slate-400">Branches taken</p><p class="mt-2 text-3xl font-bold">{executive.branches_taken ?? 0}</p></div>
 				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><p class="text-xs uppercase tracking-widest text-slate-400">Inject response</p><p class="mt-2 text-3xl font-bold">{executive.inject_response?.injects_pushed ?? 0}</p><p class="mt-1 text-xs text-slate-500">injects delivered</p></div>
 			</div>
 			<div class="mt-6 grid gap-4 lg:grid-cols-2">
 				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Exercise objectives</h3>{#if executive.objectives?.length}<div class="mt-4 flex flex-wrap gap-2">{#each executive.objectives as objective}<span class="rounded-full border border-teal-400/30 bg-teal-400/10 px-3 py-1 text-xs text-teal-300">{objective}</span>{/each}</div>{:else}<p class="mt-3 text-sm text-slate-500">No objectives were configured.</p>{/if}</div>
-				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Strengths</h3>{#if executive.strengths?.length}<ul class="mt-3 space-y-2 text-sm text-slate-300">{#each executive.strengths as strength}<li>✓ {strength}</li>{/each}</ul>{:else}<p class="mt-3 text-sm text-slate-500">Strengths will appear as more observations are recorded.</p>{/if}</div>
-				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Missed decision points</h3>{#if executive.missed_decision_points?.length}<div class="mt-3 space-y-2">{#each executive.missed_decision_points as missed}<div class="rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-sm text-amber-200">Q{missed.question_index} · {missed.title}</div>{/each}</div>{:else}<p class="mt-3 text-sm text-emerald-300">No missed decision points detected.</p>{/if}</div>
-				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Improvement actions</h3><div class="mt-3 space-y-2">{#each executive.improvement_actions ?? [] as action}<div class="rounded-lg border border-white/10 bg-black/10 px-3 py-2"><p class="text-sm text-slate-200">{action.action}</p><p class="mt-1 text-xs text-slate-500">Owner: {action.owner}{action.due_date ? ` · Due ${action.due_date}` : ''}</p></div>{/each}</div></div>
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Strengths</h3>{#if executive.strengths?.length}<ul class="mt-3 space-y-2 text-sm text-slate-300">{#each executive.strengths as strength}<li>? {strength}</li>{/each}</ul>{:else}<p class="mt-3 text-sm text-slate-500">Strengths will appear as more observations are recorded.</p>{/if}</div>
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Missed decision points</h3>{#if executive.missed_decision_points?.length}<div class="mt-3 space-y-2">{#each executive.missed_decision_points as missed}<div class="rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-sm text-amber-200">Q{missed.question_index} � {missed.title}</div>{/each}</div>{:else}<p class="mt-3 text-sm text-emerald-300">No missed decision points detected.</p>{/if}</div>
+				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Improvement actions</h3><div class="mt-3 space-y-2">{#each executive.improvement_actions ?? [] as action}<div class="rounded-lg border border-white/10 bg-black/10 px-3 py-2"><p class="text-sm text-slate-200">{action.action}</p><p class="mt-1 text-xs text-slate-500">Owner: {action.owner}{action.due_date ? ` � Due ${action.due_date}` : ''}</p></div>{/each}</div></div>
 			</div>
-			<div class="mt-6 rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Role performance</h3>{#if Object.keys(executive.role_performance ?? {}).length}<div class="mt-4 grid gap-3 sm:grid-cols-2">{#each (Object.entries(executive.role_performance ?? {}) as [string, any][]) as [role, performance]}<div class="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2"><span class="text-sm text-slate-300">{role}</span><span class="text-xs font-bold text-[#B07156]">{performance.average_score} avg · {performance.responses} responses</span></div>{/each}</div>{:else}<p class="mt-3 text-sm text-slate-500">Role performance becomes available when participants are assigned roles.</p>{/if}</div>
+			<div class="mt-6 rounded-[1.25rem] border border-white/10 bg-white/4 p-5"><h3 class="font-semibold">Role performance</h3>{#if Object.keys(executive.role_performance ?? {}).length}<div class="mt-4 grid gap-3 sm:grid-cols-2">{#each (Object.entries(executive.role_performance ?? {}) as [string, any][]) as [role, performance]}<div class="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2"><span class="text-sm text-slate-300">{role}</span><span class="text-xs font-bold text-[#B07156]">{performance.average_score} avg � {performance.responses} responses</span></div>{/each}</div>{:else}<p class="mt-3 text-sm text-slate-500">Role performance becomes available when participants are assigned roles.</p>{/if}</div>
 		</div>
 
 		<!-- SUMMARY TAB -->
@@ -145,11 +145,11 @@ SPDX-License-Identifier: MPL-2.0
 				</div>
 				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5">
 					<p class="text-xs uppercase tracking-widest text-slate-400">Questions</p>
-					<p class="mt-1 text-3xl font-bold">{aar.questions?.length ?? 'â€”'}</p>
+					<p class="mt-1 text-3xl font-bold">{aar.questions?.length ?? '—'}</p>
 				</div>
 				<div class="rounded-[1.25rem] border border-white/10 bg-white/4 p-5">
 					<p class="text-xs uppercase tracking-widest text-slate-400">Company Score</p>
-					<p class="mt-1 text-3xl font-bold text-[#B07156]">{aar.scores.company_score ?? 'â€”'}</p>
+					<p class="mt-1 text-3xl font-bold text-[#B07156]">{aar.scores.company_score ?? '—'}</p>
 				</div>
 			</div>
 
@@ -243,11 +243,11 @@ SPDX-License-Identifier: MPL-2.0
 								<tr class="border-b border-white/5 hover:bg-white/3">
 									<td class="py-2.5 px-3 text-slate-400">{(entry.question_index ?? i) + 1}</td>
 									<td class="py-2.5 px-3 text-slate-200 max-w-[18rem]">
-										<span class="line-clamp-2">{entry.question ?? entry.winning_answer ?? 'â€”'}</span>
+										<span class="line-clamp-2">{entry.question ?? entry.winning_answer ?? '—'}</span>
 									</td>
-									<td class="py-2.5 px-3 text-slate-300">{entry.winning_answer ?? entry.answer ?? 'â€”'}</td>
+									<td class="py-2.5 px-3 text-slate-300">{entry.winning_answer ?? entry.answer ?? '—'}</td>
 									<td class="py-2.5 px-3 text-slate-400 max-w-[16rem]">
-										<span class="line-clamp-2 italic">{entry.rationale ?? entry.decision_rationale ?? 'â€”'}</span>
+										<span class="line-clamp-2 italic">{entry.rationale ?? entry.decision_rationale ?? '—'}</span>
 									</td>
 									<td class="py-2.5 px-3 text-slate-500 whitespace-nowrap text-xs">{fmt_date(entry.timestamp)}</td>
 								</tr>
@@ -265,7 +265,7 @@ SPDX-License-Identifier: MPL-2.0
 				<p class="text-center text-slate-400 mt-12">No score timeline recorded for this session.</p>
 			{:else}
 				<div class="mb-6 flex items-center justify-between">
-					<p class="text-sm text-slate-400">Company score progression â€” {timeline.length} checkpoint{timeline.length !== 1 ? 's' : ''}</p>
+					<p class="text-sm text-slate-400">Company score progression — {timeline.length} checkpoint{timeline.length !== 1 ? 's' : ''}</p>
 					<div class="flex items-center gap-2">
 						{#if replay_active}
 							<span class="text-xs text-slate-400">Step {replay_step + 1} / {timeline.length}</span>
@@ -273,19 +273,19 @@ SPDX-License-Identifier: MPL-2.0
 								onclick={() => { replay_step = Math.max(0, replay_step - 1); }}
 								disabled={replay_step <= 0}
 								class="rounded-full border border-white/15 px-3 py-1 text-xs disabled:opacity-30 hover:bg-white/5"
-							>â† Prev</button>
+							>← Prev</button>
 							<button
 								onclick={() => {
 									if (replay_step < timeline.length - 1) { replay_step++; }
 									else { replay_step = -1; }
 								}}
 								class="rounded-full border border-white/15 px-3 py-1 text-xs hover:bg-white/5"
-							>{replay_step < timeline.length - 1 ? 'Next â†’' : 'Done'}</button>
+							>{replay_step < timeline.length - 1 ? 'Next →' : 'Done'}</button>
 						{:else}
 							<button
 								onclick={() => { replay_step = 0; }}
 								class="rounded-full bg-[#B07156] px-4 py-1.5 text-xs font-semibold text-slate-950 hover:bg-[#c07d62]"
-							>â–¶ Replay</button>
+							>▶ Replay</button>
 						{/if}
 					</div>
 				</div>
@@ -349,7 +349,7 @@ SPDX-License-Identifier: MPL-2.0
                 <!-- ANOMALY FLAGS (shown below tabs if any detected) -->
                 {#if aar.anomaly_flags && aar.anomaly_flags.length > 0}
                 <div class="mt-6 rounded-[1.25rem] border border-yellow-400/30 bg-yellow-400/5 p-5" in:fade={{ duration: 150 }}>
-                        <p class="mb-3 text-sm font-semibold text-yellow-300">âš  Score Anomalies Detected</p>
+                        <p class="mb-3 text-sm font-semibold text-yellow-300">⚠ Score Anomalies Detected</p>
                         <p class="text-xs text-slate-400 mb-4">These flags indicate potentially unusual scoring patterns and may warrant facilitator review. They do not automatically affect scores.</p>
                         <div class="flex flex-col gap-2">
                                 {#each aar.anomaly_flags as flag}

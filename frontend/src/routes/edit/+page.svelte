@@ -4,6 +4,7 @@ SPDX-FileCopyrightText: 2023 Marlon W (Mawoka)
 SPDX-License-Identifier: MPL-2.0
 -->
 
+<!-- svelte-ignore state_referenced_locally -->
 <script lang="ts">
 	import Editor from '$lib/editor.svelte';
 	import { getLocalization } from '$lib/i18n';

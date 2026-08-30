@@ -83,12 +83,12 @@ SPDX-License-Identifier: MPL-2.0
 
 <div class="flex min-h-screen items-center justify-center px-4 py-10">
 	<div class="w-full max-w-sm">
-		<div class="overflow-hidden rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)]">
+		<div class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
 			<div class="px-8 pt-8 pb-6">
 				<div class="mb-6 text-center">
-					<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80 mb-2">CyberAsk</p>
-					<h2 class="text-2xl font-semibold text-white">{$t('register_page.greeting')}</h2>
-					<p class="mt-1 text-sm text-slate-400">{$t('register_page.create_account')}</p>
+					<p class="text-xs uppercase tracking-[0.35em] text-teal-700 mb-2">CyberAsk</p>
+					<h2 class="text-2xl font-semibold text-slate-950">{$t('register_page.greeting')}</h2>
+					<p class="mt-1 text-sm text-slate-500">{$t('register_page.create_account')}</p>
 				</div>
 
 				<form use:form class="flex flex-col gap-4">
@@ -100,7 +100,7 @@ SPDX-License-Identifier: MPL-2.0
 							name="email"
 							type="email"
 							placeholder="you@example.com"
-							class="{$errors.email !== null ? 'border-red-500/60' : ($touched.email && $errors.email === null ? 'border-emerald-500/60' : 'border-white/10')} w-full rounded-xl border bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors"
+							class="{$errors.email !== null ? 'border-red-500/60' : ($touched.email && $errors.email === null ? 'border-emerald-500/60' : 'border-slate-200')} w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-teal-600 transition-colors"
 						/>
 					</div>
 
@@ -112,7 +112,7 @@ SPDX-License-Identifier: MPL-2.0
 							name="username"
 							type="text"
 							placeholder="your_username"
-							class="{$errors.username !== null ? 'border-red-500/60' : ($touched.username && $errors.username === null ? 'border-emerald-500/60' : 'border-white/10')} w-full rounded-xl border bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors"
+							class="{$errors.username !== null ? 'border-red-500/60' : ($touched.username && $errors.username === null ? 'border-emerald-500/60' : 'border-slate-200')} w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-teal-600 transition-colors"
 						/>
 					</div>
 
@@ -124,7 +124,7 @@ SPDX-License-Identifier: MPL-2.0
 							name="password1"
 							type="password"
 							placeholder="••••••••"
-							class="{$errors.password1 !== null ? 'border-red-500/60' : ($touched.password1 && $errors.password1 === null ? 'border-emerald-500/60' : 'border-white/10')} w-full rounded-xl border bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors"
+							class="{$errors.password1 !== null ? 'border-red-500/60' : ($touched.password1 && $errors.password1 === null ? 'border-emerald-500/60' : 'border-slate-200')} w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-teal-600 transition-colors"
 						/>
 					</div>
 
@@ -136,7 +136,7 @@ SPDX-License-Identifier: MPL-2.0
 							name="password2"
 							type="password"
 							placeholder="••••••••"
-							class="{$errors.password2 !== null ? 'border-red-500/60' : ($touched.password2 && $errors.password2 === null ? 'border-emerald-500/60' : 'border-white/10')} w-full rounded-xl border bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors"
+							class="{$errors.password2 !== null ? 'border-red-500/60' : ($touched.password2 && $errors.password2 === null ? 'border-emerald-500/60' : 'border-slate-200')} w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-teal-600 transition-colors"
 						/>
 					</div>
 
@@ -144,11 +144,11 @@ SPDX-License-Identifier: MPL-2.0
 					<div class="flex flex-col gap-2 mt-1">
 						<label class="flex items-start gap-3 cursor-pointer">
 							<input type="checkbox" name="privacy_accept" class="mt-0.5 accent-[#B07156]" />
-							<span class="text-xs text-slate-400">I've read the <a href="/docs/privacy-policy" class="text-[#B07156] underline hover:text-[#c07d62]">Privacy Policy</a>.</span>
+							<span class="text-xs text-slate-500">I've read the <a href="/docs/privacy-policy" class="text-teal-700 underline hover:text-teal-800">Privacy Policy</a>.</span>
 						</label>
 						<label class="flex items-start gap-3 cursor-pointer">
 							<input type="checkbox" name="tos_accept" class="mt-0.5 accent-[#B07156]" />
-							<span class="text-xs text-slate-400">I agree to the <a href="/docs/tos" class="text-[#B07156] underline hover:text-[#c07d62]">Terms of Service</a>.</span>
+							<span class="text-xs text-slate-500">I agree to the <a href="/docs/tos" class="text-teal-700 underline hover:text-teal-800">Terms of Service</a>.</span>
 						</label>
 					</div>
 
@@ -157,7 +157,7 @@ SPDX-License-Identifier: MPL-2.0
 						<button
 							type="submit"
 							disabled={!$isValid || $isSubmitting}
-							class="{!$isValid || $isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#c07d62]'} rounded-full bg-[#B07156] px-6 py-2.5 text-sm font-semibold text-slate-950 transition-colors flex items-center gap-2"
+							class="{!$isValid || $isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-800'} rounded-full bg-teal-700 px-6 py-2.5 text-sm font-semibold text-white transition-colors flex items-center gap-2"
 						>
 							{#if $isSubmitting}
 								<svg class="h-4 w-4 animate-spin" viewBox="3 3 18 18">
@@ -172,9 +172,9 @@ SPDX-License-Identifier: MPL-2.0
 				</form>
 			</div>
 
-			<div class="flex items-center justify-center gap-2 border-t border-white/8 py-4 text-center">
+			<div class="flex items-center justify-center gap-2 border-t border-slate-200 py-4 text-center">
 				<span class="text-sm text-slate-500">{$t('register_page.already_have_account?')}</span>
-				<a href="/account/login" class="text-sm font-semibold text-[#B07156] hover:text-[#c07d62] transition-colors">{$t('words.login')}</a>
+						<a href="/account/login" class="text-sm font-semibold text-teal-700 hover:text-teal-800 transition-colors">{$t('words.login')}</a>
 			</div>
 		</div>
 	</div>
@@ -189,7 +189,7 @@ SPDX-License-Identifier: MPL-2.0
 	aria-labelledby="register-modal-title"
 	class:hidden={!responseData.open}
 >
-	<div class="w-full max-w-md mx-4 rounded-[2rem] border border-white/15 bg-[#0f172a]/97 backdrop-blur-2xl shadow-[0_30px_120px_rgba(15,23,42,0.8)] p-8 text-white">
+	<div class="w-full max-w-md mx-4 rounded-[2rem] border border-slate-200 bg-white shadow-2xl p-8 text-slate-900">
 		<div class="flex items-start gap-4 mb-6">
 			<div class="{responseData.data === '200' ? 'bg-emerald-500/15 border-emerald-500/30' : 'bg-red-500/15 border-red-500/30'} shrink-0 flex items-center justify-center w-10 h-10 rounded-full border">
 				{#if responseData.data === '200'}
@@ -203,14 +203,14 @@ SPDX-License-Identifier: MPL-2.0
 				{/if}
 			</div>
 			<div>
-				<h3 class="text-base font-semibold text-white" id="register-modal-title">
+				<h3 class="text-base font-semibold text-slate-950" id="register-modal-title">
 					{#if responseData.data === '409'}Account already exists!
 					{:else if responseData.data === 'error'}Unexpected error!
 					{:else if responseData.data === '200'}Registration successful!
 					{:else if responseData.data === '400'}Invalid email address!
 					{/if}
 				</h3>
-				<p class="mt-1 text-sm text-slate-400">
+				<p class="mt-1 text-sm text-slate-500">
 					{#if responseData.data === '200'}Please check your mailbox to confirm your email address.
 					{:else if responseData.data === '409'}An account with that email already exists.
 					{:else if responseData.data === '400'}That email address doesn't appear to exist.
@@ -223,7 +223,7 @@ SPDX-License-Identifier: MPL-2.0
 			<button
 				type="button"
 				onclick={() => { responseData.open = false; window.location.assign('/'); }}
-				class="rounded-full bg-[#B07156] px-6 py-2.5 text-sm font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors"
+				class="rounded-full bg-teal-700 px-6 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 transition-colors"
 			>{$t('words.close')}</button>
 		</div>
 	</div>

@@ -51,8 +51,9 @@ SPDX-License-Identifier: MPL-2.0
 	run(() => {
 		save_colors(data);
 	});
-	data.questions[selected_question].type =
-		check_choice === true ? QuizQuestionType.CHECK : QuizQuestionType.ABCD;
+	$effect(() => {
+		data.questions[selected_question].type = check_choice === true ? QuizQuestionType.CHECK : QuizQuestionType.ABCD;
+	});
 	const set_colors_if_unset = () => {
 		for (let i = 0; i < data.questions[selected_question].answers.length; i++) {
 			if (!data.questions[selected_question].answers[i].color) {

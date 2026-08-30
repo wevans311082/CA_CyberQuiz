@@ -19,7 +19,7 @@ SPDX-License-Identifier: MPL-2.0
 
 <form method="post" action="https://newsletter.mawoka.eu/subscription/form" class="bg-transparent">
 	<div class="absolute top-1 right-1">
-		<button type="button" onclick={closeThing}>
+		<button type="button" aria-label="Close newsletter signup" onclick={closeThing}>
 			<svg
 				class="w-6 h-6"
 				fill="none"

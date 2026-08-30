@@ -45,24 +45,24 @@ SPDX-License-Identifier: MPL-2.0
 
 <div class="flex min-h-screen items-center justify-center px-4 py-10">
 	<div class="w-full max-w-sm">
-		<div class="overflow-hidden rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)]">
+		<div class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.14)]">
 			<div class="px-8 pt-8 pb-6">
 				<div class="mb-6 text-center">
-					<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80 mb-2">CyberAsk</p>
-					<h2 class="text-2xl font-semibold text-white">{$t('password_reset_page.reset_password')}</h2>
-					<p class="mt-1 text-sm text-slate-400">Enter your email to receive a reset link.</p>
+					<p class="text-xs uppercase tracking-[0.35em] text-teal-700 mb-2">CyberAsk</p>
+					<h2 class="text-2xl font-semibold text-slate-900">{$t('password_reset_page.reset_password')}</h2>
+					<p class="mt-1 text-sm text-slate-500">Enter your email to receive a reset link.</p>
 				</div>
 
 				<form onsubmit={submit} class="flex flex-col gap-4">
 					<div class="flex flex-col gap-1">
-						<label for="email" class="text-xs uppercase tracking-[0.25em] text-slate-400/70">{$t('words.email')}</label>
+						<label for="email" class="text-xs uppercase tracking-[0.25em] text-slate-500">{$t('words.email')}</label>
 						<input
 							id="email"
 							bind:value={email}
 							name="email"
 							type="email"
 							placeholder="you@example.com"
-							class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#B07156]/60 transition-colors"
+							class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-colors"
 						/>
 					</div>
 
@@ -71,7 +71,7 @@ SPDX-License-Identifier: MPL-2.0
 						<button
 							type="submit"
 							disabled={email === '' || isSubmitting}
-							class="{email === '' || isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#c07d62]'} rounded-full bg-[#B07156] px-6 py-2.5 text-sm font-semibold text-slate-950 transition-colors flex items-center gap-2"
+							class="{email === '' || isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-800'} rounded-full bg-teal-700 px-6 py-2.5 text-sm font-semibold text-white transition-colors flex items-center gap-2"
 						>
 							{#if isSubmitting}
 								<svg class="h-4 w-4 animate-spin" viewBox="3 3 18 18">
@@ -86,9 +86,9 @@ SPDX-License-Identifier: MPL-2.0
 				</form>
 			</div>
 
-			<div class="flex items-center justify-center gap-2 border-t border-white/8 py-4 text-center">
+			<div class="flex items-center justify-center gap-2 border-t border-slate-100 py-4 text-center">
 				<span class="text-sm text-slate-500">{$t('login_page.already_have_account')}</span>
-				<a href="/account/register" class="text-sm font-semibold text-[#B07156] hover:text-[#c07d62] transition-colors">{$t('words.register')}</a>
+				<a href="/account/register" class="text-sm font-semibold text-teal-700 hover:text-teal-800 transition-colors">{$t('words.register')}</a>
 			</div>
 		</div>
 	</div>

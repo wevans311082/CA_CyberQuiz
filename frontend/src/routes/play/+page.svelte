@@ -5,6 +5,7 @@ SPDX-License-Identifier: MPL-2.0
 -->
 
 <!--suppress ALL -->
+<!-- svelte-ignore state_referenced_locally -->
 <script lang="ts">
 	import { socket } from '$lib/socket';
 	import JoinGame from '$lib/play/join.svelte';
@@ -30,10 +31,11 @@ SPDX-License-Identifier: MPL-2.0
 	import { getLocalization } from '$lib/i18n';
 	import { notify } from '$lib/notifications.svelte';
 	import { onDestroy, onMount } from 'svelte';
-	import { fade } from 'svelte/transition';
+	import { fade, fly } from 'svelte/transition';
 	import Cookies from 'js-cookie';
 	const { t } = getLocalization();
 	import EmojiPrompt from '$lib/play/EmojiPrompt.svelte';
+	import ReferenceShelf from '$lib/play/ReferenceShelf.svelte';
 
 	interface Props {
 		// Exports
@@ -41,7 +43,7 @@ SPDX-License-Identifier: MPL-2.0
 	}
 
 	let { data }: Props = $props();
-	let { game_pin } = $state(data);
+	let game_pin = $state(data.game_pin);
 
 	// Types
 	interface GameMeta {
@@ -53,6 +55,7 @@ SPDX-License-Identifier: MPL-2.0
 		description: string;
 		cover_image?: string;
 		background_color?: string;
+		background_image?: string;
 		started?: boolean;
 		players?: Array<{username: string; avatar_params?: any}>;
 		player_count?: number;
@@ -64,6 +67,7 @@ SPDX-License-Identifier: MPL-2.0
 		roles?: string[];
 		role_descriptions?: Record<string, string>;
 		master_theme?: import('$lib/quiz_types').MasterTheme;
+		reference_documents?: import('$lib/quiz_types').ReferenceDocument[];
 	}
 
 	let game_mode = $state();
@@ -86,6 +90,10 @@ SPDX-License-Identifier: MPL-2.0
 	let solution: QuestionType = $state();
 	let username = $state('');
 	let scores = $state({});
+	let current_score = $state(0);
+	let decision_quality = $state<{ time_score?: number; confidence_score?: number; rubric_score?: number | null } | null>(null);
+	let score_popups = $state<Array<{ id: number; amount: number; reason?: string }>>([]);
+	let score_popup_id = 0;
 	let gameMeta: GameMeta = $state({
 		started: false
 	});
@@ -207,6 +215,9 @@ SPDX-License-Identifier: MPL-2.0
 	let injects_log = $state<InjectLogEntry[]>([]);
 	let situation_log = $state<SituationLogEntry[]>([]);
 	let situation_room_open = $state(false);
+	let reference_shelf_open = $state(false);
+	let policy_spotlight = $state<import('$lib/quiz_types').ReferenceDocument | null>(null);
+	let policy_notice = $state<string | null>(null);
 	let answer_summary = $state<{ total: number; answers: Record<string, number> } | null>(null);
 	let event_log = $state<TimelineEvent[]>([]);
 
@@ -428,6 +439,23 @@ SPDX-License-Identifier: MPL-2.0
 		}
 		provisional_my_score = data.score ?? null;
 	};
+	const onScoreUpdated = (data: { current_score?: number; score_delta?: number; decision_quality?: typeof decision_quality }) => {
+		current_score = Number(data?.current_score ?? current_score);
+		decision_quality = data?.decision_quality ?? null;
+		if (username) scores = { ...scores, [username]: current_score };
+		if (data?.score_delta && data.score_delta > 0) {
+			const popup = { id: ++score_popup_id, amount: data.score_delta };
+			score_popups = [...score_popups, popup];
+			setTimeout(() => { score_popups = score_popups.filter((item) => item.id !== popup.id); }, 2600);
+		}
+	};
+	const onScoreBonusAwarded = (data: { amount?: number; reason?: string; current_score?: number }) => {
+		current_score = Number(data?.current_score ?? current_score + Number(data?.amount ?? 0));
+		if (username) scores = { ...scores, [username]: current_score };
+		const popup = { id: ++score_popup_id, amount: Number(data?.amount ?? 0), reason: data?.reason };
+		score_popups = [...score_popups, popup];
+		setTimeout(() => { score_popups = score_popups.filter((item) => item.id !== popup.id); }, 3200);
+	};
 
 	const onProvisionalCompanyScore = (data: { company_score?: number; company_benchmark?: number }) => {
 		provisional_company_score = data?.company_score ?? null;
@@ -566,7 +594,8 @@ SPDX-License-Identifier: MPL-2.0
 
 	const onSituationUpdated = (data: SituationStatus) => {
 		if (data) {
-			situation_status = data;
+			const next = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== null && value !== undefined));
+			situation_status = { ...situation_status, ...next } as SituationStatus;
 			add_event({ type: 'situation_update', title: `Situation update: ${data.severity ?? ''} / ${data.phase ?? ''}`, detail: data.summary?.slice(0, 80) });
 		}
 	};
@@ -577,7 +606,10 @@ SPDX-License-Identifier: MPL-2.0
 		situation_log?: SituationLogEntry[];
 	}) => {
 		if (data?.status) {
-			situation_status = data.status;
+			if (data.status.severity || data.status.phase || data.status.summary) {
+				const next = Object.fromEntries(Object.entries(data.status).filter(([, value]) => value !== null && value !== undefined));
+				situation_status = { ...situation_status, ...next } as SituationStatus;
+			}
 		}
 		if (data?.injects_log) {
 			injects_log = normalizeInjectsLog(data.injects_log);
@@ -585,6 +617,12 @@ SPDX-License-Identifier: MPL-2.0
 		if (data?.situation_log) {
 			situation_log = data.situation_log;
 		}
+	};
+	const onPolicySpotlight = (data: import('$lib/quiz_types').ReferenceDocument) => {
+		policy_spotlight = data;
+		policy_notice = data.title;
+		reference_shelf_open = true;
+		setTimeout(() => { policy_notice = null; }, 7000);
 	};
 
 	const onAnswerSummary = (data: { total: number; answers: Record<string, number> }) => {
@@ -620,6 +658,8 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('final_results', onFinalResults);
 		socket.on('score_validation_started', onScoreValidationStarted);
 		socket.on('provisional_score_update', onProvisionalScoreUpdate);
+		socket.on('score_updated', onScoreUpdated);
+		socket.on('score_bonus_awarded', onScoreBonusAwarded);
 		socket.on('provisional_company_score', onProvisionalCompanyScore);
 		socket.on('score_validation_completed', onScoreValidationCompleted);
 		socket.on('score_visibility_changed', onScoreVisibilityChanged);
@@ -640,6 +680,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.on('scenario_complete', onScenarioComplete);
 		socket.on('tie_detected', onTieDetected);
 		socket.on('inject_received', onInjectReceived);
+		socket.on('policy_spotlight', onPolicySpotlight);
 		socket.on('situation_updated', onSituationUpdated);
 		socket.on('situation_room_data', onSituationRoomData);
 		socket.on('answer_summary', onAnswerSummary);
@@ -667,6 +708,8 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('final_results', onFinalResults);
 		socket.off('score_validation_started', onScoreValidationStarted);
 		socket.off('provisional_score_update', onProvisionalScoreUpdate);
+		socket.off('score_updated', onScoreUpdated);
+		socket.off('score_bonus_awarded', onScoreBonusAwarded);
 		socket.off('provisional_company_score', onProvisionalCompanyScore);
 		socket.off('score_validation_completed', onScoreValidationCompleted);
 		socket.off('score_visibility_changed', onScoreVisibilityChanged);
@@ -687,6 +730,7 @@ SPDX-License-Identifier: MPL-2.0
 		socket.off('scenario_complete', onScenarioComplete);
 		socket.off('tie_detected', onTieDetected);
 		socket.off('inject_received', onInjectReceived);
+		socket.off('policy_spotlight', onPolicySpotlight);
 		socket.off('situation_updated', onSituationUpdated);
 		socket.off('situation_room_data', onSituationRoomData);
 		socket.off('answer_summary', onAnswerSummary);
@@ -715,10 +759,13 @@ SPDX-License-Identifier: MPL-2.0
 	<title>CyberAsk Quiz - Join</title>
 </svelte:head>
 <div
-	class="min-h-screen min-w-full"
+	class="relative min-h-screen min-w-full overflow-hidden isolate"
 	style="background: {bg_color ? bg_color : 'transparent'}"
 	class:text-black={bg_color}
 >
+	<div class="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_15%_15%,rgba(14,165,233,0.18),transparent_32%),radial-gradient(circle_at_90%_80%,rgba(20,184,166,0.18),transparent_35%),linear-gradient(135deg,#f8fafc,#eef6ff)] dark:bg-[radial-gradient(circle_at_15%_15%,rgba(14,165,233,0.18),transparent_32%),radial-gradient(circle_at_90%_80%,rgba(20,184,166,0.14),transparent_35%),linear-gradient(135deg,#0f172a,#111827)]"></div>
+	<div class="player-atmosphere player-atmosphere-one"></div><div class="player-atmosphere player-atmosphere-two"></div>
+	{#if gameData?.background_image}<div class="pointer-events-none absolute inset-0 -z-10 bg-cover bg-center opacity-10" style="background-image: url('/api/v1/storage/download/{gameData.background_image}')"></div>{/if}
 	{#if socket_diagnostics_enabled}
 	<div class="fixed right-4 top-4 z-50 rounded-md border border-black/20 bg-white/90 px-3 py-1 text-xs font-semibold text-black shadow-sm">
 		build #{FRONTEND_BUILD_NUMBER}
@@ -862,9 +909,28 @@ SPDX-License-Identifier: MPL-2.0
 			{/if}
 		{/if}
 	</div>
+	<!-- Persistent player score panel -->
+	{#if gameData && username && gameMeta.started}
+		<div class="fixed right-3 top-3 z-50 min-w-[132px] rounded-2xl border border-cyan-300/30 bg-slate-950/90 px-4 py-2 text-white shadow-xl backdrop-blur-xl">
+			<p class="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-300">Your score</p>
+			<p class="mt-0.5 text-2xl font-black tabular-nums">{current_score}</p>
+		</div>
+		{#if decision_quality}<div class="fixed right-3 top-[5.8rem] z-40 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-[10px] text-slate-600 shadow-lg backdrop-blur"><p class="font-bold uppercase tracking-wider text-slate-400">Decision quality</p><p class="mt-1 font-semibold text-teal-700">{decision_quality.rubric_score ?? decision_quality.confidence_score ?? decision_quality.time_score ?? 0}% signal</p></div>{/if}
+		<div class="pointer-events-none fixed right-5 top-20 z-50 flex flex-col items-end gap-2">
+			{#each score_popups as popup (popup.id)}
+				<div class="score-bonus-pop text-right" transition:fly={{ y: 18, duration: 300 }}><span class="text-2xl font-black text-emerald-500">+{popup.amount}</span>{#if popup.reason}<p class="max-w-[180px] text-[10px] font-semibold text-slate-600 dark:text-slate-300">{popup.reason}</p>{/if}</div>
+			{/each}
+		</div>
+	{/if}
+	{#if gameData && username && gameMeta.started && gameData.reference_documents?.length}
+		<button type="button" class="fixed left-3 top-14 z-50 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-3 py-2 text-xs font-bold text-slate-700 shadow-lg backdrop-blur transition hover:border-teal-300 hover:text-teal-700" onclick={() => (reference_shelf_open = true)}>
+			<span class="flex h-5 w-5 items-center justify-center rounded-md bg-teal-50 text-teal-700">⌑</span> References
+		</button>
+		{#if policy_notice}<div class="fixed left-3 top-24 z-50 flex max-w-sm items-center gap-3 rounded-2xl border border-teal-200 bg-white/95 px-4 py-3 text-sm text-slate-700 shadow-xl backdrop-blur"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700">⌑</span><span><strong class="block text-slate-900">Facilitator opened a reference</strong><span class="text-xs text-slate-500">{policy_notice}</span></span><button type="button" class="ml-auto text-slate-400 hover:text-slate-700" aria-label="Dismiss policy notification" onclick={() => (policy_notice = null)}>×</button></div>{/if}
+	{/if}
 	<!-- Question timer overlay (server-synced) -->
 	{#if qtimer_running}
-		<div class="fixed top-3 right-3 z-50 flex items-center gap-1.5 rounded-lg bg-black/80 px-3 py-1.5 text-white shadow-xl">
+		<div class="fixed right-3 top-20 z-50 flex items-center gap-1.5 rounded-lg bg-black/80 px-3 py-1.5 text-white shadow-xl">
 			<svg class="h-4 w-4 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
 			<span class="font-mono text-sm font-bold">{qtimer_fmt(qtimer_remaining)}</span>
 		</div>
@@ -983,7 +1049,20 @@ SPDX-License-Identifier: MPL-2.0
 			{/each}
 		</div>
 	{/if}
+	{#if gameData}
+		<ReferenceShelf bind:open={reference_shelf_open} documents={gameData.reference_documents ?? []} spotlight={policy_spotlight} />
+	{/if}
 </div>
+
+<style>
+	.player-atmosphere { position: absolute; z-index: -5; border-radius: 9999px; opacity: .36; animation: player-drift 16s ease-in-out infinite alternate; }
+	.player-atmosphere-one { top: 18%; left: 6%; width: 9rem; height: 9rem; background: rgb(14 165 233 / 18%); }
+	.player-atmosphere-two { right: 8%; bottom: 16%; width: 13rem; height: 13rem; background: rgb(20 184 166 / 18%); animation-delay: -6s; }
+	.score-bonus-pop { animation: bonus-glow 2.6s ease-out both; }
+	@keyframes player-drift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(28px, -18px, 0) scale(1.12); } }
+	@keyframes bonus-glow { 0% { opacity: 0; transform: translateY(12px) scale(.8); } 18% { opacity: 1; transform: translateY(0) scale(1.08); } 72% { opacity: 1; } 100% { opacity: 0; transform: translateY(-28px) scale(1); } }
+	@media (prefers-reduced-motion: reduce) { .player-atmosphere, .score-bonus-pop { animation: none; } }
+</style>
 
 <!-- Role proposal modal -->
 {#if pending_role_proposal}

@@ -157,30 +157,30 @@ SPDX-License-Identifier: MPL-2.0
 {#await data}
 	<Spinner my_20={false} />
 {:then _}
-	<div class="settings-shell min-h-screen text-white px-4 py-8 max-w-3xl mx-auto flex flex-col gap-6">
+	<div class="settings-shell min-h-screen text-slate-900 px-4 py-8 max-w-3xl mx-auto flex flex-col gap-6">
 
-		<h1 class="text-2xl font-semibold text-white">{$t('settings_page.security_settings')}</h1>
+		<h1 class="text-2xl font-semibold text-slate-900">{$t('settings_page.security_settings')}</h1>
 
 		<!-- Backup Code card -->
-		<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] p-6 flex flex-col gap-4">
-			<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">{$t('security_settings.backup_code')}</p>
-			<p class="text-sm text-slate-400">Generate a backup code for account recovery if you lose access to your 2FA methods.</p>
+		<div class="rounded-[1.75rem] border border-slate-200 bg-white shadow-sm p-6 flex flex-col gap-4">
+			<p class="text-xs uppercase tracking-[0.35em] text-slate-500">{$t('security_settings.backup_code')}</p>
+			<p class="text-sm text-slate-600">Generate a backup code for account recovery if you lose access to your 2FA methods.</p>
 			<div>
-				<button onclick={get_backup_code} class="rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white/90 hover:bg-white/6 transition-colors">
+				<button onclick={get_backup_code} class="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
 					{$t('security_settings.get_backup_code')}
 				</button>
 			</div>
 		</div>
 
 		<!-- 2FA / TOTP card -->
-		<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] p-6 flex flex-col gap-5">
-			<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">{$t('security_settings.activate_2fa')}</p>
+		<div class="rounded-[1.75rem] border border-slate-200 bg-white shadow-sm p-6 flex flex-col gap-5">
+			<p class="text-xs uppercase tracking-[0.35em] text-slate-500">{$t('security_settings.activate_2fa')}</p>
 
 			<!-- Require password toggle -->
-			<div class="{!totp_activated ? 'opacity-40 pointer-events-none' : ''} flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+			<div class="{!totp_activated ? 'opacity-40 pointer-events-none' : ''} flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
 				<div>
-					<p class="text-sm font-medium text-white">Require password on 2FA</p>
-					<p class="text-xs text-slate-400 mt-0.5">
+					<p class="text-sm font-medium text-slate-900">Require password on 2FA</p>
+					<p class="text-xs text-slate-500 mt-0.5">
 						{user_data?.require_password ? $t('security_settings.2fa_activated') : $t('security_settings.2fa_deactivated')}
 					</p>
 				</div>
@@ -198,10 +198,10 @@ SPDX-License-Identifier: MPL-2.0
 			</div>
 
 			<!-- TOTP section -->
-			<div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+			<div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
 				<div>
-					<p class="text-sm font-medium text-white">{$t('security_settings.totp')}</p>
-					<p class="text-xs text-slate-400 mt-0.5">
+					<p class="text-sm font-medium text-slate-900">{$t('security_settings.totp')}</p>
+					<p class="text-xs text-slate-500 mt-0.5">
 						{totp_activated ? $t('security_settings.totp_available') : $t('security_settings.totp_unavailable')}
 					</p>
 				</div>
@@ -210,7 +210,7 @@ SPDX-License-Identifier: MPL-2.0
 						{$t('security_settings.disable_totp')}
 					</button>
 				{:else}
-					<button onclick={enable_totp} class="rounded-full bg-[#B07156] px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors">
+					<button onclick={enable_totp} class="rounded-full bg-teal-700 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800 transition-colors">
 						{$t('security_settings.enable_totp')}
 					</button>
 				{/if}
@@ -218,10 +218,10 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 
 		<!-- WebAuthn card -->
-		<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] p-6 flex flex-col gap-4">
+		<div class="rounded-[1.75rem] border border-slate-200 bg-white shadow-sm p-6 flex flex-col gap-4">
 			<div class="flex items-center justify-between">
-				<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80">{$t('security_settings.webauthn')}</p>
-				<button onclick={add_security_key} class="rounded-full bg-[#B07156] px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors">
+				<p class="text-xs uppercase tracking-[0.35em] text-slate-500">{$t('security_settings.webauthn')}</p>
+				<button onclick={add_security_key} class="rounded-full bg-teal-700 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800 transition-colors">
 					{$t('security_settings.add_security_key')}
 				</button>
 			</div>

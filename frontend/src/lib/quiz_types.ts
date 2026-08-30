@@ -30,6 +30,7 @@ export interface QuizData {
 	roles?: string[];
 	role_descriptions?: Record<string, string>;
 	injects?: Inject[];
+	reference_documents?: ReferenceDocument[];
 	master_theme?: MasterTheme;
 	teams?: Record<string, string[]>;
 }
@@ -158,6 +159,14 @@ export interface Question {
 	animation?: SlideAnimation;
 	objective?: string; // Detection | Containment | Recovery | Communication
 	sla_checkpoints?: SLACheckpoint[];
+	decision_rubric?: DecisionRubric[];
+}
+
+export interface DecisionRubric {
+	id: string;
+	label: string;
+	keywords?: string[];
+	max_points?: number;
 }
 
 export interface SLACheckpoint {
@@ -214,6 +223,16 @@ export interface EditorData {
 	reusable_roles?: Record<string, unknown>[];
 	reusable_injects?: Record<string, unknown>[];
 	evidence_packs?: Record<string, unknown>[];
+	reference_documents?: ReferenceDocument[];
+}
+
+export interface ReferenceDocument {
+	id: string;
+	title: string;
+	category?: string;
+	filename?: string;
+	mime_type?: string;
+	description?: string;
 }
 
 export interface PrivateImageData {

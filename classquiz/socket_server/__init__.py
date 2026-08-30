@@ -373,13 +373,16 @@ async def emit_current_question(room: str, game_data: PlayGame):
     # Keep every live view on the same server-owned timer. Previously only
     # the facilitator UI started a countdown, while players and projector
     # screens inferred their own timers from stale question data.
+    timer_config = getattr(current_q, "timer", None)
+    timer_enabled = getattr(timer_config, "enabled", True) if timer_config is not None else True
     timer_seconds = _safe_int(
-        getattr(current_q, "timer", None)
-        and getattr(current_q.timer, "duration_seconds", None),
+        timer_config and getattr(timer_config, "duration_seconds", None),
         0,
     )
-    if timer_seconds <= 0:
+    if timer_enabled is not False and timer_seconds <= 0:
         timer_seconds = _safe_int(getattr(current_q, "time", 0), 0)
+    if timer_enabled is False:
+        timer_seconds = 0
     await redis.delete(f"game:{game_pin}:question_timer")
     await sio.emit("question_timer_stopped", {}, room=room)
     if timer_seconds > 0 and current_q.type not in [
@@ -443,6 +446,25 @@ def _safe_int(value: object, default: int = 0) -> int:
         return default
 
 
+def _decision_quality(question, answer: str, elapsed_ms: float, confidence: int | None) -> dict:
+    """Return transparent decision-quality signals without changing legacy scoring."""
+    config = getattr(question, "decision_rubric", None) or []
+    text = (answer or "").lower()
+    criteria = []
+    for item in config:
+        if not isinstance(item, dict):
+            continue
+        keywords = [str(value).lower() for value in item.get("keywords", []) if str(value).strip()]
+        matched = not keywords or any(keyword in text for keyword in keywords)
+        maximum = max(1, _safe_int(item.get("max_points"), 10))
+        criteria.append({"id": str(item.get("id") or item.get("label") or "criterion"), "label": str(item.get("label") or "Criterion"), "matched": matched, "points": maximum if matched else 0, "max_points": maximum})
+    max_time = _safe_int(getattr(question, "time", 0), 0)
+    time_score = 100 if max_time <= 0 else max(0, min(100, round(100 - ((elapsed_ms / 1000) / max_time) * 100)))
+    confidence_score = {1: 33, 2: 66, 3: 100}.get(confidence or 0, 0)
+    rubric_score = round(sum(item["points"] for item in criteria) / sum(item["max_points"] for item in criteria) * 100) if criteria else None
+    return {"time_score": time_score, "confidence_score": confidence_score, "rubric_score": rubric_score, "criteria": criteria}
+
+
 def _build_score_review_sheet(game_data: PlayGame, answers_by_question: dict[str, list[dict]]) -> dict:
     """Create admin-editable score sheet from raw answer data."""
     player_totals: dict[str, float] = defaultdict(float)
@@ -451,6 +473,7 @@ def _build_score_review_sheet(game_data: PlayGame, answers_by_question: dict[str
     for q_index, q in enumerate(game_data.questions):
         q_answers = answers_by_question.get(str(q_index), [])
         per_player: dict[str, float] = {}
+        quality_by_player: dict[str, dict] = {}
         for answer in q_answers:
             username = answer.get("username")
             if not username:
@@ -458,6 +481,8 @@ def _build_score_review_sheet(game_data: PlayGame, answers_by_question: dict[str
             answer_score = _to_float(answer.get("score"), 0.0)
             per_player[username] = answer_score
             player_totals[username] += answer_score
+            if answer.get("decision_quality"):
+                quality_by_player[username] = answer["decision_quality"]
 
         rows.append(
             {
@@ -466,6 +491,7 @@ def _build_score_review_sheet(game_data: PlayGame, answers_by_question: dict[str
                 "question_type": q.type,
                 "question_title": (q.question or "").strip(),
                 "scores": per_player,
+                "decision_quality": quality_by_player,
             }
         )
 
@@ -565,6 +591,8 @@ async def rejoin_game(sid: str, data: dict):
         await sio.emit("countdown_start", countdown_state, room=sid)
     if game_data.started and game_data.question_show:
         await emit_current_question(sid, game_data)
+    current_score = int(await redis.hget(f"game_session:{data.game_pin}:player_scores", data.username) or 0)
+    await sio.emit("score_updated", {"current_score": current_score, "score_delta": 0}, room=sid)
 
 
 @sio.event
@@ -621,6 +649,8 @@ async def join_game(sid: str, data: dict):
     )
     await emit_socket_diagnostics_visibility(data.game_pin, room=sid)
     await sio.emit("chat_history", {"messages": await get_chat_history(data.game_pin)}, room=sid)
+    current_score = int(await redis.hget(f"game_session:{data.game_pin}:player_scores", data.username) or 0)
+    await sio.emit("score_updated", {"current_score": current_score, "score_delta": 0}, room=sid)
     countdown_state = await get_countdown_state(data.game_pin)
     if countdown_state is not None and countdown_state["remaining_seconds"] > 0:
         await sio.emit("countdown_start", countdown_state, room=sid)
@@ -722,6 +752,134 @@ async def start_game(sid: str, _data: dict):
     await redis.delete(f"game:{session['game_pin']}:countdown_start")
     await redis.delete(f"game:{session['game_pin']}:countdown_duration")
     await emit_current_question(session["game_pin"], game_data)
+
+
+# ============================================================
+# Private facilitator rehearsal state
+# ============================================================
+
+
+def _rehearsal_key(game_pin: str) -> str:
+    return f"game_session:{game_pin}:rehearsal"
+
+
+async def _get_rehearsal_state(game_pin: str) -> dict | None:
+    raw = await redis.get(_rehearsal_key(game_pin))
+    return json.loads(raw) if raw else None
+
+
+async def _emit_rehearsal_state(sid: str, state: dict | None) -> None:
+    await sio.emit("rehearsal_state", state or {"active": False}, to=sid)
+
+
+@sio.event
+async def create_rehearsal(sid: str, _data: dict):
+    """Create an isolated rehearsal copy of facilitator navigation state."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    game_pin = session["game_pin"]
+    game_data = await PlayGame.get_from_redis(game_pin)
+    state = {"active": True, "question": max(0, game_data.current_question), "speed": 1, "answers": {}, "snapshots": [], "created_at": datetime.now().isoformat()}
+    await redis.set(_rehearsal_key(game_pin), json.dumps(state), ex=7200)
+    await _emit_rehearsal_state(sid, state)
+
+
+@sio.event
+async def update_rehearsal(sid: str, data: dict):
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    state = await _get_rehearsal_state(session["game_pin"])
+    if not state or not state.get("active"):
+        return
+    game_data = await PlayGame.get_from_redis(session["game_pin"])
+    question = max(0, min(len(game_data.questions) - 1, _safe_int(data.get("question"), state.get("question", 0)))) if game_data.questions else 0
+    speed = _to_float(data.get("speed"), state.get("speed", 1))
+    state.update({"question": question, "speed": max(0.25, min(8, speed))})
+    await redis.set(_rehearsal_key(session["game_pin"]), json.dumps(state), ex=7200)
+    await _emit_rehearsal_state(sid, state)
+
+
+@sio.event
+async def snapshot_rehearsal(sid: str, _data: dict):
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    state = await _get_rehearsal_state(session["game_pin"])
+    if not state or not state.get("active"):
+        return
+    snapshot = {"question": state.get("question", 0), "speed": state.get("speed", 1), "answers": state.get("answers", {}), "created_at": datetime.now().isoformat()}
+    state.setdefault("snapshots", []).append(snapshot)
+    state["snapshots"] = state["snapshots"][-10:]
+    await redis.set(_rehearsal_key(session["game_pin"]), json.dumps(state), ex=7200)
+    await _emit_rehearsal_state(sid, state)
+
+
+@sio.event
+async def restore_rehearsal(sid: str, data: dict):
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    state = await _get_rehearsal_state(session["game_pin"])
+    if not state or not state.get("active"):
+        return
+    snapshots = state.get("snapshots", [])
+    index = _safe_int(data.get("index"), len(snapshots) - 1)
+    if not snapshots or index < 0 or index >= len(snapshots):
+        return
+    state.update({"question": snapshots[index]["question"], "speed": snapshots[index]["speed"], "answers": snapshots[index].get("answers", {})})
+    await redis.set(_rehearsal_key(session["game_pin"]), json.dumps(state), ex=7200)
+    await _emit_rehearsal_state(sid, state)
+
+
+@sio.event
+async def reset_rehearsal(sid: str, _data: dict):
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    state = await _get_rehearsal_state(session["game_pin"])
+    if not state or not state.get("active"):
+        return
+    state.update({"question": 0, "speed": 1, "answers": {}, "snapshots": []})
+    await redis.set(_rehearsal_key(session["game_pin"]), json.dumps(state), ex=7200)
+    await _emit_rehearsal_state(sid, state)
+
+
+@sio.event
+async def exit_rehearsal(sid: str, _data: dict):
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    await redis.delete(_rehearsal_key(session["game_pin"]))
+    await _emit_rehearsal_state(sid, {"active": False})
+
+
+@sio.event
+async def submit_rehearsal_answer(sid: str, data: dict):
+    """Record a simulated answer only in the isolated rehearsal state."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    state = await _get_rehearsal_state(session["game_pin"])
+    if not state or not state.get("active"):
+        return
+    question_index = max(0, _safe_int(data.get("question"), state.get("question", 0)))
+    answer_text = str(data.get("answer", ""))[:4096]
+    question = str(question_index)
+    state.setdefault("answers", {})[question] = {"answer": answer_text, "submitted_at": datetime.now().isoformat()}
+    game_data = await PlayGame.get_from_redis(session["game_pin"])
+    if 0 <= question_index < len(game_data.questions):
+        current = game_data.questions[question_index]
+        if isinstance(current.answers, list):
+            selected = next((item for item in current.answers if getattr(item, "answer", None) == answer_text), None)
+            next_id = getattr(selected, "next_question_id", None)
+            if next_id:
+                next_index = next((index for index, item in enumerate(game_data.questions) if item.id == next_id), None)
+                if next_index is not None:
+                    state["question"] = next_index
+    await redis.set(_rehearsal_key(session["game_pin"]), json.dumps(state), ex=7200)
+    await _emit_rehearsal_state(sid, state)
 
 
 @sio.event
@@ -947,6 +1105,9 @@ async def submit_answer(sid: str, data: dict):
     q_started = datetime.fromisoformat(current_time_raw)
     elapsed_ms = max(0.0, (now - q_started).total_seconds() * 1000)
     q_time_seconds = _safe_int(game_data.questions[question_index].time, 0)
+    timer_config = getattr(game_data.questions[question_index], "timer", None)
+    if timer_config is not None and getattr(timer_config, "enabled", True) is False:
+        q_time_seconds = 0
     # Prefer the shared answer-timer state. This makes pause/resume semantics
     # identical for the facilitator, players, and projector. The legacy
     # current_time remains the fallback for older sessions.
@@ -967,6 +1128,7 @@ async def submit_answer(sid: str, data: dict):
     answer_right, answer = check_answer(game_data, data)
     latency = int(float(session.get("ping", 0)))
     diff = elapsed_ms
+    decision_quality = _decision_quality(game_data.questions[question_index], answer, max(0.0, abs(diff) - latency), data.confidence)
 
     # --- Tabletop flat scoring vs speed-based ---
     if is_tabletop(game_data):
@@ -1019,6 +1181,7 @@ async def submit_answer(sid: str, data: dict):
                 score = 1000
 
     await redis.hincrby(f"game_session:{session['game_pin']}:player_scores", session["username"], score)
+    current_score = int(await redis.hget(f"game_session:{session['game_pin']}:player_scores", session["username"]) or 0)
 
     # Team score accumulation: if teams are configured, add this score to the player's team
     if game_data.teams and score > 0:
@@ -1035,6 +1198,7 @@ async def submit_answer(sid: str, data: dict):
         right=answer_right,
         time_taken=max(0.0, abs(diff) - latency),
         score=score,
+        decision_quality=decision_quality,
     )
     try:
         answers = await set_answer(
@@ -1053,6 +1217,12 @@ async def submit_answer(sid: str, data: dict):
         await redis.delete(answer_lock_key)
         await sio.emit("error", {"message": "answer_persistence_failed"}, room=sid)
         return
+
+    await sio.emit(
+        "score_updated",
+        {"current_score": current_score, "score_delta": score, "decision_quality": decision_quality},
+        room=sid,
+    )
 
     # --- Eligible player count (role-aware for tabletop) ---
     if is_tabletop(game_data):
@@ -1101,6 +1271,7 @@ async def get_final_results(sid: str, _data: dict):
         {
             "results": results,
             "avatar_map": avatar_map,
+			"player_scores": {k: int(v) for k, v in (await redis.hgetall(f"game_session:{game_pin}:player_scores")).items()},
         },
         room=game_pin,
     )
@@ -1298,6 +1469,53 @@ async def trigger_penalty(sid: str, data: dict):
 
 
 @sio.event
+async def award_bonus(sid: str, data: dict):
+    """Facilitator awards participation points to one player during a live exercise."""
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+
+    game_pin = session["game_pin"]
+    target = str(data.get("target", "")).strip()[:100]
+    reason = str(data.get("reason", "Facilitator bonus")).strip()[:200] or "Facilitator bonus"
+    try:
+        amount = int(data.get("amount", 0))
+    except (TypeError, ValueError):
+        await sio.emit("error", {"message": "invalid_bonus_amount"}, room=sid)
+        return
+    if not target or amount <= 0 or amount > 10000:
+        await sio.emit("error", {"message": "invalid_bonus_data"}, room=sid)
+        return
+    if await get_player_record(game_pin, target) is None:
+        await sio.emit("error", {"message": "player_not_found"}, room=sid)
+        return
+
+    await redis.hincrby(f"game_session:{game_pin}:player_scores", target, amount)
+    current_score = int(await redis.hget(f"game_session:{game_pin}:player_scores", target) or 0)
+    game_data = await PlayGame.get_from_redis(game_pin)
+    if game_data.teams:
+        for team_name, members in game_data.teams.items():
+            if target in members:
+                await redis.hincrbyfloat(f"game:{game_pin}:team_scores", team_name, amount)
+                await redis.expire(f"game:{game_pin}:team_scores", 86400)
+                break
+    entry = {
+        "target": target,
+        "amount": amount,
+        "reason": reason,
+        "current_score": current_score,
+        "timestamp": datetime.now().isoformat(),
+    }
+    await redis.rpush(f"game:{game_pin}:bonuses", json.dumps(entry))
+    await redis.expire(f"game:{game_pin}:bonuses", 86400)
+    player_sid = await redis.get(f"game_session:{game_pin}:players:{target}")
+    if player_sid:
+        player_sid = player_sid.decode() if isinstance(player_sid, bytes) else player_sid
+        await sio.emit("score_bonus_awarded", entry, room=player_sid)
+    await sio.emit("bonus_awarded", entry, room=f"admin:{game_pin}")
+
+
+@sio.event
 async def set_teams(sid: str, data: dict):
     """Admin defines team assignments for team-vs-team mode.
 
@@ -1347,6 +1565,8 @@ async def show_solutions(sid: str, _data: dict):
     if not session["admin"]:
         return
     await redis.delete(f"game:{session['game_pin']}:question_timer")
+    game_data.question_show = False
+    await game_data.save(session["game_pin"])
     await sio.emit("question_timer_stopped", {}, room=session["game_pin"])
     solution = game_data.questions[game_data.current_question].model_dump()
     for private_field in ("facilitator_notes", "default_next_question_id", "allowed_roles"):
@@ -1979,6 +2199,10 @@ class _PushInjectInput(BaseModel):
     severity: str = "info"
 
 
+class _SpotlightPolicyInput(BaseModel):
+    document_id: str
+
+
 @sio.event
 async def push_inject(sid: str, data: dict):
     """Admin pushes an inject to all players (pre-defined by ID or ad-hoc)."""
@@ -2016,6 +2240,26 @@ async def push_inject(sid: str, data: dict):
 
     await log_inject(game_pin, inject, triggered_by="facilitator")
     await sio.emit("inject_received", inject.model_dump(), room=game_pin)
+
+
+@sio.event
+async def spotlight_policy(sid: str, data: dict):
+    """Open a pre-uploaded policy for every player in the exercise."""
+    try:
+        request = _SpotlightPolicyInput(**data)
+    except ValidationError:
+        await sio.emit("error", {"message": "Invalid policy reference"}, to=sid)
+        return
+    session = await get_session(sid, sio)
+    if not session.get("admin", False):
+        return
+    game_pin = session["game_pin"]
+    game_data = await PlayGame.get_from_redis(game_pin)
+    document = next((item for item in (game_data.reference_documents or []) if str(item.get("id")) == request.document_id), None)
+    if document is None:
+        await sio.emit("error", {"message": "Policy is not available in this exercise"}, to=sid)
+        return
+    await sio.emit("policy_spotlight", {**document, "opened_by": "facilitator"}, room=game_pin)
 
 
 class _DismissInjectInput(BaseModel):

@@ -44,21 +44,9 @@ SPDX-License-Identifier: MPL-2.0
 	// eslint-disable-next-line no-undef
 	let video_popup: undefined | WindowProxy = $state(undefined);
 
-	let selected_type: AvailableUploadTypes | null = $state(null);
-
-	// eslint-disable-next-line no-unused-vars
-	enum AvailableUploadTypes {
-		// eslint-disable-next-line no-unused-vars
-		Image,
-		// eslint-disable-next-line no-unused-vars
-		Video,
-		// eslint-disable-next-line no-unused-vars
-		Library,
-		// eslint-disable-next-line no-unused-vars
-		Pixabay,
-		// eslint-disable-next-line no-unused-vars
-		TheSVG
-	}
+	type AvailableUploadType = 'image' | 'video' | 'library' | 'pixabay' | 'svg';
+	const AvailableUploadTypes = { Image: 'image', Video: 'video', Library: 'library', Pixabay: 'pixabay', TheSVG: 'svg' } as const;
+	let selected_type: AvailableUploadType | null = $state(null);
 
 	const uppy = new (Uppy as any)()
 		.use(DropTarget, {

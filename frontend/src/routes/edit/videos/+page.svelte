@@ -31,19 +31,8 @@ SPDX-License-Identifier: MPL-2.0
 	const speed_extraction_regex = /speed=(\d+\.\d+)x(?![\s\S]*speed=\d+\.\d+x)/;
 	let last_time_elapsed = 0;
 
-	// eslint-disable-next-line no-unused-vars
-	enum Status {
-		// eslint-disable-next-line no-unused-vars
-		Idle,
-		// eslint-disable-next-line no-unused-vars
-		Compressing,
-		// eslint-disable-next-line no-unused-vars
-		CompressDone,
-		// eslint-disable-next-line no-unused-vars
-		Uploading,
-		// eslint-disable-next-line no-unused-vars
-		Done
-	}
+	type Status = 'idle' | 'compressing' | 'compress_done' | 'uploading' | 'done';
+	const Status = { Idle: 'idle', Compressing: 'compressing', CompressDone: 'compress_done', Uploading: 'uploading', Done: 'done' } as const;
 
 	let status: Status = $state(Status.Idle);
 

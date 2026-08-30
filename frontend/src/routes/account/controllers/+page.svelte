@@ -15,7 +15,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	let { data }: Props = $props();
 
-	const controllers: [] = data.controllers;
+	const controllers = $derived(data.controllers);
 </script>
 
 <div class="w-full h-full">

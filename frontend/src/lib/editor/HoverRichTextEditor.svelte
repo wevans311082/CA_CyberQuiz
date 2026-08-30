@@ -4,6 +4,7 @@ SPDX-FileCopyrightText: 2026 Marlon W (Mawoka)
 SPDX-License-Identifier: MPL-2.0
 -->
 
+<!-- svelte-ignore perf_avoid_nested_class -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import {

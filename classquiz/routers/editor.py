@@ -175,10 +175,11 @@ async def finish_edit(edit_id: str, quiz_input: QuizInput):
         quiz.teams = quiz_input.teams
         quiz.injects = [inj.model_dump() for inj in quiz_input.injects] if quiz_input.injects else None
         quiz.master_theme = (
-            quiz_input.master_theme.model_dump(exclude_none=True)
+        quiz_input.master_theme.model_dump(exclude_none=True)
             if quiz_input.master_theme
             else None
         )
+        quiz.reference_documents = quiz_input.reference_documents
         for image in images_to_delete:
             if image is not None:
                 try:

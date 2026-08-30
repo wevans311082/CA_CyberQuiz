@@ -215,6 +215,7 @@ SPDX-License-Identifier: MPL-2.0
 		bind:situation_status
 		{raised_hands}
 		player_roles={admin_player_roles}
+		{players}
 		{scoreboard_data}
 	/>
 {/if}

@@ -18,8 +18,8 @@ SPDX-License-Identifier: MPL-2.0
 	in:fly|global={{ x: 100 }}
 	out:fly|global={{ x: -100 }}
 >
-	<div class="rounded-lg bg-white w-full h-full border-gray-500 dark:bg-gray-700">
-		<div class="h-fit bg-gray-300 rounded-t-lg dark:bg-gray-500">
+	<div class="rounded-2xl bg-white w-full h-full border border-slate-200 shadow-sm">
+		<div class="h-fit bg-slate-100 rounded-t-2xl border-b border-slate-200">
 			<div class="flex align-middle p-4 gap-3">
 				<span
 					class="inline-block bg-gray-600 w-4 h-4 rounded-full hover:bg-red-400 transition"
@@ -32,17 +32,17 @@ SPDX-License-Identifier: MPL-2.0
 				></span>
 			</div>
 		</div>
-		<div class="dark:bg-gray-700">
+		<div class="bg-white">
 			<div class="flex justify-center pt-10 w-full">
 				<p
-					class="p-3 rounded-lg border-gray-500 border text-center w-11/12 lg:w-1/3 text-lg font-semibold dark:bg-gray-500"
+					class="p-3 rounded-lg border-slate-200 border bg-slate-50 text-slate-900 text-center w-11/12 lg:w-1/3 text-lg font-semibold"
 				>
 					{@html data.title}
 				</p>
 			</div>
 			<div class="flex justify-center pt-10 w-full max-h-32">
 				<p
-					class="p-3 rounded-lg border-gray-500 border text-center w-11/12 lg:w-1/3 h-20 resize-none dark:bg-gray-500"
+					class="p-3 rounded-lg border-slate-200 border bg-slate-50 text-slate-900 text-center w-11/12 lg:w-1/3 h-20 resize-none"
 				>
 					{@html data.description}
 				</p>

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MPL-2.0
 <!--
 By Flowbite, but changed: https://flowbite.com/docs/components/modal/#default-modal
 -->
+<!-- svelte-ignore state_referenced_locally -->
 <script lang="ts">
 	interface Props {
 		title: string;
@@ -15,8 +16,8 @@ By Flowbite, but changed: https://flowbite.com/docs/components/modal/#default-mo
 	}
 
 	let { title, body, open = $bindable() }: Props = $props();
-	console.log(open, title, body);
-	open = true;
+	let alert_title = $derived(title);
+	let alert_body = $derived(body);
 </script>
 
 <!-- Main modal -->
@@ -30,10 +31,11 @@ By Flowbite, but changed: https://flowbite.com/docs/components/modal/#default-mo
 					class="flex justify-between items-start p-4 rounded-t border-b dark:border-gray-600"
 				>
 					<h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-						{title}
+						{alert_title}
 					</h3>
 					<button
 						type="button"
+						aria-label="Close alert"
 						class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white"
 						onclick={() => {
 							open = false;
@@ -56,7 +58,7 @@ By Flowbite, but changed: https://flowbite.com/docs/components/modal/#default-mo
 				<!-- Modal body -->
 				<div class="p-6 space-y-6">
 					<p class="text-base leading-relaxed text-gray-500 dark:text-gray-400">
-						{body}
+						{alert_body}
 					</p>
 				</div>
 				<!-- Modal footer -->

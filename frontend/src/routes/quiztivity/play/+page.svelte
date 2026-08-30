@@ -4,9 +4,10 @@ SPDX-FileCopyrightText: 2023 Marlon W (Mawoka)
 SPDX-License-Identifier: MPL-2.0
 -->
 
+<!-- svelte-ignore state_referenced_locally -->
 <script lang="ts">
 	import type { PageData } from './$types';
-	import type { QuizTivityPage } from '$lib/quiztivity/types';
+	import type { Data, QuizTivityPage } from '$lib/quiztivity/types';
 	import { QuizTivityTypes } from '$lib/quiztivity/types';
 	import NavigationBar from './navigation_bar.svelte';
 
@@ -15,7 +16,7 @@ SPDX-License-Identifier: MPL-2.0
 	}
 
 	let { data }: Props = $props();
-	let quiztivity = $state(data.quiztivity);
+	const quiztivity = data.quiztivity as Data;
 	for (let i = 0; i < quiztivity.pages.length; i++) {
 		const id = (Math.random() + 1).toString(36).substring(7);
 		const type: QuizTivityTypes = quiztivity.pages[i].type as QuizTivityTypes;

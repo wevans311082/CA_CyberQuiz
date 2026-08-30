@@ -49,7 +49,8 @@ SPDX-License-Identifier: MPL-2.0
 
 	const { t } = getLocalization();
 	let { data } = $props();
-	let { quiz, logged_in }: { quiz: QuizData; logged_in: boolean } = $state(data);
+	let quiz = $derived<QuizData>(data.quiz);
+	let logged_in = $derived<boolean>(data.logged_in);
 
 	interface Question {
 		time: string;

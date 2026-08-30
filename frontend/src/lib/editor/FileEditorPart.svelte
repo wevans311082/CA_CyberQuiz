@@ -169,7 +169,7 @@ SPDX-License-Identifier: MPL-2.0
 		</div>
 		<button
 			type="button"
-			class="rounded-md bg-[#B07156] px-3 py-1 text-sm text-white hover:opacity-90"
+			class="rounded-md bg-teal-700 px-3 py-1 text-sm text-white hover:bg-teal-800"
 			onclick={add_attachment}
 		>
 			Add file
@@ -187,14 +187,14 @@ SPDX-License-Identifier: MPL-2.0
 			<input
 				type="text"
 				placeholder="Filename"
-				class="rounded border border-gray-300 p-2 text-sm dark:bg-gray-600"
+				class="rounded border border-slate-200 bg-white p-2 text-sm text-slate-900"
 				value={attachment.filename}
 				oninput={(e) => update_attachment(i, { filename: e.currentTarget.value })}
 			/>
 			<input
 				type="text"
 				placeholder="MIME type"
-				class="rounded border border-gray-300 p-2 text-sm dark:bg-gray-600"
+				class="rounded border border-slate-200 bg-white p-2 text-sm text-slate-900"
 				value={attachment.mime_type}
 				oninput={(e) => update_attachment(i, { mime_type: e.currentTarget.value })}
 			/>
@@ -202,7 +202,7 @@ SPDX-License-Identifier: MPL-2.0
 				<input
 					type="url"
 					placeholder="https://... or upload below"
-					class="flex-1 rounded border border-gray-300 p-2 text-sm dark:bg-gray-600"
+				class="flex-1 rounded border border-slate-200 bg-white p-2 text-sm text-slate-900"
 					value={attachment.url}
 					oninput={(e) => update_attachment(i, { url: e.currentTarget.value })}
 				/>

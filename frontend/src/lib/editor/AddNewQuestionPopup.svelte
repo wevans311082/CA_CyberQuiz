@@ -138,7 +138,7 @@ SPDX-License-Identifier: MPL-2.0
 	aria-label="Select question type"
 	transition:fade={{ duration: 100 }}
 >
-	<div class="relative w-full max-w-3xl mx-4 rounded-[2rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_120px_rgba(15,23,42,0.7)] p-8 flex flex-col gap-6 text-white max-h-[90vh]">
+	<div class="relative w-full max-w-3xl mx-4 rounded-[2rem] border border-slate-200 bg-white shadow-[0_30px_120px_rgba(15,23,42,0.18)] p-8 flex flex-col gap-6 text-slate-900 max-h-[90vh]">
 		<div class="text-center">
 			<p class="text-xs uppercase tracking-[0.35em] text-slate-400/80 mb-2">Editor</p>
 			<h1 class="text-2xl font-semibold">{$t('quiztivity.editor.select_page_type')}</h1>
@@ -155,10 +155,10 @@ SPDX-License-Identifier: MPL-2.0
 						<div class="grid grid-cols-3 gap-3">
 							{#each items as item}
 								<button
-									class="rounded-2xl border border-white/10 bg-white/5 hover:border-[#B07156]/60 hover:bg-[#B07156]/8 p-4 text-left transition-all group"
+								class="rounded-2xl border border-slate-200 bg-slate-50 hover:border-teal-300 hover:bg-teal-50 p-4 text-left transition-all group"
 									onclick={() => { add_question(item.idx); }}
 								>
-									<h3 class="text-sm font-semibold text-white mb-1 group-hover:text-[#B07156] transition-colors">{item.qt.name}</h3>
+								<h3 class="text-sm font-semibold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">{item.qt.name}</h3>
 									<p class="text-xs text-slate-400 leading-5">{item.qt.description}</p>
 								</button>
 							{/each}
@@ -178,7 +178,7 @@ SPDX-License-Identifier: MPL-2.0
 				>{$t('editor.visit_docs')}</a>
 			</p>
 			<button
-				class="rounded-full border border-white/15 px-5 py-2 text-sm font-semibold text-white/90 hover:bg-white/6 transition-colors"
+				class="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
 				onclick={() => { open = false; }}
 			>
 				Cancel

@@ -55,8 +55,6 @@ SPDX-License-Identifier: MPL-2.0
 		margin: 0;
 		padding: 1em 0.5em;
 	}*/
-	button {
-	}
 
 	button[aria-expanded='true'] {
 		border-bottom: 1px solid var(--gray-light, #eee);

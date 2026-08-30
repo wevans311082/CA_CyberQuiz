@@ -4,6 +4,7 @@ SPDX-FileCopyrightText: 2023 Marlon W (Mawoka)
 SPDX-License-Identifier: MPL-2.0
 -->
 
+<!-- svelte-ignore state_referenced_locally -->
 <script lang="ts">
 	import type { QuizData } from '$lib/quiz_types';
 
@@ -38,7 +39,9 @@ SPDX-License-Identifier: MPL-2.0
 
 	let { data }: Props = $props();
 	let game_mode = $state();
-	let { auto_connect, game_token, host_token } = $state(data);
+	let auto_connect = $derived(data.auto_connect);
+	let game_token = $derived(data.game_token);
+	let host_token = $derived(data.host_token);
 	const game_pin = data.game_pin;
 
 	let players: Array<Player> = $state([]);

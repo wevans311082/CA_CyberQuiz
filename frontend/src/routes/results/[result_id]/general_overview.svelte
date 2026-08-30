@@ -21,7 +21,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	let { scores, title, timestamp }: Props = $props();
 
-	const usernames = Object.keys(scores);
+	const usernames = $derived(Object.keys(scores));
 
 	const get_average_final_score = () => {
 		let score_data = 0;
@@ -42,9 +42,3 @@ SPDX-License-Identifier: MPL-2.0
 		})}
 	</p>
 </Card>
-
-<style>
-	underline {
-		text-decoration: underline;
-	}
-</style>

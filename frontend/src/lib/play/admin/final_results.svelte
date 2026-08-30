@@ -27,7 +27,8 @@
 	const third = $derived(players[2]);
 	const rest = $derived(players.slice(3));
 	const my_rank = $derived(players.findIndex((player) => player.username === username) + 1);
-	let reveal = $state(!Boolean(username));
+	let reveal = $state(false);
+	$effect(() => { reveal = !Boolean(username); });
 	let canvas: HTMLCanvasElement = $state();
 	const avatar_url = (params: any) => {
 		const defaults = { skin_color: 0, hair_color: 0, facial_hair_type: 0, facial_hair_color: 0, top_type: 0, hat_color: 0, mouth_type: 0, eyebrow_type: 0, nose_type: 0, accessories_type: 0, clothe_type: 0, clothe_color: 0, clothe_graphic_type: 0 };
@@ -42,7 +43,7 @@
 
 {#if show_final_results}
 	<canvas bind:this={canvas} class="pointer-events-none fixed inset-0 z-20 h-full w-full"></canvas>
-	<div class="podium-shell mx-auto mt-6 max-w-6xl px-4 pb-32 text-slate-900 dark:text-white">
+	<div class="podium-shell mx-auto mt-6 max-w-6xl px-4 pb-32 text-slate-900">
 		<div class="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-gradient-to-br from-white via-sky-50 to-teal-50 px-5 py-8 shadow-2xl dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 sm:px-10 sm:py-10">
 			<div class="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-300/20 blur-3xl"></div><div class="absolute -left-24 bottom-0 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl"></div>
 			<div class="relative text-center"><p class="text-xs font-bold uppercase tracking-[0.35em] text-teal-600 dark:text-teal-300">Exercise complete</p><h2 class="mt-2 text-4xl font-black tracking-tight sm:text-5xl">Final podium</h2><p class="mx-auto mt-3 max-w-xl text-sm text-slate-600 dark:text-slate-300">Celebrating the teams who made the strongest decisions under pressure.</p></div>

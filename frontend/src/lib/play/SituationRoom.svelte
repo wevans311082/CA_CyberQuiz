@@ -73,7 +73,7 @@ SPDX-License-Identifier: MPL-2.0
 {#if !open}
 	<button
 		type="button"
-		class="fixed bottom-4 left-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-cyan-500/40 bg-slate-900/90 text-cyan-200 shadow-lg backdrop-blur-xl transition hover:bg-slate-800"
+		class="fixed bottom-16 left-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-cyan-500/40 bg-slate-900/90 text-cyan-200 shadow-lg backdrop-blur-xl transition hover:bg-slate-800"
 		onclick={() => {
 			open = true;
 			refresh();

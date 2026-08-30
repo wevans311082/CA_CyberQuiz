@@ -8,7 +8,7 @@
  let quickActionsOpen = $state(false);
  let navigationOpen = $state(false);
  let query = $state('');
- const primary = [{ href: '/dashboard', label: 'Overview', icon: 'home' }, { href: '/scenarios', label: 'Scenario library', icon: 'library' }, { href: '/create', label: 'Create exercise', icon: 'plus' }, { href: '/results', label: 'Results & analytics', icon: 'chart' }, { href: '/edit/files', label: 'Evidence library', icon: 'file' }] as const;
+ const primary = [{ href: '/dashboard', label: 'Overview', icon: 'home' }, { href: '/scenarios', label: 'Scenario library', icon: 'library' }, { href: '/frameworks', label: 'Framework guide', icon: 'book' }, { href: '/create', label: 'Create exercise', icon: 'plus' }, { href: '/results', label: 'Results & analytics', icon: 'chart' }, { href: '/edit/files', label: 'Evidence library', icon: 'file' }] as const;
  const manage = [{ href: '/account/settings', label: 'Settings', icon: 'settings' }, { href: '/docs', label: 'Documentation', icon: 'help' }] as const;
  const runCommand = () => { const value = query.trim().toLowerCase(); const match = [...primary, ...manage].find((item) => item.label.toLowerCase().includes(value)); if (match) { query = ''; goto(match.href); } };
  const isActive = (href: string) => page.url.pathname === href || page.url.pathname.startsWith(`${href}/`);

@@ -87,26 +87,26 @@ SPDX-License-Identifier: MPL-2.0
 {#if data !== undefined}
 	<Editor bind:data bind:quiz_id />
 {:else if create_mode_dialog_open}
-	<div class="relative min-h-screen overflow-hidden bg-[#0f172a] text-slate-100">
-		<div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.22),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(176,113,86,0.28),_transparent_35%),linear-gradient(180deg,_#0f172a_0%,_#111827_100%)]"></div>
-		<div class="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:32px_32px]"></div>
+	<div class="relative min-h-screen overflow-hidden bg-slate-50 text-slate-900">
+		<div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.14),_transparent_35%),linear-gradient(180deg,_#f8fafc_0%,_#eef6ff_100%)]"></div>
+		<div class="absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.04)_1px,transparent_1px)] [background-size:32px_32px]"></div>
 		<div class="relative z-10 flex min-h-screen items-center justify-center p-6">
-			<div class="w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/15 bg-white/8 shadow-[0_30px_120px_rgba(15,23,42,0.55)] backdrop-blur-2xl">
+			<div class="w-full max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white/90 shadow-[0_30px_120px_rgba(15,23,42,0.14)] backdrop-blur-2xl">
 				<div class="grid gap-0 lg:grid-cols-[1.1fr_1.4fr]">
-					<div class="flex flex-col justify-between border-b border-white/10 bg-black/15 p-8 lg:border-b-0 lg:border-r">
+					<div class="flex flex-col justify-between border-b border-slate-200 bg-slate-50/80 p-8 lg:border-b-0 lg:border-r">
 						<div>
-							<p class="text-xs font-semibold uppercase tracking-[0.35em] text-teal-200/80">New Quiz</p>
-							<h1 class="mt-4 text-4xl font-semibold leading-tight text-white">Choose the format before the editor opens.</h1>
-							<p class="mt-4 max-w-md text-sm leading-7 text-slate-300">
+							<p class="text-xs font-semibold uppercase tracking-[0.35em] text-teal-700">New Quiz</p>
+							<h1 class="mt-4 text-4xl font-semibold leading-tight text-slate-950">Choose the format before the editor opens.</h1>
+							<p class="mt-4 max-w-md text-sm leading-7 text-slate-600">
 								Pick the experience first so the editor, lobby, and host tools all start in the right mode.
 							</p>
 						</div>
-						<div class="mt-8 rounded-3xl border border-white/10 bg-white/8 p-5">
-							<p class="text-xs uppercase tracking-[0.28em] text-slate-400">Selected</p>
-							<p class="mt-2 text-2xl font-semibold text-white">
+						<div class="mt-8 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+							<p class="text-xs uppercase tracking-[0.28em] text-slate-500">Selected</p>
+							<p class="mt-2 text-2xl font-semibold text-slate-950">
 								{selected_mode === 'tabletop' ? 'Tabletop Exercise' : 'Classic Quiz'}
 							</p>
-							<p class="mt-2 text-sm text-slate-300">
+							<p class="mt-2 text-sm text-slate-600">
 								{#if selected_mode === 'tabletop'}
 									Decision-focused flow with role assignment, branching, and facilitator controls.
 								{:else}
@@ -120,7 +120,7 @@ SPDX-License-Identifier: MPL-2.0
 						<div class="grid gap-5 md:grid-cols-2">
 							<button
 								type="button"
-								class={`group relative overflow-hidden rounded-[1.75rem] border p-6 text-left transition duration-200 ${selected_mode === 'classic' ? 'border-[#B07156] bg-white text-slate-900 shadow-[0_18px_50px_rgba(176,113,86,0.28)]' : 'border-white/12 bg-white/6 text-white'}`}
+								class={`group relative overflow-hidden rounded-[1.75rem] border p-6 text-left transition duration-200 ${selected_mode === 'classic' ? 'border-teal-300 bg-white text-slate-900 shadow-[0_18px_50px_rgba(20,184,166,0.22)]' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
 								onclick={() => {
 									selected_mode = 'classic';
 								}}
@@ -129,7 +129,7 @@ SPDX-License-Identifier: MPL-2.0
 								<div class="relative">
 									<div class="flex items-center justify-between">
 										<p class="text-xs font-semibold uppercase tracking-[0.28em] opacity-70">Classic</p>
-										<span class={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${selected_mode === 'classic' ? 'border-slate-300' : 'border-white/20'}`}>
+										<span class={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${selected_mode === 'classic' ? 'border-slate-300' : 'border-slate-200'}`}>
 											Quiz
 										</span>
 									</div>
@@ -145,7 +145,7 @@ SPDX-License-Identifier: MPL-2.0
 
 							<button
 								type="button"
-								class={`group relative overflow-hidden rounded-[1.75rem] border p-6 text-left transition duration-200 ${selected_mode === 'tabletop' ? 'border-teal-300 bg-white text-slate-900 shadow-[0_18px_50px_rgba(45,212,191,0.25)]' : 'border-white/12 bg-white/6 text-white'}`}
+								class={`group relative overflow-hidden rounded-[1.75rem] border p-6 text-left transition duration-200 ${selected_mode === 'tabletop' ? 'border-teal-300 bg-white text-slate-900 shadow-[0_18px_50px_rgba(45,212,191,0.25)]' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
 								onclick={() => {
 									selected_mode = 'tabletop';
 								}}
@@ -154,7 +154,7 @@ SPDX-License-Identifier: MPL-2.0
 								<div class="relative">
 									<div class="flex items-center justify-between">
 										<p class="text-xs font-semibold uppercase tracking-[0.28em] opacity-70">Scenario</p>
-										<span class={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${selected_mode === 'tabletop' ? 'border-slate-300' : 'border-white/20'}`}>
+										<span class={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${selected_mode === 'tabletop' ? 'border-slate-300' : 'border-slate-200'}`}>
 											Tabletop
 										</span>
 									</div>
@@ -169,18 +169,18 @@ SPDX-License-Identifier: MPL-2.0
 							</button>
 						</div>
 
-						<div class="mt-8 flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
-							<p class="text-sm text-slate-300">You can still edit content and styling afterwards; this just chooses the right workflow up front.</p>
+						<div class="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+							<p class="text-sm text-slate-600">You can still edit content and styling afterwards; this just chooses the right workflow up front.</p>
 							<div class="flex gap-3">
 								<a
 									href="/dashboard"
-									class="inline-flex items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white/90 transition hover:border-white/30 hover:bg-white/6"
+									class="inline-flex items-center justify-center rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
 								>
 									Back
 								</a>
 								<button
 									type="button"
-									class="inline-flex items-center justify-center rounded-full bg-[#B07156] px-6 py-3 text-sm font-semibold text-slate-950 shadow-[0_16px_40px_rgba(176,113,86,0.35)] transition hover:translate-y-[-1px] hover:opacity-90"
+									class="inline-flex items-center justify-center rounded-full bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_40px_rgba(15,118,110,0.25)] transition hover:translate-y-[-1px] hover:bg-teal-800"
 									onclick={() => initialize_quiz_data(selected_mode)}
 								>
 									Continue to editor
@@ -201,7 +201,7 @@ SPDX-License-Identifier: MPL-2.0
 	aria-labelledby="modal-title"
 	class:hidden={!responseData.open}
 >
-	<div class="w-full max-w-md mx-4 rounded-[2rem] border border-white/15 bg-[#0f172a]/97 backdrop-blur-2xl shadow-[0_30px_120px_rgba(15,23,42,0.8)] p-8 text-white">
+	<div class="w-full max-w-md mx-4 rounded-[2rem] border border-slate-200 bg-white p-8 text-slate-900 shadow-[0_30px_120px_rgba(15,23,42,0.18)]">
 		<div class="flex items-start gap-4 mb-6">
 			<div class="shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-emerald-500/15 border border-emerald-500/30">
 				<svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,17 +209,17 @@ SPDX-License-Identifier: MPL-2.0
 				</svg>
 			</div>
 			<div>
-				<h3 class="text-base font-semibold text-white" id="modal-title">
+				<h3 class="text-base font-semibold text-slate-900" id="modal-title">
 					{$t('create_page.success.title')}
 				</h3>
-				<p class="mt-1 text-sm text-slate-400">{$t('create_page.success.body')}</p>
+				<p class="mt-1 text-sm text-slate-600">{$t('create_page.success.body')}</p>
 			</div>
 		</div>
 		<div class="flex justify-end">
 			<button
 				type="button"
 				onclick={() => { window.location.href = '/dashboard'; }}
-				class="rounded-full bg-[#B07156] px-6 py-2.5 text-sm font-semibold text-slate-950 hover:bg-[#c07d62] transition-colors"
+				class="rounded-full bg-teal-700 px-6 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 transition-colors"
 			>{$t('words.close')}
 			</button>
 		</div>

@@ -17,7 +17,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	let { data }: Props = $props();
 
-	const quizzes = data.results;
+	const quizzes = $derived(data.results);
 </script>
 
 <svelte:head>

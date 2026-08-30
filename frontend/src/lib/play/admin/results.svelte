@@ -4,6 +4,7 @@ SPDX-FileCopyrightText: 2023 Marlon W (Mawoka)
 SPDX-License-Identifier: MPL-2.0
 -->
 
+<!-- svelte-ignore state_referenced_locally -->
 <script lang="ts">
 	import VotingResults from './voting_results.svelte';
 	import { flip } from 'svelte/animate';
@@ -33,7 +34,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	const group_username_by_score = (new_d: any[]): object => {
 		let ret_data = {};
-		for (const i of new_data) {
+		for (const i of new_d) {
 			ret_data[i.username] = i.score;
 		}
 		return ret_data;
@@ -46,11 +47,11 @@ SPDX-License-Identifier: MPL-2.0
 		return scoreB - scoreA;
 	}));
 
-	if (JSON.stringify(data) === '{}') {
-		for (const i of new_data) {
-			data[i.username] = 0;
+	$effect(() => {
+		if (JSON.stringify(data) === '{}') {
+			for (const i of new_data) data[i.username] = 0;
 		}
-	}
+	});
 
 	let show_new_score_clicked = $state(false);
 

@@ -458,6 +458,11 @@ SPDX-License-Identifier: MPL-2.0
 						<option value="Communication">Communication (0.9×)</option>
 					</select>
 				</div>
+				<!-- Decision Quality Rubric -->
+				<div class="flex flex-col gap-2 rounded-xl border border-teal-200 bg-teal-50/40 p-3">
+					<div><span class="text-sm font-semibold text-slate-800">Decision-quality rubric</span><p class="text-xs text-slate-500">Optional keywords score evidence in tabletop responses. One criterion per line: Label | keyword1, keyword2</p></div>
+					<textarea rows="3" class="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm outline-none focus:border-teal-500" value={(data.questions[selected_question].decision_rubric ?? []).map((item) => `${item.label} | ${(item.keywords ?? []).join(', ')}`).join('\n')} placeholder="Containment | isolate, quarantine\nCommunication | regulator, stakeholder" oninput={(e) => { const value = e.currentTarget.value; data.questions[selected_question].decision_rubric = value.split('\n').map((line, index) => { const [label, keywords] = line.split('|'); return { id: `criterion-${index + 1}`, label: label?.trim() ?? '', keywords: (keywords ?? '').split(',').map((item) => item.trim()).filter(Boolean), max_points: 10 }; }).filter((item) => item.label); data = data; }}></textarea>
+				</div>
 				<!-- SLA Checkpoints -->
 				<div class="flex flex-col gap-2">
 					<div class="flex items-center justify-between">

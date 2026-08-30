@@ -15,7 +15,7 @@ SPDX-License-Identifier: MPL-2.0
 	}
 
 	let { data }: Props = $props();
-	const files = data.files;
+	const files = $derived(data.files);
 
 	/*	const base64ToBytes = (value: string) => {
 		const base64 = value.replace(/-/g, '+').replace(/_/g, '/');

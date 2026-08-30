@@ -28,9 +28,9 @@ SPDX-License-Identifier: MPL-2.0
 </script>
 
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-	<div class="rounded-[1.75rem] border border-white/15 bg-[#0f172a]/95 backdrop-blur-2xl shadow-[0_30px_80px_rgba(15,23,42,0.6)] text-white w-full max-w-md flex flex-col gap-6 p-8">
+	<div class="rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.18)] text-slate-900 w-full max-w-md flex flex-col gap-6 p-8">
 		<div class="flex items-center justify-between">
-			<h2 class="text-xl font-semibold text-white">{$t('security_settings.backup_codes.your_backup_code')}</h2>
+			<h2 class="text-xl font-semibold text-slate-900">{$t('security_settings.backup_codes.your_backup_code')}</h2>
 			<button onclick={() => { backup_code = undefined; }} class="rounded-full border border-white/15 px-4 py-1.5 text-xs font-semibold text-white/90 hover:bg-white/6 transition-colors">
 				{$t('words.close')}
 			</button>

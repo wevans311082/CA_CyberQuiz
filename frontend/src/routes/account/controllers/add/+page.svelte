@@ -13,10 +13,8 @@ SPDX-License-Identifier: MPL-2.0
 	}
 
 	let { data }: Props = $props();
-	let input_data = $state({
-		player_name: data.username,
-		name: ''
-	});
+	let input_data = $state({ player_name: '', name: '' });
+	$effect(() => { input_data.player_name = data.username; });
 
 	let isValid = $derived(input_data.name.length !== 0 && input_data.player_name.length !== 0);
 	let isSubmitting = false;

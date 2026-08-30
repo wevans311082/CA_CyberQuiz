@@ -8,6 +8,7 @@ SPDX-License-Identifier: MPL-2.0
 	import MediaComponent from '$lib/editor/MediaComponent.svelte';
 	import PlayerAvatarChip from '$lib/play/player_avatar_chip.svelte';
 	import RolesPanel from '$lib/play/RolesPanel.svelte';
+	import { onDestroy, onMount } from 'svelte';
 
 	interface AvatarParams {
 		skin_color?: number;
@@ -85,9 +86,13 @@ SPDX-License-Identifier: MPL-2.0
 	};
 
 	// Admin can dismiss our hand
-	if (socket) {
-		socket.on('hand_dismissed', () => { hand_raised = false; });
-	}
+	const on_hand_dismissed = () => { hand_raised = false; };
+	onMount(() => {
+		if (socket) socket.on('hand_dismissed', on_hand_dismissed);
+	});
+	onDestroy(() => {
+		if (socket) socket.off('hand_dismissed', on_hand_dismissed);
+	});
 
 	const friendlyChatBlockReason = (reason: string | null) => {
 		if (!reason) {
