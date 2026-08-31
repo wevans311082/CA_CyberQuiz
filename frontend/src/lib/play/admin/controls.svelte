@@ -26,6 +26,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	import EmojiPanel from './EmojiPanel.svelte';
 	import RehearsalPlayerSimulator from './RehearsalPlayerSimulator.svelte';
+	import FacilitatorPlayerPreview from './FacilitatorPlayerPreview.svelte';
 
 	interface Props {
 		bg_color: string;
@@ -89,6 +90,7 @@ SPDX-License-Identifier: MPL-2.0
 	let rehearsal_clock_speed = $state(1);
 	let rehearsal_snapshot = $state<{ question: number; speed: number } | null>(null);
 	let rehearsal_snapshots = $state<Array<{ question: number; speed: number; created_at: string }>>([]);
+	let player_preview_open = $state(false);
 	let rehearsal_answers = $state<Record<string, string>>({});
 
 	const timeline_events = $derived(buildFacilitatorTimeline(injects_log, situation_log));
@@ -828,7 +830,8 @@ SPDX-License-Identifier: MPL-2.0
 			severity={situation_status.severity}
 			phase={situation_status.phase}
 			showRoles={is_tabletop}
-			onopenprojector={open_projector_display}
+				onopenprojector={open_projector_display}
+				onopenplayerpreview={() => (player_preview_open = true)}
 		>
 			{#snippet rehearsal()}
 				<div class="space-y-4"><div class="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3"><p class="text-sm font-bold text-violet-200">Safe rehearsal mode</p><p class="mt-1 text-xs leading-5 text-violet-100/70">This simulation is private to you. It does not broadcast, score players, or change the live exercise.</p></div>
@@ -1049,6 +1052,7 @@ SPDX-License-Identifier: MPL-2.0
 			{/snippet}
 		</FacilitatorDock>
 		<RehearsalPlayerSimulator active={rehearsal_active} {quiz_data} question={rehearsal_question} answers={rehearsal_answers} {socket} />
+		<FacilitatorPlayerPreview bind:open={player_preview_open} {quiz_data} question_index={selected_question >= 0 ? selected_question : 0} score={scoreboard_data?.scores?.[players[0]?.username ?? ''] ?? 0} timer={timer_res} situation={situation_status} role={players[0]?.username ? player_roles[players[0].username] : null} reference_count={quiz_data.reference_documents?.length ?? 0} />
 
 		<InjectPreviewModal
 			bind:open={inject_preview_open}

@@ -133,7 +133,7 @@ def build() -> dict:
             "Rumours spread on internal chat. What do you communicate?",
             [
                 ("All-staff note: security investigation underway, no speculation", "it-vote"),
-                ("Targeted message to engineering team only", "it-v7-recovery"),
+                ("Targeted message to engineering team only", "it-d7-recovery"),
                 ("No communication until investigation concludes", "it-vote"),
                 ("Transparent town hall with {{ceo_name}}", "it-vote"),
             ],

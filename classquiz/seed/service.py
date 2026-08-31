@@ -12,6 +12,7 @@ from classquiz.seed.context import WizardContext
 from classquiz.seed.personalize import personalize_quiz
 from classquiz.seed.registry import SeedTemplateMeta, get_template, list_templates
 from classquiz.socket_server.branching import ensure_question_ids
+from classquiz.scenario_validation import validate_scenario
 
 
 def template_catalog() -> list[dict]:
@@ -42,6 +43,16 @@ async def create_seed_quiz(template_id: str, context: WizardContext, user: User)
     payload = build_quiz_payload(template_id, context)
     questions = [QuizQuestion.model_validate(q) for q in payload["questions"]]
     questions = ensure_question_ids(questions)
+
+    scenario_issues = validate_scenario(
+        questions,
+        payload.get("roles"),
+        payload.get("injects"),
+        {"framework_mappings": payload.get("framework_mappings", {})},
+    )
+    blocking_issues = [issue for issue in scenario_issues if issue["level"] == "error"]
+    if blocking_issues:
+        raise ValueError({"message": "Seed template failed scenario validation", "issues": blocking_issues})
 
     alignment = {
         "cloud_identity": {"tags": ["cloud", "identity", "mfa", "oauth"], "framework_mappings": {"NIST CSF 2.0": ["Govern", "Identify", "Protect", "Detect", "Respond", "Recover"], "CAF 4.0": ["A2 Risk Management", "B2 Identity and Access Control", "C1 Security Monitoring", "D1 Response and Recovery Planning"], "MITRE ATT&CK Enterprise": ["Initial Access", "Persistence", "Credential Access", "Lateral Movement"]}},

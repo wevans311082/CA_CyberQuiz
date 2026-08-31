@@ -15,13 +15,23 @@ from classquiz.config import settings, storage, meilisearch, ALLOWED_TAGS_FOR_QU
 from classquiz.db.models import Quiz, ABCDQuizAnswer, QuizQuestion, User, StorageItem
 from classquiz.kahoot_importer.get import get as get_quiz
 from classquiz.helpers import get_meili_data
+from classquiz.helpers.network import assert_safe_remote_url
 
 settings = settings()
 
 
 async def _download_image(url: str) -> bytes:
-    async with ClientSession() as session, session.get(url) as resp:
-        return await resp.read()
+    try:
+        await assert_safe_remote_url(url)
+    except ValueError as exc:
+        raise ValueError("Remote image URL rejected") from exc
+    async with ClientSession() as session, session.get(url, timeout=15, allow_redirects=False) as resp:
+        if resp.status != 200:
+            raise ValueError("Remote image download failed")
+        data = await resp.read()
+        if len(data) > 10 * 1024 * 1024:
+            raise ValueError("Remote image is too large")
+        return data
 
 
 DEFAULT_COLORS = ["#D6EDC9", "#B07156", "#7F7057", "#4E6E58"]

@@ -38,6 +38,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
     )
     root_address: str = "http://127.0.0.1:8000"
+    environment: str = "development"
     redis: RedisDsn = "redis://localhost:6379/0?decode_responses=True"
     skip_email_verification: bool = False
     db_url: PostgresDsn | str = "postgresql://postgres:mysecretpassword@localhost:5432/classquiz"

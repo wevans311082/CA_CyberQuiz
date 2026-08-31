@@ -306,9 +306,17 @@ Milestone 2 implementation note: isolated Redis rehearsal state, server acknowle
 |---:|---|---|
 | 1 | Decision-quality scoring | Complete |
 | 2 | Facilitator rehearsal, playback, and reset mode | Complete |
-| 3 | Facilitator preview as player | Planned |
-| 4 | Multi-browser reliability testing | Planned |
-| 5 | Scenario quality validator | Planned |
-| 6 | Persistent live event timeline | Planned |
-| 7 | Exercise health dashboard | Planned |
+| 3 | Facilitator preview as player | Complete |
+| 4 | Multi-browser reliability testing | In progress |
+| 5 | Scenario quality validator | In progress |
+| 6 | Persistent live event timeline | In progress |
+| 7 | Exercise health dashboard | In progress |
 | 8 | Framework coverage map | Planned |
+
+Milestone 4 implementation note: Playwright configuration, desktop/mobile smoke coverage, live facilitator-plus-two-player harness, reconnect scaffolding, and failure artefact capture are implemented. The smoke journey passes locally in both browser projects. Full live Redis/Postgres execution remains the release gate; it requires a disposable seeded exercise and authenticated facilitator storage state.
+
+Milestone 5 implementation note: Server validation now runs during editor saves, seed previews, seed creation, and scenario-version publishing. It reports stable issue codes and field paths for graph routes, IDs, content, answers, timers, roles, injects, attachments, framework mappings, and metadata. Regression tests cover malformed content and all five built-in templates; an invalid insider-threat route was corrected.
+
+Milestone 6 implementation note: Live Redis timeline storage now records injects, situation changes, facilitator overrides, and reference openings in an ordered reconnect-safe event stream. Request IDs are deduplicated with Redis NX, and the unified timeline is returned with situation-room bootstrap data for player/facilitator replay.
+
+Milestone 7 implementation note: Added a pure health calculator and facilitator socket snapshot covering connections, missing roles, response completion, shared timer state, scenario content issues, reference availability, failed event delivery, and live phase. The response is severity-ranked and actionable, with focused healthy/degraded regression tests.

@@ -129,6 +129,51 @@ async def get_branch_path(game_pin: str) -> list[str]:
     return path or []
 
 
+async def append_timeline_event(
+    game_pin: str,
+    event_type: str,
+    payload: dict | None = None,
+    *,
+    actor: str | None = None,
+    event_id: str | None = None,
+) -> bool:
+    """Append one authoritative live event, deduplicating retried requests.
+
+    Socket handlers may retry after a timeout. Callers that have a request ID
+    can pass it as ``event_id``; Redis NX makes the append idempotent across
+    workers while the ordered list remains easy to replay after reconnect.
+    """
+    import uuid as _uuid
+    from datetime import datetime as _dt
+
+    resolved_id = event_id or str(_uuid.uuid4())
+    accepted = await redis.set(f"game_session:{game_pin}:timeline:event:{resolved_id}", "1", nx=True, ex=7200)
+    if not accepted:
+        return False
+    entry = json.dumps({
+        "id": resolved_id,
+        "type": event_type,
+        "actor": actor,
+        "timestamp": _dt.now().isoformat(),
+        "payload": payload or {},
+    })
+    await redis.rpush(f"game_session:{game_pin}:timeline", entry)
+    await redis.expire(f"game_session:{game_pin}:timeline", 7200)
+    return True
+
+
+async def get_timeline_events(game_pin: str) -> list[dict]:
+    """Return the ordered, reconnect-safe live timeline."""
+    raw = await redis.lrange(f"game_session:{game_pin}:timeline", 0, -1)
+    events: list[dict] = []
+    for item in raw or []:
+        try:
+            events.append(json.loads(item))
+        except (TypeError, json.JSONDecodeError):
+            continue
+    return events
+
+
 async def log_facilitator_override(game_pin: str, from_question_id: str | None, forced_next_id: str) -> None:
     """Log a facilitator override action."""
     entry = json.dumps({
@@ -138,6 +183,7 @@ async def log_facilitator_override(game_pin: str, from_question_id: str | None, 
     })
     await redis.rpush(f"game_session:{game_pin}:overrides", entry)
     await redis.expire(f"game_session:{game_pin}:overrides", 7200)
+    await append_timeline_event(game_pin, "facilitator_override", {"from_question": from_question_id, "forced_next": forced_next_id}, actor="facilitator")
 
 
 async def get_facilitator_overrides(game_pin: str) -> list[dict]:
@@ -180,6 +226,7 @@ async def log_inject(game_pin: str, inject: Inject, triggered_by: str = "auto") 
     })
     await redis.rpush(f"game_session:{game_pin}:injects_log", entry)
     await redis.expire(f"game_session:{game_pin}:injects_log", 7200)
+    await append_timeline_event(game_pin, "inject", {"inject_id": inject.id, "title": inject.title, "severity": inject.severity, "triggered_by": triggered_by}, actor=triggered_by)
 
 
 async def get_injects_log(game_pin: str) -> list[dict]:
@@ -209,6 +256,7 @@ async def log_situation_change(game_pin: str, status: dict) -> None:
     entry = json.dumps({**status, "timestamp": _dt.now().isoformat()})
     await redis.rpush(f"game_session:{game_pin}:situation_log", entry)
     await redis.expire(f"game_session:{game_pin}:situation_log", 7200)
+    await append_timeline_event(game_pin, "situation_update", status, actor="facilitator")
 
 
 async def get_situation_log(game_pin: str) -> list[dict]:
@@ -232,6 +280,7 @@ async def log_file_download(game_pin: str, username: str, file_id: str | None, f
     })
     await redis.rpush(f"game_session:{game_pin}:file_downloads", entry)
     await redis.expire(f"game_session:{game_pin}:file_downloads", 7200)
+    await append_timeline_event(game_pin, "reference_opened", {"username": username, "file_id": file_id, "filename": filename}, actor=username)
 
 
 async def get_file_downloads_log(game_pin: str) -> list[dict]:

@@ -72,7 +72,8 @@ async def rememberme_middleware(request: Request, call_next) -> Response:
             key="access_token",
             value=f"Bearer {access_token}",
             httponly=True,
-            samesite="lax",
+            secure=settings.root_address.startswith("https://"),
+            samesite="strict",
             max_age=60 * 60 * 24 * 365,
         )
     else:

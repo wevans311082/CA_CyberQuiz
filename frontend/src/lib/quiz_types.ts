@@ -61,6 +61,9 @@ export type TimelineEventType =
 	| 'role_assigned'
 	| 'branch_resolved'
 	| 'decision_made'
+	| 'facilitator_override'
+	| 'reference_opened'
+	| 'bonus_awarded'
 	| 'scenario_complete';
 
 export interface TimelineEvent {

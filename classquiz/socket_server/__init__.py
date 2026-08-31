@@ -63,6 +63,8 @@ from classquiz.socket_server.branching import (
     determine_winning_answer,
     append_branch_path,
     get_branch_path,
+    append_timeline_event,
+    get_timeline_events,
     log_facilitator_override,
     get_facilitator_overrides,
     find_question_by_id,
@@ -80,6 +82,7 @@ from classquiz.socket_server.branching import (
 
 from classquiz.socket_server.export_helpers import save_quiz_to_storage
 from classquiz.socket_server.session import get_session, save_session
+from classquiz.live_health import calculate_exercise_health
 from socketio.exceptions import ConnectionRefusedError
 
 settings = settings()
@@ -1736,6 +1739,34 @@ async def disconnect(sid: str):
 
 
 @sio.event
+async def get_exercise_health(sid: str, _data: dict | None = None):
+    """Return a privacy-light operational health snapshot to a facilitator."""
+    session = await get_session(sid, sio, disconnect_on_error=False)
+    if not session.get("admin", False) or not session.get("game_pin"):
+        return
+    game_pin = session["game_pin"]
+    game_data = await PlayGame.get_from_redis(game_pin)
+    players = await get_lobby_players(game_pin)
+    roles = await get_all_player_roles(game_pin)
+    expected = len(players)
+    received = 0
+    if game_data.current_question >= 0:
+        received = len(await AnswerDataList.get_redis_or_empty(game_pin, str(game_data.current_question)))
+    timer_raw = await redis.get(f"game:{game_pin}:question_timer")
+    timer = json.loads(timer_raw) if timer_raw else None
+    await sio.emit("exercise_health", calculate_exercise_health(
+        players=players,
+        assigned_roles=roles,
+        expected_responses=expected,
+        received_responses=received,
+        timer=timer,
+        current_question=game_data.current_question,
+        question_count=len(game_data.questions),
+        reference_documents=game_data.reference_documents,
+    ), room=sid)
+
+
+@sio.event
 async def debug_status(sid: str):
     server_session = await sio.get_session(sid)
     custom_session = None
@@ -2325,6 +2356,7 @@ async def get_situation(sid: str, _data: dict):
     status = await get_situation_status(game_pin)
     injects_log = await get_injects_log(game_pin)
     situation_log = await get_situation_log(game_pin)
+    timeline = await get_timeline_events(game_pin)
     game_data = await PlayGame.get_from_redis(game_pin)
     inject_lookup = {}
     if game_data and game_data.injects:
@@ -2357,6 +2389,7 @@ async def get_situation(sid: str, _data: dict):
             "status": status or {},
             "injects_log": normalized_injects_log,
             "situation_log": situation_log or [],
+            "timeline": timeline,
         },
         room=sid,
     )

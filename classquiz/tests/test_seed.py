@@ -6,6 +6,7 @@ from classquiz.db.models import QuizQuestion
 from classquiz.routers.seed import create_seed, get_templates, preview_seed
 from classquiz.seed.context import WizardContext
 from classquiz.seed.registry import list_templates
+from classquiz.scenario_validation import validate_scenario
 from classquiz.seed.service import build_quiz_payload
 
 
@@ -18,6 +19,13 @@ def test_all_seed_templates_build_valid_questions():
         assert payload["scenario_type"] == "tabletop"
         assert payload["roles"]
         assert payload["injects"]
+
+
+def test_all_seed_templates_have_no_blocking_scenario_issues():
+    for template in list_templates():
+        payload = build_quiz_payload(template.id, WizardContext())
+        issues = validate_scenario(payload["questions"], payload.get("roles"), payload.get("injects"))
+        assert not [issue for issue in issues if issue["level"] == "error"], template.id
 
 
 def test_seed_wizard_is_available_to_any_authenticated_user():

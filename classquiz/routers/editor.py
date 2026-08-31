@@ -33,7 +33,7 @@ from classquiz.helpers import (
     extract_image_ids_from_quiz,
 )
 from classquiz.storage.errors import DeletionFailedError
-from classquiz.scenario_validation import validate_scenario
+from classquiz.scenario_validation import validate_quiz_payload
 
 settings = settings()
 
@@ -151,7 +151,7 @@ async def finish_edit(edit_id: str, quiz_input: QuizInput):
     from classquiz.socket_server.branching import ensure_question_ids
     quiz_input.questions = ensure_question_ids(quiz_input.questions)
 
-    scenario_issues = validate_scenario(quiz_input.questions, quiz_input.roles, quiz_input.injects)
+    scenario_issues = validate_quiz_payload(quiz_input)
     blocking_issues = [issue for issue in scenario_issues if issue["level"] == "error"]
     if blocking_issues:
         raise HTTPException(status_code=422, detail=blocking_issues)

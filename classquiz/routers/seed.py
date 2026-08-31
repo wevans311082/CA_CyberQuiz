@@ -12,6 +12,7 @@ from classquiz.auth import get_current_user
 from classquiz.db.models import User
 from classquiz.seed.context import WizardContext
 from classquiz.seed.service import build_quiz_payload, create_seed_quiz, seed_all_templates, template_catalog
+from classquiz.scenario_validation import validate_scenario
 
 router = APIRouter()
 
@@ -76,6 +77,15 @@ async def preview_seed(payload: CreateSeedRequest, _: User = Depends(get_current
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     questions = quiz_data.get("questions", [])
+    scenario_issues = validate_scenario(
+        questions,
+        quiz_data.get("roles"),
+        quiz_data.get("injects"),
+        {"framework_mappings": quiz_data.get("framework_mappings", {})},
+    )
+    blocking_issues = [issue for issue in scenario_issues if issue["level"] == "error"]
+    if blocking_issues:
+        raise HTTPException(status_code=422, detail=blocking_issues)
     branch_count = sum(
         1
         for q in questions

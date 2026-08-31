@@ -43,7 +43,7 @@ salt in stamps (as per the hashcash v.1 protocol).
 from string import ascii_letters
 from math import ceil, floor
 import hashlib
-from random import choice
+from secrets import choice
 from time import strftime, localtime, time
 
 

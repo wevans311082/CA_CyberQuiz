@@ -46,6 +46,8 @@ from classquiz.helpers import meilisearch_init
 settings = settings()
 _logger = logging.getLogger(f"uvicorn.{__name__}")
 if settings.secret_key in ("TOP_SECRET", "CHANGE_ME", ""):
+    if settings.environment.lower() in {"production", "prod"}:
+        raise RuntimeError("SECRET_KEY must be replaced before starting in production")
     _logger.warning("SECRET_KEY is using a weak/default value — rotate before production deployment")
 if settings.sentry_dsn:
     sentry_sdk.init(dsn=settings.sentry_dsn, integrations=[RedisIntegration()])
@@ -63,6 +65,18 @@ async def sentry_exception(request: Request, call_next):
             scope.set_context("request", request)
             sentry_sdk.capture_exception(e)
         raise e
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    if settings.root_address.startswith("https://"):
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
 
 
 @app.on_event("startup")
@@ -109,7 +123,7 @@ app.include_router(results.router, tags=["results"], prefix="/api/v1/results", i
 app.include_router(remote.router, tags=["remote"], prefix="/api/v1/remote", include_in_schema=True)
 app.include_router(login.router, tags=["auth"], prefix="/api/v1/login", include_in_schema=True)
 
-app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, https_only=settings.root_address.startswith("https://"), same_site="strict")
 app.include_router(users.router, tags=["users"], prefix="/api/v1/users", include_in_schema=True)
 app.include_router(quiz.router, tags=["quiz"], prefix="/api/v1/quiz", include_in_schema=True)
 app.include_router(utils.router, tags=["utils"], prefix="/api/v1/utils", include_in_schema=True)

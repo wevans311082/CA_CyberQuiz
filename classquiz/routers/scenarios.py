@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from classquiz.auth import get_admin_user
 from classquiz.db.models import Quiz, ScenarioVersion, StorageItem, User
+from classquiz.scenario_validation import validate_scenario
 
 router = APIRouter()
 
@@ -163,6 +164,16 @@ async def publish_version(quiz_id: uuid.UUID, version_id: uuid.UUID, user: User 
     version = await ScenarioVersion.objects.get_or_none(id=version_id, quiz=quiz.id)
     if version is None:
         raise HTTPException(status_code=404, detail="Version not found")
+    content = version.content or {}
+    issues = validate_scenario(
+        content.get("questions", []),
+        content.get("roles"),
+        content.get("injects"),
+        {"framework_mappings": content.get("framework_mappings", {})},
+    )
+    blocking_issues = [issue for issue in issues if issue["level"] == "error"]
+    if blocking_issues:
+        raise HTTPException(status_code=422, detail={"message": "Version cannot be published until blocking issues are fixed", "issues": blocking_issues})
     published = await ScenarioVersion.objects.filter(quiz=quiz.id, status="published").all()
     for previous in published:
         if previous.id != version.id:

@@ -22,6 +22,7 @@
 	let operations_open = $state(false);
 	let manual_target = $state('');
 	let reset_target = $state<string | null>(null);
+	let health = $state<{ overall: string; checks: Array<{ code: string; severity: string; label: string; detail: string }> } | null>(null);
 	const graph = $derived(buildScenarioGraph(quiz_data.questions ?? []));
 	const current = $derived(quiz_data.questions?.[selected_question]);
 	const completion = $derived(players.length ? Math.min(100, Math.round((answer_count / players.length) * 100)) : 0);
@@ -49,6 +50,14 @@
 		if (!game_pin || !game_token || !host_token) return;
 		window.open(`/remote?game_pin=${encodeURIComponent(game_pin)}&game_id=${encodeURIComponent(game_token)}&host_token=${encodeURIComponent(host_token)}`, '_blank', 'noopener,noreferrer');
 	};
+	$effect(() => {
+		if (!socket?.on) return;
+		const receive_health = (snapshot: typeof health) => { health = snapshot; };
+		socket.on('exercise_health', receive_health);
+		socket.emit('get_exercise_health', {});
+		const refresh = window.setInterval(() => socket.emit('get_exercise_health', {}), 10000);
+		return () => { window.clearInterval(refresh); socket.off?.('exercise_health', receive_health); };
+	});
 </script>
 
 <section class="fixed left-2 right-2 top-[7.25rem] z-20 mx-auto max-h-[calc(100vh-8rem)] max-w-[1500px] overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 shadow-[0_12px_35px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:left-3 sm:right-3">
@@ -63,6 +72,7 @@
 	</div>
 	{#if expanded}
 		<div class="grid gap-3 border-t border-slate-100 p-4 md:grid-cols-4">
+			<div class="rounded-xl border border-slate-200 bg-slate-50 p-3 md:col-span-2"><div class="flex items-center justify-between"><p class="text-xs font-bold text-slate-800">Exercise health</p><span class={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${health?.overall === 'error' ? 'bg-rose-50 text-rose-700' : health?.overall === 'warning' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{health?.overall ?? 'checking'}</span></div><div class="mt-3 grid gap-1.5 sm:grid-cols-2">{#each (health?.checks ?? []) as check}<div class="flex items-start gap-2 rounded-lg bg-white px-2.5 py-2"><span class={`mt-1 h-2 w-2 shrink-0 rounded-full ${check.severity === 'error' ? 'bg-rose-500' : check.severity === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}`}></span><div><p class="text-[11px] font-bold text-slate-700">{check.label}</p><p class="text-[10px] leading-4 text-slate-500">{check.detail}</p></div></div>{:else}<p class="text-[11px] text-slate-500">Waiting for live health data…</p>{/each}</div></div>
 			<div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="flex items-center justify-between"><p class="text-xs font-bold text-slate-800">Response completion</p><span class="text-xs font-bold text-teal-700">{completion}%</span></div><div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div class="h-full rounded-full bg-teal-500 transition-all" style={`width:${completion}%`}></div></div><p class="mt-2 text-[11px] text-slate-500">{answer_count} of {players.length} participants responded to this node.</p></div>
 			<div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-xs font-bold text-slate-800">Exercise path</p><p class="mt-2 break-words text-xs leading-5 text-slate-500">{route}</p><p class="mt-2 text-[11px] text-slate-400">{graph.edges.length} configured transitions · {quiz_data.questions.length} nodes</p></div>
 			<div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-xs font-bold text-slate-800">Manual navigation</p><div class="mt-2 flex gap-2"><select bind:value={manual_target} class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-700"><option value="">Choose branch…</option>{#each quiz_data.questions as question, index}{#if index !== selected_question}<option value={question.id ?? ''}>{index + 1}. {question.question?.replace(/<[^>]*>/g, '').slice(0, 24) || `Step ${index + 1}`}</option>{/if}{/each}</select><button type="button" class="rounded-lg bg-teal-600 px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40" onclick={manual_branch} disabled={!manual_target}>Go</button></div><button type="button" class="mt-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:border-teal-300 hover:text-teal-700" onclick={advance}>Advance recommended branch</button></div>

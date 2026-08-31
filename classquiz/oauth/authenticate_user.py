@@ -44,14 +44,16 @@ async def log_user_in(user: User | None, request: Request, response: Response):
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        samesite="lax",
+        secure=settings.root_address.startswith("https://"),
+        samesite="strict",
         max_age=60 * 60 * 24 * 365,
     )
     response.set_cookie(
         key="rememberme_token",
         value=session_key,
         httponly=True,
-        samesite="lax",
+        secure=settings.root_address.startswith("https://"),
+        samesite="strict",
         max_age=60 * 60 * 24 * 365,
     )
     return {"access_token": access_token, "token_type": "bearer"}
@@ -69,7 +71,8 @@ async def rememberme_check(rememberme_token: str, response: Response):
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        samesite="lax",
+        secure=settings.root_address.startswith("https://"),
+        samesite="strict",
         max_age=60 * 60 * 24 * 365,
     )
     response.set_cookie(key="expiry", value="", max_age=settings.access_token_expire_minutes * 60)

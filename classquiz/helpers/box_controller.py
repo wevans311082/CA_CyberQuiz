@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 
-import random
+import secrets
 
 
 def generate_code(specified_length: int) -> str:
@@ -19,5 +19,5 @@ def generate_code(specified_length: int) -> str:
     ]  # Capital stands for long press, lowercase letter for short press
     resulting_code = ""
     for _ in range(specified_length):
-        resulting_code += random.choice(buttons)
+        resulting_code += secrets.choice(buttons)
     return resulting_code

@@ -17,6 +17,7 @@ SPDX-License-Identifier: MPL-2.0
 		showRoles?: boolean;
 		onclose?: () => void;
 		onopenprojector?: () => void;
+		onopenplayerpreview?: () => void;
 		situation?: import('svelte').Snippet;
 		injects?: import('svelte').Snippet;
 		references?: import('svelte').Snippet;
@@ -37,6 +38,7 @@ SPDX-License-Identifier: MPL-2.0
 		showRoles = true,
 		onclose,
 		onopenprojector,
+		onopenplayerpreview,
 		situation,
 		injects,
 		references,
@@ -116,6 +118,7 @@ SPDX-License-Identifier: MPL-2.0
 					{#if onopenprojector}
 						<button type="button" class="host-btn" onclick={onopenprojector} title="Open projector display">Projector</button>
 					{/if}
+					{#if onopenplayerpreview}<button type="button" class="host-btn" onclick={onopenplayerpreview} title="Preview player experience">Player preview</button>{/if}
 					<button type="button" class="host-btn px-2.5" onclick={close} aria-label="Close">✕</button>
 				</div>
 			</div>

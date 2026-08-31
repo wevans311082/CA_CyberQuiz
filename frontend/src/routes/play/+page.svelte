@@ -604,6 +604,7 @@ SPDX-License-Identifier: MPL-2.0
 		status?: SituationStatus;
 		injects_log?: Array<{ inject: Inject; triggered_by: string; timestamp: string }>;
 		situation_log?: SituationLogEntry[];
+		timeline?: Array<{ id: string; type: import('$lib/quiz_types').TimelineEventType; timestamp: string; actor?: string; payload?: Record<string, unknown> }>;
 	}) => {
 		if (data?.status) {
 			if (data.status.severity || data.status.phase || data.status.summary) {
@@ -616,6 +617,16 @@ SPDX-License-Identifier: MPL-2.0
 		}
 		if (data?.situation_log) {
 			situation_log = data.situation_log;
+		}
+		if (data?.timeline) {
+			event_log = data.timeline.map((event) => ({
+				id: event.id,
+				type: event.type,
+				timestamp: event.timestamp,
+				title: event.type.replaceAll('_', ' '),
+				detail: event.actor ? `Actor: ${event.actor}` : undefined,
+				data: event.payload
+			}));
 		}
 	};
 	const onPolicySpotlight = (data: import('$lib/quiz_types').ReferenceDocument) => {

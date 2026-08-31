@@ -12,7 +12,8 @@
 		"lint-without-format-checking": "eslint .",
 		"format": "prettier --write --plugin-search-dir=. . '!src/lib/i18n/locales/*.json'",
 		"run:prod": "node index.js",
-		"translations-scan": "i18next-scanner --config i18next-scanner.config.engine.cjs src/**/*.svelte"
+		"translations-scan": "i18next-scanner --config i18next-scanner.config.engine.cjs src/**/*.svelte",
+		"test:e2e": "playwright test"
 	},
 	"devDependencies": {
 		"@felte/reporter-tippy": "^1.1.10",
@@ -22,6 +23,7 @@
 		"@ffmpeg/util": "^0.12.2",
 		"@fontsource/marck-script": "^5.2.8",
 		"@opentelemetry/api": "^1.9.1",
+		"@playwright/test": "^1.62.1",
 		"@sentry/browser": "^10.22.0",
 		"@sentry/tracing": "^7.120.4",
 		"@simplewebauthn/browser": "^13.2.2",

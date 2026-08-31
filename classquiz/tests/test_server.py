@@ -454,7 +454,7 @@ class TestStorage:
         assert resp.status_code == 404
         resp = test_client.get(f"/api/v1/storage/meta/{ValueStorage.file_id}", cookies=ValueStorage.cookies)
         data = resp.json()
-        assert data["size"] == 0
+        assert data["size"] == len("svg_content")
         assert data["imported"] is False
         assert data["alt_text"] is None
         assert data["filename"] is None

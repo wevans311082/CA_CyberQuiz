@@ -16,10 +16,13 @@ from classquiz.auth import get_current_user
 from classquiz.config import settings, storage, arq, ALLOWED_MIME_TYPES
 from classquiz.db.models import User, StorageItem, PublicStorageItem, UpdateStorageItem, PrivateStorageItem
 from classquiz.helpers import check_image_string
+from classquiz.helpers.network import assert_safe_remote_url
 from classquiz.storage.errors import DownloadingFailedError
 from uuid import uuid4, UUID
 
 settings = settings()
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+MAX_RAW_UPLOAD_BYTES = 50 * 1024 * 1024
 
 router = APIRouter()
 
@@ -44,7 +47,7 @@ async def download_file(file_name: str):
     if not checked_image_string[0]:
         raise HTTPException(status_code=400, detail="Invalid file name")
     if checked_image_string[1] is not None:
-        item = await StorageItem.objects.get_or_none(id=checked_image_string[1])
+        item = await StorageItem.objects.get_or_none(id=checked_image_string[1], deleted_at=None)
         if item is None:
             print("Item not found")
             raise HTTPException(status_code=404, detail="File not found")
@@ -84,7 +87,7 @@ async def get_basic_file_info(file_name: str) -> Response:
     if not checked_image_string[0]:
         raise HTTPException(status_code=404, detail="Invalid file name")
     if checked_image_string[1] is not None:
-        item = await StorageItem.objects.get_or_none(id=checked_image_string[1])
+        item = await StorageItem.objects.get_or_none(id=checked_image_string[1], deleted_at=None)
         if item is None:
             raise HTTPException(status_code=404, detail="File not found")
         # return PublicStorageItem.from_db_model(item)
@@ -103,7 +106,7 @@ async def download_file_head(file_name: str) -> Response:
     if not checked_image_string[0]:
         raise HTTPException(status_code=404, detail="Invalid file name")
     if checked_image_string[1] is not None:
-        item = await StorageItem.objects.get_or_none(id=checked_image_string[1])
+        item = await StorageItem.objects.get_or_none(id=checked_image_string[1], deleted_at=None)
         if item is None:
             raise HTTPException(status_code=404, detail="File not found")
         # return PublicStorageItem.from_db_model(item)
@@ -126,8 +129,14 @@ async def upload_file(file: UploadFile = File(), user: User = Depends(get_curren
         raise HTTPException(status_code=422, detail="Unsupported")
     if user.storage_used > settings.free_storage_limit:
         raise HTTPException(status_code=409, detail="Storage limit reached")
+    payload = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(payload) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large")
     file_id = uuid4()
-    file_size = 0
+    file_size = len(payload)
+    data_file = SpooledTemporaryFile(max_size=MAX_UPLOAD_BYTES)
+    data_file.write(payload)
+    data_file.seek(0)
     file_obj = StorageItem(
         id=file_id,
         uploaded_at=datetime.now(),
@@ -140,7 +149,7 @@ async def upload_file(file: UploadFile = File(), user: User = Depends(get_curren
     )
     await storage.upload(
         file_name=file_id.hex,
-        file_data=file.file,
+        file_data=data_file,
         mime_type=file.content_type,
         size=file_size,
     )
@@ -153,18 +162,25 @@ async def upload_file(file: UploadFile = File(), user: User = Depends(get_curren
 async def upload_raw_file(request: Request, user: User = Depends(get_current_user)) -> PublicStorageItem:
     if user.storage_used > settings.free_storage_limit:
         raise HTTPException(status_code=409, detail="Storage limit reached")
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > MAX_RAW_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large")
     file_id = uuid4()
-    data_file = SpooledTemporaryFile(max_size=1000)
+    data_file = SpooledTemporaryFile(max_size=MAX_RAW_UPLOAD_BYTES)
+    file_size = 0
     async for chunk in request.stream():
+        file_size += len(chunk)
+        if file_size > MAX_RAW_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="File too large")
         data_file.write(chunk)
     data_file.seek(0)
     file_obj = StorageItem(
         id=file_id,
         uploaded_at=datetime.now(),
-        mime_type=request.headers.get("Content-Type"),
+        mime_type=request.headers.get("Content-Type") or "application/octet-stream",
         hash=None,
         user=user,
-        size=0,
+        size=file_size,
         deleted_at=None,
         alt_text=None,
     )
@@ -173,7 +189,7 @@ async def upload_raw_file(request: Request, user: User = Depends(get_current_use
         file_name=file_id.hex,
         # skipcq: PYL-W0212
         file_data=data_file._file,
-        mime_type=request.headers.get("Content-Type"),
+        mime_type=request.headers.get("Content-Type") or "application/octet-stream",
     )
     await file_obj.save()
     await arq.enqueue_job("calculate_hash", file_id.hex)
@@ -290,13 +306,15 @@ async def import_image_from_url(data: ImportRemoteImageRequest, user: User = Dep
         "www.thesvg.org",
         "cdn.jsdelivr.net",
     }
-    if not parsed.hostname or parsed.hostname.lower() not in allowed_hosts:
-        raise HTTPException(status_code=400, detail="URL host is not allowed")
+    try:
+        await assert_safe_remote_url(data.url, allowed_hosts=allowed_hosts)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     max_bytes = 3 * 1024 * 1024
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(data.url, timeout=15) as resp:
+        async with session.get(data.url, timeout=15, allow_redirects=False) as resp:
             if resp.status != 200:
                 raise HTTPException(status_code=400, detail="Failed to download remote file")
             content_type = (resp.headers.get("Content-Type") or "image/svg+xml").split(";")[0].strip().lower()
