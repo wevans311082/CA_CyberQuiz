@@ -1,0 +1,128 @@
+# Swarm stack for CA CyberQuiz. Reuses existing named volumes.
+# Caddy stays internal; Traefik is the public reverse proxy.
+#   cd /opt/ca_quiz/CA_CyberQuiz
+#   docker stack deploy -c docker-stack.yml quiz
+
+services:
+  frontend:
+    image: ca_cyberquiz-frontend:latest
+    environment:
+      REDIS_URL: redis://redis:6379/0?decode_responses=True
+      API_URL: http://api:80
+    networks:
+      - default
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == caprod01
+      restart_policy:
+        condition: on-failure
+
+  api:
+    image: ca_cyberquiz-api:latest
+    env_file:
+      - .env
+    environment:
+      DB_URL: postgresql://postgres:classquiz@db:5432/classquiz
+      REDIS: redis://redis:6379/0?decode_responses=True
+      MEILISEARCH_URL: http://meilisearch:7700
+      ROOT_ADDRESS: https://quiz.cyberask.co.uk
+      MAX_WORKERS: "1"
+    volumes:
+      - /opt/ca_quiz/CA_CyberQuiz/uploads:/app/data
+    networks:
+      - default
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == caprod01
+      restart_policy:
+        condition: on-failure
+
+  worker:
+    image: ca_cyberquiz-worker:latest
+    env_file:
+      - .env
+    environment:
+      DB_URL: postgresql://postgres:classquiz@db:5432/classquiz
+      REDIS: redis://redis:6379/0?decode_responses=True
+      MEILISEARCH_URL: http://meilisearch:7700
+      ROOT_ADDRESS: https://quiz.cyberask.co.uk
+    command: arq classquiz.worker.WorkerSettings
+    networks:
+      - default
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == caprod01
+      restart_policy:
+        condition: on-failure
+
+  redis:
+    image: redis:alpine
+    networks:
+      - default
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == caprod01
+
+  db:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_PASSWORD: classquiz
+      POSTGRES_DB: classquiz
+    volumes:
+      - data:/var/lib/postgresql/data
+    networks:
+      - default
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == caprod01
+
+  meilisearch:
+    image: getmeili/meilisearch:v0.28.0
+    environment:
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meilisearch-data:/data.ms
+    networks:
+      - default
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == caprod01
+
+  proxy:
+    image: caddy:alpine
+    volumes:
+      - /opt/ca_quiz/CA_CyberQuiz/Caddyfile-docker:/etc/caddy/Caddyfile:ro
+    networks:
+      - default
+      - ca_public
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == caprod01
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=ca_public"
+        - "traefik.http.routers.quiz.rule=Host(`quiz.cyberask.co.uk`)"
+        - "traefik.http.routers.quiz.entrypoints=websecure"
+        - "traefik.http.routers.quiz.tls=true"
+        - "traefik.http.routers.quiz.tls.certresolver=letsencrypt"
+        - "traefik.http.services.quiz.loadbalancer.server.port=8080"
+
+networks:
+  default:
+  ca_public:
+    external: true
+
+volumes:
+  data:
+    external: true
+    name: ca_cyberquiz_data
+  meilisearch-data:
+    external: true
+    name: ca_cyberquiz_meilisearch-data
