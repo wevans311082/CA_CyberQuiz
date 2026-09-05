@@ -9,8 +9,12 @@ services:
     environment:
       REDIS_URL: redis://redis:6379/0?decode_responses=True
       API_URL: http://api:80
+      HOST: 0.0.0.0
+      PORT: "3000"
     networks:
-      - default
+      default:
+        aliases:
+          - frontend
     deploy:
       placement:
         constraints:
@@ -28,10 +32,22 @@ services:
       MEILISEARCH_URL: http://meilisearch:7700
       ROOT_ADDRESS: https://quiz.cyberask.co.uk
       MAX_WORKERS: "1"
+      SECRET_KEY: TOP_SECRET
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      MAIL_PORT: "587"
+      MAIL_ADDRESS: quiz@cyberask.co.uk
+      MAIL_PASSWORD: unused
+      MAIL_USERNAME: quiz@cyberask.co.uk
+      MAIL_SERVER: localhost
+      SKIP_EMAIL_VERIFICATION: "True"
+      STORAGE_BACKEND: local
+      STORAGE_PATH: /app/data
     volumes:
       - /opt/ca_quiz/CA_CyberQuiz/uploads:/app/data
     networks:
-      - default
+      default:
+        aliases:
+          - api
     deploy:
       placement:
         constraints:
@@ -48,6 +64,15 @@ services:
       REDIS: redis://redis:6379/0?decode_responses=True
       MEILISEARCH_URL: http://meilisearch:7700
       ROOT_ADDRESS: https://quiz.cyberask.co.uk
+      SECRET_KEY: TOP_SECRET
+      MAIL_PORT: "587"
+      MAIL_ADDRESS: quiz@cyberask.co.uk
+      MAIL_PASSWORD: unused
+      MAIL_USERNAME: quiz@cyberask.co.uk
+      MAIL_SERVER: localhost
+      SKIP_EMAIL_VERIFICATION: "True"
+      STORAGE_BACKEND: local
+      STORAGE_PATH: /app/data
     command: arq classquiz.worker.WorkerSettings
     networks:
       - default

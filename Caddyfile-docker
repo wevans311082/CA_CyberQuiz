@@ -4,18 +4,18 @@
 
 :8080 {
 	handle /socket.io* {
-		reverse_proxy http://api:80
+		reverse_proxy http://quiz_api:80
 	}
 
 	handle /api/* {
-		reverse_proxy http://api:80
+		reverse_proxy http://quiz_api:80
 	}
 
 	handle /openapi.json {
-		reverse_proxy http://api:80
+		reverse_proxy http://quiz_api:80
 	}
 
 	handle {
-		reverse_proxy http://frontend:3000
+		reverse_proxy http://quiz_frontend:3000
 	}
 }
