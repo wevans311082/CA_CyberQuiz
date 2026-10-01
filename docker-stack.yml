@@ -18,7 +18,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname == caprod01
+          - node.hostname == caprod03
       restart_policy:
         condition: on-failure
 
@@ -51,7 +51,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname == caprod01
+          - node.hostname == caprod03
       restart_policy:
         condition: on-failure
 
@@ -79,7 +79,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname == caprod01
+          - node.hostname == caprod03
       restart_policy:
         condition: on-failure
 
@@ -90,7 +90,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname == caprod01
+          - node.hostname == caprod03
 
   db:
     image: postgres:14-alpine
@@ -104,7 +104,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname == caprod01
+          - node.hostname == caprod03
 
   meilisearch:
     image: getmeili/meilisearch:v0.28.0
@@ -117,7 +117,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname == caprod01
+          - node.hostname == caprod03
 
   proxy:
     image: caddy:alpine
@@ -129,7 +129,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname == caprod01
+          - node.hostname == caprod03
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=ca_public"
